@@ -1430,8 +1430,8 @@ void msm_comm_scale_clocks_and_bus(struct msm_vidc_inst *inst)
 
 static inline unsigned long get_ocmem_requirement(u32 height, u32 width)
 {
-	int num_mbs = 0;
-	num_mbs = GET_NUM_MBS(height, width);
+	/* int num_mbs = 0;  */   
+	/* num_mbs = GET_NUM_MBS(height, width);   */
 	/*TODO: This should be changes once the numbers are
 	 * available from firmware*/
 	return 512 * 1024;
