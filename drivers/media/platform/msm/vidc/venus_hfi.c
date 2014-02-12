@@ -3528,6 +3528,11 @@ static void *venus_hfi_add_device(u32 device_id,
 		goto error_createq_pm;
 	}
 
+	mutex_init(&hdevice->read_lock);
+	mutex_init(&hdevice->write_lock);
+	mutex_init(&hdevice->session_lock);
+	mutex_init(&hdevice->clk_pwr_lock);
+
 	if (hal_ctxt.dev_count == 0)
 		INIT_LIST_HEAD(&hal_ctxt.dev_head);
 
