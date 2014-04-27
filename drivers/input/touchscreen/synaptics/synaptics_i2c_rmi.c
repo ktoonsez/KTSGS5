@@ -1450,7 +1450,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_TOUCH_MINOR, min(wx, wy));
 #endif
 
-			dev_dbg(&rmi4_data->i2c_client->dev,
+			/*dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: Finger %d:\n"
 					"status = 0x%02x\n"
 					"x = %d\n"
@@ -1459,7 +1459,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					"wy = %d\n",
 					__func__, finger,
 					finger_status,
-					x, y, wx, wy);
+					x, y, wx, wy);*/
 
 			touch_count++;
 		}
@@ -1674,8 +1674,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_TOUCH_MINOR, min(wx, wy));
 #endif
 
-			if (!rmi4_data->finger[finger].state) {
-#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+			if (rmi4_data->finger[finger].state) {
+/*#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 				dev_info(&rmi4_data->i2c_client->dev,
 						"[%d][P] 0x%02x, x = %d, y = %d, wx = %d, wy = %d |[%d]\n",
 						finger, finger_status, x, y, wx, wy, fingers_to_process);
@@ -1684,16 +1684,16 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 						"[%d][P] 0x%02x\n",
 						finger, finger_status);
 #endif
-			} else {
+			} else {*/
 				rmi4_data->finger[finger].mcount++;
 			}
 
-#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+/*#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 			if (rmi4_data->debug_log & 0x2)
 				dev_info(&rmi4_data->i2c_client->dev,
 						"[%d] 0x%02x, x = %d, y = %d, wx = %d, wy = %d |[%d]\n",
 						finger, finger_status, x, y, wx, wy, fingers_to_process);
-#endif
+#endif*/
 			touch_count++;
 		}
 
