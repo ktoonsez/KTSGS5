@@ -65,6 +65,7 @@ scripts/dtc/dtc
 scripts/dtc/dtc-lexer.lex.c
 scripts/dtc/dtc-parser.tab.c
 scripts/dtc/dtc-parser.tab.h
+arch/arm/boot/msm8974pro*
 arch/arm/boot/compressed/piggy.gzip
 kernel/config_data.h
 scripts/recordmcount
