@@ -9,7 +9,7 @@
  *
  */
 
-#define SEC_TOUCHKEY_DEBUG
+//#define SEC_TOUCHKEY_DEBUG
 /* #define SEC_TOUCHKEY_VERBOSE_DEBUG */
 
 #include <linux/kernel.h>
@@ -852,9 +852,9 @@ static irqreturn_t cypress_touchkey_interrupt(int irq, void *dev_id)
 
 	press = !(buf[0] & PRESS_BIT_MASK);
 	code = (int)(buf[0] & KEYCODE_BIT_MASK) - 1;
-	dev_info(&info->client->dev,
-			"%s: code=%d %s. fw_ver=0x%x, module_ver=0x%x \n", __func__,
-			code, press ? "pressed" : "released", info->ic_fw_ver, info->module_ver);
+	//dev_info(&info->client->dev,
+	//		"%s: code=%d %s. fw_ver=0x%x, module_ver=0x%x \n", __func__,
+	//		code, press ? "pressed" : "released", info->ic_fw_ver, info->module_ver);
 
 	if (code < 0) {
 		dev_info(&info->client->dev,
@@ -1136,7 +1136,7 @@ static ssize_t cypress_touchkey_led_control(struct device *dev,
 	int ret;	
 	static const int ledCmd[] = {TK_CMD_LED_OFF, TK_CMD_LED_ON};
 
-	dev_info(&info->client->dev, "called %s\n", __func__);
+	//dev_info(&info->client->dev, "called %s\n", __func__);
 
 	if (wake_lock_active(&info->fw_wakelock)) {
 		dev_err(&info->client->dev, "%s : wackelock active\n",
