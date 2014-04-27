@@ -14,6 +14,7 @@ export PACKAGEDIR=$PARENT_DIR/Packages/$PLATFORM
 #Enable FIPS mode
 #export USE_SEC_FIPS_MODE=true
 export ARCH=arm
+#export CROSS_COMPILE=/home/ktoonsez/cm/prebuilts/gcc/linux-x86/arm/arm-eabi-4.7/bin/arm-eabi-
 export CROSS_COMPILE=$PARENT_DIR/linaro4.9-a15/bin/arm-cortex_a15-linux-gnueabihf-
 export ENABLE_GRAPHITE=true
 
@@ -44,6 +45,7 @@ rm -rf $(find $INITRAMFS_DEST -name .git -print)
 echo "Remove old zImage"
 rm $PACKAGEDIR/zImage
 rm arch/arm/boot/zImage
+rm arch/arm/boot/zImage-dtb
 
 echo "Make the kernel"
 #make VARIANT_DEFCONFIG=jf_$CARRIER"_defconfig" SELINUX_DEFCONFIG=jfselinux_defconfig SELINUX_LOG_DEFCONFIG=jfselinux_log_defconfig KT_jf_defconfig
@@ -74,11 +76,12 @@ if [ -e $KERNELDIR/arch/arm/boot/zImage ]; then
 
 	echo "Make boot.img"
 	./mkbootfs $INITRAMFS_DEST | gzip > $PACKAGEDIR/ramdisk.gz
-	./mkbootimg --cmdline 'console=null androidboot.hardware=qcom user_debug=31 msm_rtb.filter=0x37 ehci-hcd.park=3' --kernel $PACKAGEDIR/zImage --ramdisk $PACKAGEDIR/ramdisk.gz --base 0x00000000 --pagesize 2048 --ramdisk_offset 0x02000000 --output $PACKAGEDIR/boot.img 
+	tools/dtbTool -o arch/arm/boot/dt.img -s 2048 -p scripts/dtc/ arch/arm/boot/
+	chmod a+r arch/arm/boot/dt.img
+	tools/mkbootimg --cmdline 'console=null androidboot.hardware=qcom user_debug=31 msm_rtb.filter=0x37 ehci-hcd.park=3' --kernel $PACKAGEDIR/zImage --ramdisk $PACKAGEDIR/ramdisk.gz --base 0x00000000 --pagesize 2048 --ramdisk_offset 0x02000000 --tags_offset 0x01E00000 --dt arch/arm/boot/dt.img --output $PACKAGEDIR/boot.img 
 	cd $PACKAGEDIR
 	cp -R ../META-INF .
 
-	cp -R ../kernel .
 	rm ramdisk.gz
 	rm zImage
 	rm ../$MUXEDNAMESHRT.zip
@@ -108,5 +111,5 @@ if [ -e $KERNELDIR/arch/arm/boot/zImage ]; then
 
 	cd $KERNELDIR
 else
-	echo "KERNEL DID NOT BUILD! no zImage exist"
+	echo "KERNEL DID NOT BUILD! no zImage-dtb exist"
 fi;
