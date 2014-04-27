@@ -62,6 +62,9 @@ scripts/kconfig/zconf.tab.c
 scripts/mod/elfconfig.h
 scripts/genksyms/genksyms
 scripts/dtc/dtc
+scripts/dtc/dtc-lexer.lex.c
+scripts/dtc/dtc-parser.tab.c
+scripts/dtc/dtc-parser.tab.h
 arch/arm/boot/compressed/piggy.gzip
 kernel/config_data.h
 scripts/recordmcount
