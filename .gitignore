@@ -37,6 +37,7 @@ modules.builtin
 *.rej
 *.orig
 *zImage
+*zImage-dtb
 *boot.img
 *ramdisk
 *Image
@@ -60,6 +61,7 @@ scripts/kconfig/zconf.hash.c
 scripts/kconfig/zconf.tab.c
 scripts/mod/elfconfig.h
 scripts/genksyms/genksyms
+scripts/dtc/dtc
 arch/arm/boot/compressed/piggy.gzip
 kernel/config_data.h
 scripts/recordmcount
