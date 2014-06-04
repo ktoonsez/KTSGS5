@@ -54,6 +54,9 @@
  *    - 404 : USA SPR
  *    - 405 : USA USC
  *    - 406 : CAN OPEN
+ *    - 407 : USA MPCS
+ *    - 408 : USA ACG
+ *    - 409 : USA LRA
  *    You can refer how to using it below this file.
  *    And, you can add more region code, too.
  */
@@ -189,6 +192,21 @@
 #undef TX_CALLING_POWER
 #define TX_CALLING_POWER 9
 #endif /* CONFIG_WLAN_REGION_CODE == 406 */
+
+#if (CONFIG_WLAN_REGION_CODE == 407) /* MPCS */
+#undef TX_CALLING_POWER
+#define TX_CALLING_POWER 9
+#endif /* CONFIG_WLAN_REGION_CODE == 407 */
+
+#if (CONFIG_WLAN_REGION_CODE == 408) /* ACG */
+#undef TX_CALLING_POWER
+#define TX_CALLING_POWER 7
+#endif /* CONFIG_WLAN_REGION_CODE == 408 */
+
+#if (CONFIG_WLAN_REGION_CODE == 409) /* LRA */
+#undef TX_CALLING_POWER
+#define TX_CALLING_POWER 7
+#endif /* CONFIG_WLAN_REGION_CODE == 409 */
 
 #endif /* CONFIG_WLAN_REGION_CODE >= 400 && CONFIG_WLAN_REGION_CODE < 500 */
 
