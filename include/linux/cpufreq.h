@@ -21,6 +21,8 @@
 #include <linux/cpumask.h>
 #include <asm/div64.h>
 
+extern unsigned int kthermal_limit;
+
 #define CPUFREQ_NAME_LEN 16
 
 
