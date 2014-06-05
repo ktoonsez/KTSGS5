@@ -13,6 +13,7 @@
 #include <linux/mfd/max77804k.h>
 #include <linux/mfd/max77804k-private.h>
 #include <linux/of_gpio.h>
+#include <linux/fastchg.h>
 
 #ifdef CONFIG_USB_HOST_NOTIFY
 #include <linux/host_notify.h>
@@ -572,7 +573,7 @@ static void max77804k_recovery_work(struct work_struct *work)
 		(chgin_dtls == 0x3) && (chg_dtls != 0x8) && (byp_dtls == 0x0))) {
 		pr_info("%s: try to recovery, cnt(%d)\n", __func__,
 				(chg_data->soft_reg_recovery_cnt + 1));
-		if (chg_data->siop_level < 100 &&
+		if (screen_on_current_limit && chg_data->siop_level < 100 &&
 			chg_data->cable_type == POWER_SUPPLY_TYPE_MAINS) {
 			pr_info("%s : LCD on status and revocer current\n", __func__);
 			max77804k_set_input_current(chg_data,
@@ -930,7 +931,9 @@ static int sec_chg_set_property(struct power_supply *psy,
 	const int usb_charging_current = charger->pdata->charging_current[
 		POWER_SUPPLY_TYPE_USB].fast_charging_current;
 	u8 chg_cnfg_00;
-
+	int charge_current = 0;
+	int current_now = 0;
+	
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
 		charger->status = val->intval;
@@ -1051,9 +1054,56 @@ static int sec_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		charger->siop_level = val->intval;
 		if (charger->is_charging) {
+			/* We are in basic Fast Charge mode, so we substitute AC to USB
+			   levels */
+			if (force_fast_charge == FAST_CHARGE_FORCE_AC) {
+				switch(charger->cable_type) {
+					/* These are low current USB connections,
+					   apply 1.A level to USB */
+					case POWER_SUPPLY_TYPE_USB:
+					case POWER_SUPPLY_TYPE_USB_ACA:
+					case POWER_SUPPLY_TYPE_CARDOCK:
+					case POWER_SUPPLY_TYPE_OTG:
+						charge_current = USB_CHARGE_1000;
+						current_now = charge_current;
+						goto got_override;
+						break;
+
+				}
+			/* We are in advanced Fast Charge mode, so we apply custom charging
+			   levels for both AC and USB */
+			} else if (force_fast_charge == FAST_CHARGE_FORCE_CUSTOM_MA) {
+				switch(charger->cable_type) {
+					/* These are USB connections, apply custom USB current
+					   for all of them */
+					case POWER_SUPPLY_TYPE_USB:
+					case POWER_SUPPLY_TYPE_USB_DCP:
+					case POWER_SUPPLY_TYPE_USB_CDP:
+					case POWER_SUPPLY_TYPE_USB_ACA:
+					case POWER_SUPPLY_TYPE_CARDOCK:
+					case POWER_SUPPLY_TYPE_OTG:
+						charge_current = usb_charge_level;
+						current_now = charge_current;
+						goto got_override;
+						break;
+					/* These are AC connections, apply custom AC current
+					   for all of them */
+					case POWER_SUPPLY_TYPE_MAINS:
+						/* but never go above 2.2A */
+						charge_current = min(ac_charge_level, MAX_CHARGE_LEVEL);
+						current_now = charge_current;
+						goto got_override;
+						break;
+					/* Don't do anything for any other kind of connections
+					   and don't touch when type is unknown */
+					default:
+						break;
+				}
+			}
+
+		
 			/* decrease the charging current according to siop level */
-			int current_now =
-				charger->charging_current * val->intval / 100;
+			current_now = charger->charging_current * val->intval / 100;
 
 			/* do forced set charging current */
 			if (current_now > 0 &&
@@ -1068,7 +1118,7 @@ static int sec_chg_set_property(struct power_supply *psy,
 						charger->charging_current_max;
 				}
 
-				if (charger->siop_level < 100 &&
+				if (screen_on_current_limit && charger->siop_level < 100 &&
 						current_now > SIOP_CHARGING_LIMIT_CURRENT)
 					current_now = SIOP_CHARGING_LIMIT_CURRENT;
 				max77804k_set_input_current(charger,
@@ -1081,13 +1131,15 @@ static int sec_chg_set_property(struct power_supply *psy,
 						charger->charging_current_max;
 				}
 
-				if (charger->siop_level < 100 &&
+				if (screen_on_current_limit && charger->siop_level < 100 &&
 						current_now > SIOP_WIRELESS_CHARGING_LIMIT_CURRENT)
 					current_now = SIOP_WIRELESS_CHARGING_LIMIT_CURRENT;
 				max77804k_set_input_current(charger,
 					set_charging_current_max);
 			}
-
+got_override:
+			if (charge_current)
+				max77804k_set_input_current(charger, charge_current);
 			max77804k_set_charge_current(charger, current_now);
 		}
 		break;
