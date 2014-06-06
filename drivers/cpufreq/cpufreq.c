@@ -32,6 +32,10 @@
 
 #include <trace/events/power.h>
 
+extern ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf);
+extern ssize_t show_UV_mV_table_stock(struct cpufreq_policy *policy, char *buf);
+extern ssize_t store_UV_mV_table(struct cpufreq_policy *policy,const char *buf, size_t count);
+
 static unsigned int Lenable_auto_hotplug = 0;
 extern void apenable_auto_hotplug(bool state);
 
@@ -688,6 +692,8 @@ cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(enable_auto_hotplug);
+cpufreq_freq_attr_rw(UV_mV_table);
+cpufreq_freq_attr_ro(UV_mV_table_stock);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -706,6 +712,8 @@ static struct attribute *default_attrs[] = {
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
 	&enable_auto_hotplug.attr,
+	&UV_mV_table.attr,
+	&UV_mV_table_stock.attr,
 	NULL
 };
 
