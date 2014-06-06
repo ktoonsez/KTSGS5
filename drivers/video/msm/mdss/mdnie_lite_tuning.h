@@ -88,8 +88,8 @@
 #define SIG_MDNIE_eBOOK					9
 #define SIG_MDNIE_EMAIL					10
 
-#define SIG_MDNIE_DYNAMIC				0
-#define SIG_MDNIE_STANDARD				1
+#define SIG_MDNIE_DYNAMIC				1
+#define SIG_MDNIE_STANDARD				0
 #define SIG_MDNIE_MOVIE				2
 
 #if defined(CONFIG_TDMB)
@@ -138,8 +138,8 @@ enum SCENARIO {
 };
 
 enum BACKGROUND {
-	DYNAMIC_MODE = 0,
-	STANDARD_MODE,
+	STANDARD_MODE = 0,
+	DYNAMIC_MODE,
 #if !defined(CONFIG_SUPPORT_DISPLAY_OCTA_TFT)
 	NATURAL_MODE,
 #endif
