@@ -21,9 +21,12 @@
 #include <linux/cpumask.h>
 #include <asm/div64.h>
 
-extern unsigned int kthermal_limit;
+#define CPU_VDD_MIN	 500
+#define CPU_VDD_MAX	1300
+#define FREQ_STEPS	333
+#define CPUFREQ_NAME_LEN 17
 
-#define CPUFREQ_NAME_LEN 16
+extern unsigned int kthermal_limit;
 
 
 /*********************************************************************
