@@ -163,8 +163,8 @@ char scenario_name[MAX_mDNIe_MODE][16] = {
 };
 
 const char background_name[MAX_BACKGROUND_MODE][10] = {
-	"DYNAMIC",
 	"STANDARD",
+	"DYNAMIC",
 	"NATURAL",
 	"MOVIE",
 	"AUTO",
