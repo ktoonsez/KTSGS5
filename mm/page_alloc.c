@@ -174,10 +174,17 @@ int sysctl_lowmem_reserve_ratio[MAX_NR_ZONES-1] = {
 #ifdef CONFIG_ZONE_DMA32
 	 256,
 #endif
+#ifdef CONFIG_ARCH_MSM8974PRO
+#ifdef CONFIG_HIGHMEM
+	 96,
+#endif
+	 96,
+#else
 #ifdef CONFIG_HIGHMEM
 	 32,
 #endif
 	 32,
+#endif
 };
 
 EXPORT_SYMBOL(totalram_pages);

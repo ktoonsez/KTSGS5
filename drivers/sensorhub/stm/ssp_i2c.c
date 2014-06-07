@@ -13,6 +13,7 @@
  *
  */
 #include "ssp.h"
+#include <linux/cpufreq_kt.h>
 
 #define LIMIT_DELAY_CNT		200
 #define RECEIVEBUFFERSIZE	12
@@ -332,6 +333,18 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 	if (iRet != SUCCESS) {
 		pr_err("[SSP]: %s - Instruction CMD Fail %d\n", __func__, iRet);
 		return ERROR;
+	}
+
+	//On a call/not on a call hook
+	if (uInst == ADD_SENSOR && uSensorType == PROXIMITY_SENSOR)
+	{
+		pr_alert("KT ON CALL ENABLE: %d-%d\n", uInst, uSensorType);
+		set_call_in_progress(true);
+	}
+	else if (uInst == REMOVE_SENSOR && uSensorType == PROXIMITY_SENSOR)
+	{
+		pr_alert("KT ON CALL DISABLE: %d-%d\n", uInst, uSensorType);
+		set_call_in_progress(false);
 	}
 
 	return iRet;

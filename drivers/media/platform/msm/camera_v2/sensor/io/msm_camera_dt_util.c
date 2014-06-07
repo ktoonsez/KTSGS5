@@ -152,8 +152,10 @@ int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 					pr_err("%s:%d i %d j %d cam_vdig\n",
 					       __func__, __LINE__, i, j);
 					power_setting[i].seq_val = j;
-					cam_vreg[j].min_voltage = cam_vreg[j].max_voltage =
-									  power_setting[i].config_val;
+					if (power_setting[i].config_val != 0) {
+						cam_vreg[j].min_voltage = cam_vreg[j].max_voltage =
+										  power_setting[i].config_val;
+					}
 					pr_err("%s:%d dig min max voltage %ld\n", __func__,
 					       __LINE__, power_setting[i].config_val);
 					break;
