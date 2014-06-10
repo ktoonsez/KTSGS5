@@ -35,6 +35,10 @@
 #define UPDATE_BUSY_VAL		1000000
 #define UPDATE_BUSY		50
 
+int boost_level = -1;
+struct kgsl_device *Gbldevice;
+unsigned long internal_max = 578000000;
+
 /*
  * Expected delay for post-interrupt processing on A3xx.
  * The delay may be longer, gradually increase the delay
@@ -158,6 +162,10 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 
 	/* Adjust the power level to the current constraints */
 	new_level = _adjust_pwrlevel(pwr, new_level);
+
+	//Assign new_level to boost level if it is not -1 and less than new level
+	if (boost_level != -1 && boost_level < new_level)
+		new_level = boost_level;
 
 	if (new_level == pwr->active_pwrlevel)
 		return;
@@ -407,6 +415,38 @@ static int _get_nearest_pwrlevel(struct kgsl_pwrctrl *pwr, unsigned int clock)
 	return -ERANGE;
 }
 
+static int _get_exact_pwrlevel(struct kgsl_pwrctrl *pwr, unsigned int clock)
+{
+	int i;
+
+	for (i = pwr->num_pwrlevels - 1; i >= 0; i--) {
+		//pr_alert("BOOST GPUs: %d - %d\n", pwr->pwrlevels[i].gpu_freq, clock);
+		if (pwr->pwrlevels[i].gpu_freq == clock || (i == 0 && clock >= pwr->pwrlevels[i].gpu_freq))
+		{
+			//pr_alert("BOOST GPUs CHOOSE: %d %d\n", pwr->pwrlevels[i].gpu_freq, i);
+			return i;
+		}
+	}
+
+	return -ERANGE;
+}
+
+void boost_the_gpu(unsigned int freq, bool getfreq)
+{
+	struct kgsl_pwrctrl *pwr;
+	if (getfreq)
+	{
+		//pr_alert("BOOST GPU TOUCH: %d\n", freq);
+		freq = freq * 1000;
+		//if (freq > 320000000 && freq != internal_max)
+		//	freq = internal_max;
+		pwr = &Gbldevice->pwrctrl;
+		boost_level = _get_exact_pwrlevel(pwr, freq);
+	}
+	else
+		boost_level = -1;
+}
+
 static int kgsl_pwrctrl_max_gpuclk_store(struct device *dev,
 					 struct device_attribute *attr,
 					 const char *buf, size_t count)
@@ -429,6 +469,8 @@ static int kgsl_pwrctrl_max_gpuclk_store(struct device *dev,
 	level = _get_nearest_pwrlevel(pwr, val);
 	if (level < 0)
 		goto done;
+
+	internal_max = val;
 
 	pwr->thermal_pwrlevel = level;
 
@@ -1068,6 +1110,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct kgsl_device_platform_data *pdata = pdev->dev.platform_data;
 
+	Gbldevice = device;
 	/*acquire clocks */
 	for (i = 0; i < KGSL_MAX_CLKS; i++) {
 		if (pdata->clk_map & clks[i].map) {

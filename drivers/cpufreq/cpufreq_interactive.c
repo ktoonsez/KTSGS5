@@ -703,7 +703,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		}
 	}
 
-	if (pcpu->target_freq >= hispeed_freq &&
+	if (kt_freq_control[1] == 0 && pcpu->target_freq >= hispeed_freq &&
 	    new_freq > pcpu->target_freq &&
 	    now - pcpu->hispeed_validate_time <
 	    freq_to_above_hispeed_delay(pcpu->target_freq)) {
@@ -737,7 +737,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		mod_min_sample_time = 0;
 		pcpu->minfreq_boost = 0;
 	}
-	if (new_freq < pcpu->floor_freq) {
+	if (kt_freq_control[1] == 0 && new_freq < pcpu->floor_freq) {
 		if (now - pcpu->floor_validate_time < mod_min_sample_time) {
 			trace_cpufreq_interactive_notyet(
 				data, cpu_load, pcpu->target_freq,
@@ -759,7 +759,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		pcpu->floor_validate_time = now;
 	}
 
-	if (pcpu->target_freq == new_freq) {
+	if (pcpu->target_freq == new_freq && kt_freq_control[1] == 0) {
 		trace_cpufreq_interactive_already(
 			data, cpu_load, pcpu->target_freq,
 			pcpu->policy->cur, new_freq);
@@ -899,6 +899,13 @@ static int cpufreq_interactive_speedchange_task(void *data)
 				up_read(&pcpu->enable_sem);
 				continue;
 			}
+			
+			//KT hook
+			if (kt_freq_control[cpu] > 0)
+			{
+				max_freq = kt_freq_control[cpu];
+				goto skipcpu;
+			}
 
 			for_each_cpu(j, pcpu->policy->cpus) {
 				struct cpufreq_interactive_cpuinfo *pjcpu =
@@ -908,6 +915,7 @@ static int cpufreq_interactive_speedchange_task(void *data)
 					max_freq = pjcpu->target_freq;
 			}
 
+skipcpu:
 			if (max_freq != pcpu->policy->cur)
 				__cpufreq_driver_target(pcpu->policy,
 							max_freq,

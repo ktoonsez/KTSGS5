@@ -26,6 +26,9 @@
 #define FREQ_STEPS	333
 #define CPUFREQ_NAME_LEN 17
 
+extern int GLOBALKT_MIN_FREQ_LIMIT;
+extern int GLOBALKT_MAX_FREQ_LIMIT;
+
 extern unsigned int kthermal_limit;
 
 
@@ -121,6 +124,8 @@ struct cpufreq_policy {
 	struct kobject		kobj;
 	struct completion	kobj_unregister;
 };
+extern struct cpufreq_policy trmlpolicy[10];
+extern unsigned int kt_freq_control[10];
 
 #define CPUFREQ_ADJUST		(0)
 #define CPUFREQ_INCOMPATIBLE	(1)

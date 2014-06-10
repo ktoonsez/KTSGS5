@@ -14,6 +14,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <asm/unaligned.h>
+#include <mach/cpufreq.h>
+#include <linux/cpufreq_kt.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
@@ -61,6 +63,9 @@ struct qpnp_pin_cfg synaptics_int_set[] = {
 };
 
 struct list_head exp_fn_list;
+
+//KT specifics
+extern void hotplugap_boostpulse(void);
 
 void synaptics_power_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable);
 
@@ -743,6 +748,9 @@ static void synaptics_change_dvfs_lock(struct work_struct *work)
 				struct synaptics_rmi4_data, work_dvfs_chg.work);
 	int retval = 0;
 
+	if (vfreq_lock)
+		return;
+
 	mutex_lock(&rmi4_data->dvfs_lock);
 
 	if (rmi4_data->dvfs_boost_mode == DVFS_STAGE_DUAL) {
@@ -786,6 +794,9 @@ static void synaptics_set_dvfs_off(struct work_struct *work)
 				struct synaptics_rmi4_data, work_dvfs_off.work);
 	int retval;
 
+	if (vfreq_lock)
+		return;
+
 	if (rmi4_data->stay_awake) {
 		dev_info(&rmi4_data->i2c_client->dev,
 				"%s: do fw update, do not change cpu frequency.\n",
@@ -810,6 +821,9 @@ static void synaptics_set_dvfs_lock(struct synaptics_rmi4_data *rmi4_data,
 		int on)
 {
 	int ret = 0;
+
+	if (vfreq_lock)
+		return;
 
 	if (rmi4_data->dvfs_boost_mode == DVFS_STAGE_NONE) {
 		dev_dbg(&rmi4_data->i2c_client->dev,
@@ -903,6 +917,10 @@ static void synaptics_tkey_change_dvfs_lock(struct work_struct *work)
 		container_of(work,
 			struct synaptics_rmi4_data, work_tkey_dvfs_chg.work);
 	int retval = 0;
+
+	if (vfreq_lock)
+		return;
+
 	mutex_lock(&rmi4_data->tkey_dvfs_lock);
 
 	retval = set_freq_limit(DVFS_TOUCH_ID, rmi4_data->tkey_dvfs_freq);
@@ -920,6 +938,9 @@ static void synaptics_tkey_set_dvfs_off(struct work_struct *work)
 		container_of(work,
 			struct synaptics_rmi4_data, work_tkey_dvfs_off.work);
 	int retval;
+
+	if (vfreq_lock)
+		return;
 
 	if (rmi4_data->stay_awake) {
 		dev_info(&rmi4_data->i2c_client->dev,
@@ -942,6 +963,9 @@ static void synaptics_tkey_set_dvfs_lock(struct synaptics_rmi4_data *rmi4_data,
 		int on)
 {
 	int ret = 0;
+
+	if (vfreq_lock)
+		return;
 
 	if (rmi4_data->tkey_dvfs_boost_mode == DVFS_STAGE_NONE) {
 		dev_dbg(&rmi4_data->i2c_client->dev,
@@ -1731,7 +1755,13 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	else
 		synaptics_set_dvfs_lock(rmi4_data, 0);
 #endif
-
+	if (touch_count)
+	{
+		if (ktoonservative_is_active)
+			ktoonservative_boostpulse(false);
+		hotplugap_boostpulse();
+	}
+	
 	return touch_count;
 }
 
