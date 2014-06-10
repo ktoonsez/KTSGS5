@@ -11,6 +11,7 @@
 
 #include <linux/module.h>
 
+#include <linux/cpufreq_kt.h>
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
@@ -420,6 +421,9 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	struct input_dev *input = bdata->input;
 	unsigned int type = button->type ?: EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
+
+	if (ktoonservative_is_active && button->code == KEY_HOMEPAGE && state)
+		ktoonservative_screen_is_on(true);
 
 	printk(KERN_INFO "%s: %s key is %s\n",
 		__func__, button->desc, state ? "pressed" : "released");

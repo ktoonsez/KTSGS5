@@ -32,6 +32,6 @@ static struct kmsm_thermal_data kmsm_thermal_info = {
 	.temp_limit_degC_start = 70,
 	.temp_limit_degC_stop = 67,
 	.freq_steps_while_throttling = 1,
-	.minimum_throttle_mhz = 918000,
+	.minimum_throttle_mhz = 1036800,
 	.current_temp = 0,
 };
