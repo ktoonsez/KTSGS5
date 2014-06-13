@@ -97,12 +97,12 @@ static struct msm_gpiomux_config gpio_nc_configs[] __initdata = {
 #endif
 #endif
 
-#if defined(CONFIG_MACH_KLTE_SPR)
+//#if defined(CONFIG_MACH_KLTE_SPR)
 	GPIOMUX_SET_NC(110),
 	GPIOMUX_SET_NC(124),
 	GPIOMUX_SET_NC(125),
 	GPIOMUX_SET_NC(136),
-#endif
+//#endif
 };
 
 static struct msm_gpiomux_config gpio_rev05_nc_configs[] __initdata = {

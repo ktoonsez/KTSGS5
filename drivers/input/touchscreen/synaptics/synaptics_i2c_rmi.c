@@ -794,9 +794,6 @@ static void synaptics_set_dvfs_off(struct work_struct *work)
 				struct synaptics_rmi4_data, work_dvfs_off.work);
 	int retval;
 
-	if (vfreq_lock)
-		return;
-
 	if (rmi4_data->stay_awake) {
 		dev_info(&rmi4_data->i2c_client->dev,
 				"%s: do fw update, do not change cpu frequency.\n",
@@ -938,9 +935,6 @@ static void synaptics_tkey_set_dvfs_off(struct work_struct *work)
 		container_of(work,
 			struct synaptics_rmi4_data, work_tkey_dvfs_off.work);
 	int retval;
-
-	if (vfreq_lock)
-		return;
 
 	if (rmi4_data->stay_awake) {
 		dev_info(&rmi4_data->i2c_client->dev,

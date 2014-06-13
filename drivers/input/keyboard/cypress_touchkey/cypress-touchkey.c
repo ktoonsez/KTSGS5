@@ -110,9 +110,6 @@ static void cypress_set_dvfs_off(struct work_struct *work)
 			struct cypress_touchkey_info, work_dvfs_off.work);
 	int retval;
 
-	if (vfreq_lock)
-		return;
-
 	mutex_lock(&info->dvfs_lock);
 	retval = set_freq_limit(DVFS_TOUCH_ID, -1);
 	if (retval < 0)
@@ -1865,9 +1862,6 @@ static ssize_t boost_level_store(struct device *dev,
 {
 	struct cypress_touchkey_info *info = dev_get_drvdata(dev);
 	int val, retval;
-
-	if (vfreq_lock)
-		return count;
 
 	dev_info(&info->client->dev, "%s\n", __func__);
 	sscanf(buf, "%d", &val);
