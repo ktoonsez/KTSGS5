@@ -19,6 +19,7 @@
 
 #ifdef CONFIG_CPU_FREQ_LIMIT_USERSPACE
 #include <linux/cpufreq.h>
+#include <linux/cpufreq_kt.h>
 #include <linux/cpufreq_limit.h>
 #endif
 #ifdef CONFIG_SEC_DVFS
@@ -674,6 +675,9 @@ static ssize_t cpufreq_min_limit_store(struct kobject *kobj,
 		goto out;
 	}
 
+	if ((vfreq_lock || !isBooted) && val != -1)
+		return n;
+	
 	mutex_lock(&cpufreq_limit_mutex);
 	if (cpufreq_min_hd) {
 		cpufreq_limit_put(cpufreq_min_hd);
@@ -708,6 +712,9 @@ int set_freq_limit(unsigned long id, unsigned int freq)
 {
 	ssize_t ret = -EINVAL;
 
+	if ((vfreq_lock || !isBooted) && freq != -1)
+		return 0;
+	
 	mutex_lock(&cpufreq_limit_mutex);
 
 	if (cpufreq_min_touch) {

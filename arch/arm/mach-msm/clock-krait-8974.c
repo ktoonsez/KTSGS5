@@ -22,6 +22,7 @@
 #include <linux/of.h>
 #include <linux/cpumask.h>
 #include <linux/cpufreq.h>
+#include <linux/cpufreq_kt.h>
 
 #include <asm/cputype.h>
 
@@ -607,9 +608,11 @@ void get_stock_table(void)
 
 ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 {
-	int i, freq, len = 0;
+	int i, freq, len = 0, mod = 0;
 	/* use only master core 0 */
 	int num_levels = cpu_clk[0]->vdd_class->num_levels;
+	if (isenable_oc == 0)
+		mod = FREQ_TABLE_SIZE_OFFSET;
 
 	/* sanity checks */
 	if (num_levels < 0)
@@ -619,7 +622,7 @@ ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 		return -EINVAL;
 
 	/* format UV_mv table */
-	for (i = num_levels-1; i > 0; i--)
+	for (i = num_levels-1-mod; i > 0; i--)
 	{
 		freq = cpu_clk[0]->fmax[i] / 1000;
 		len += sprintf(buf + len, "%dmhz: %u mV\n", freq / 1000,
@@ -630,9 +633,12 @@ ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 
 ssize_t show_UV_mV_table_stock(struct cpufreq_policy *policy, char *buf)
 {
-	int i, freq, len = 0;
+	int i, freq, len = 0, mod = 0;
 	/* use only master core 0 */
 	int num_levels = cpu_clk[0]->vdd_class->num_levels;
+	if (isenable_oc == 0)
+		mod = FREQ_TABLE_SIZE_OFFSET;
+
 	get_stock_table();
 	
 	/* sanity checks */
@@ -643,7 +649,7 @@ ssize_t show_UV_mV_table_stock(struct cpufreq_policy *policy, char *buf)
 		return -EINVAL;
 
 	/* format UV_mv table */
-	for (i = num_levels-1; i > 0; i--)
+	for (i = num_levels-1-mod; i > 0; i--)
 	{
 		freq = cpu_clk[0]->fmax[i] / 1000;
 		len += sprintf(buf + len, "%dmhz: %u mV\n", freq / 1000,
@@ -655,16 +661,18 @@ ssize_t show_UV_mV_table_stock(struct cpufreq_policy *policy, char *buf)
 ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf,
 				size_t count)
 {
-	int i, j, offset;
+	int i, j, offset, mod = 0;
 	unsigned int val;
 	int num_levels = cpu_clk[0]->vdd_class->num_levels;
+	if (isenable_oc == 0)
+		mod = FREQ_TABLE_SIZE_OFFSET;
 
 	get_stock_table();
 	
 	if (num_levels < 0)
 		return -1;
 
-	for (i = num_levels-1; i > 0; i--)
+	for (i = num_levels-1-mod; i > 0; i--)
 	{
 		if (sscanf(buf, " %d%n", &val, &offset) == 1)
 		{

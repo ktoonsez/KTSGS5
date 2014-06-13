@@ -45,7 +45,8 @@ int GLOBALKT_MAX_FREQ_LIMIT = 2457600;
 
 unsigned int vfreq_lock = 0;
 static bool vfreq_lock_tempOFF = false;
-static unsigned int isBooted = 0;
+unsigned int isBooted = 0;
+unsigned int isenable_oc = 0;
 
 extern ssize_t get_gpu_vdd_levels_str(char *buf);
 extern void set_gpu_vdd_levels(int uv_tbl[]);
@@ -616,7 +617,7 @@ static ssize_t __ref store_scaling_min_freq(struct cpufreq_policy *policy, const
 	ret = sscanf(buf, "%u", &value);
 	if (ret != 1)
 		return -EINVAL;
-
+	
 	if (vfreq_lock == 0)
 	{
 		if (value <= GLOBALKT_MIN_FREQ_LIMIT)
@@ -670,8 +671,65 @@ static ssize_t __ref store_scaling_max_freq(struct cpufreq_policy *policy, const
 			set_cpu_min_max(0, value, 1);
 
 		Lscreen_off_scaling_mhz_orig = value;
+		Lcharging_max_mhz_orig = value;
 	}
 	return count;
+}
+
+static ssize_t store_scaling_booted(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	unsigned int value = 0;
+	struct cpufreq_policy new_policy;
+
+	pr_alert("store_scaling_booted call open: %d\n", GLOBALKT_MAX_FREQ_LIMIT);
+	ret = sscanf(buf, "%u", &value);
+	if (value == 1)
+	{
+		if (vfreq_lock == 1)
+		{
+			vfreq_lock = 0;
+			vfreq_lock_tempOFF = true;
+		}
+		isBooted = 1;
+		GLOBALKT_MIN_FREQ_LIMIT = 300000;
+		GLOBALKT_MAX_FREQ_LIMIT = 2841600;
+		cpufreq_get_policy(&new_policy, policy->cpu);
+		new_policy.min = 300000;
+		policy->user_policy.min = 300000;
+		new_policy.max = 2457600;
+		policy->user_policy.max = 2457600;
+		new_policy.cpuinfo.min_freq = GLOBALKT_MIN_FREQ_LIMIT;
+		new_policy.cpuinfo.max_freq = GLOBALKT_MAX_FREQ_LIMIT;
+		new_policy.user_policy.min = 300000;
+		new_policy.user_policy.max = 2457600;
+		ret = __cpufreq_set_policy(policy, &new_policy);
+	}
+	else
+		isBooted = 0;
+	pr_alert("store_scaling_booted call close: %d\n", GLOBALKT_MAX_FREQ_LIMIT);
+	return count;
+}
+
+static ssize_t show_scaling_booted(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", isBooted);
+}
+
+static ssize_t store_enable_oc(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	unsigned int value = 0;
+	ret = sscanf(buf, "%u", &value);
+	
+	isenable_oc = value;
+	
+	return count;
+}
+
+static ssize_t show_enable_oc(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", isenable_oc);
 }
 
 static ssize_t show_freq_lock(struct cpufreq_policy *policy, char *buf)
@@ -958,6 +1016,8 @@ cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
+cpufreq_freq_attr_rw(scaling_booted);
+cpufreq_freq_attr_rw(enable_oc);
 cpufreq_freq_attr_rw(enable_auto_hotplug);
 cpufreq_freq_attr_rw(freq_lock);
 cpufreq_freq_attr_rw(UV_mV_table);
@@ -982,6 +1042,8 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
+	&scaling_booted.attr,
+	&enable_oc.attr,
 	&enable_auto_hotplug.attr,
 	&freq_lock.attr,
 	&UV_mV_table.attr,
@@ -2104,6 +2166,23 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	ret = cpufreq_driver->verify(policy);
 	if (ret)
 		goto error_out;
+
+	//Do KT checker
+	if (policy->cpuinfo.min_freq != GLOBALKT_MIN_FREQ_LIMIT || policy->cpuinfo.max_freq != GLOBALKT_MAX_FREQ_LIMIT)
+	{
+		policy->cpuinfo.min_freq = GLOBALKT_MIN_FREQ_LIMIT;
+		policy->cpuinfo.max_freq = GLOBALKT_MAX_FREQ_LIMIT;
+	}
+	if (policy->min < GLOBALKT_MIN_FREQ_LIMIT || policy->max > GLOBALKT_MAX_FREQ_LIMIT)
+	{
+		policy->min = GLOBALKT_MIN_FREQ_LIMIT;
+		policy->max = GLOBALKT_MAX_FREQ_LIMIT;
+	}
+	if (policy->user_policy.min < GLOBALKT_MIN_FREQ_LIMIT || policy->user_policy.max > GLOBALKT_MAX_FREQ_LIMIT)
+	{
+		policy->user_policy.min = GLOBALKT_MIN_FREQ_LIMIT;
+		policy->user_policy.max = GLOBALKT_MAX_FREQ_LIMIT;
+	}
 
 	/* notification of the new policy */
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
