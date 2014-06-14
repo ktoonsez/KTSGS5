@@ -20,6 +20,7 @@
 #include <linux/init.h>
 #include <linux/notifier.h>
 #include <linux/cpufreq.h>
+#include <linux/cpufreq_kt.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
@@ -87,6 +88,9 @@ unsigned int batt_lvl_high = 0;
 unsigned int mhz_lvl_low = 0;
 unsigned int mhz_lvl_high = 0;
 unsigned int batt_ctrl_disable_chrg;
+
+extern void set_batt_mhz_info(unsigned int batt_lvl_low, unsigned int batt_lvl_high, unsigned int mhz_lvl_low, unsigned int mhz_lvl_high, unsigned int disable_chrg);
+extern unsigned int get_batt_level(void);
 
 //Global placeholder for CPU policies
 struct cpufreq_policy trmlpolicy[10];
@@ -788,6 +792,65 @@ static ssize_t store_screen_off_scaling_mhz(struct cpufreq_policy *policy,
 	return count;
 }
 
+static ssize_t show_charging_min_mhz(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", Lcharging_min_mhz);
+}
+static ssize_t store_charging_min_mhz(struct cpufreq_policy *policy,
+					const char *buf, size_t count)
+{
+	unsigned int value = 0;
+	unsigned int ret;
+	ret = sscanf(buf, "%u", &value);
+	if (value > GLOBALKT_MAX_FREQ_LIMIT)
+		value = GLOBALKT_MAX_FREQ_LIMIT;
+	if (value < GLOBALKT_MIN_FREQ_LIMIT && value != 0)
+		value = GLOBALKT_MIN_FREQ_LIMIT;
+	Lcharging_min_mhz = value;
+	
+	if (value == 0 && Lcharging_mhz_active && is_charging)
+	{
+		Lcharging_mhz_active_block_max = true;
+		send_cable_state(0);
+		Lcharging_mhz_active_block_max = false;
+		if (Lcharging_max_mhz ==0)
+			Lcharging_mhz_active = false;
+	}
+	else
+		send_cable_state(is_charging);
+
+	return count;
+}
+
+static ssize_t show_charging_max_mhz(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", Lcharging_max_mhz);
+}
+static ssize_t store_charging_max_mhz(struct cpufreq_policy *policy,
+					const char *buf, size_t count)
+{
+	unsigned int value = 0;
+	unsigned int ret;
+	ret = sscanf(buf, "%u", &value);
+	if (value > GLOBALKT_MAX_FREQ_LIMIT)
+		value = GLOBALKT_MAX_FREQ_LIMIT;
+	if (value < GLOBALKT_MIN_FREQ_LIMIT && value != 0)
+		value = GLOBALKT_MIN_FREQ_LIMIT;
+	Lcharging_max_mhz = value;
+
+	if (value == 0 && Lcharging_mhz_active && is_charging)
+	{
+		Lcharging_mhz_active_block_min = true;
+		send_cable_state(0);
+		Lcharging_mhz_active_block_min = false;
+		if (Lcharging_min_mhz ==0)
+			Lcharging_mhz_active = false;
+	}
+	else
+		send_cable_state(is_charging);
+
+	return count;
+}
 
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
@@ -984,6 +1047,166 @@ static ssize_t show_call_in_prog(struct cpufreq_policy *policy, char *buf)
 	return sprintf(buf, "%d\n", call_in_progress);
 }
 
+static ssize_t show_battery_ctrl_batt_lvl_low(struct cpufreq_policy *policy,  char *buf)
+{
+  return sprintf(buf, "%u\n", batt_lvl_low);
+}
+
+static ssize_t store_battery_ctrl_batt_lvl_low(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+  unsigned int input;
+  int ret;
+  ret = sscanf(buf, "%u", &input);
+
+  if (ret != 1)
+    return -EINVAL;
+  
+  if (input < 0 || input > 100)
+    input = 0;
+  batt_lvl_low = input;
+  set_batt_mhz_info(batt_lvl_low, batt_lvl_high, mhz_lvl_low, mhz_lvl_high, batt_ctrl_disable_chrg);
+  return count;
+}
+
+static ssize_t show_battery_ctrl_batt_lvl_high(struct cpufreq_policy *policy,  char *buf)
+{
+  return sprintf(buf, "%u\n", batt_lvl_high);
+}
+
+static ssize_t store_battery_ctrl_batt_lvl_high(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+  unsigned int input;
+  int ret;
+  ret = sscanf(buf, "%u", &input);
+
+  if (ret != 1)
+    return -EINVAL;
+  
+  if (input < 0 || input > 100)
+    input = 0;
+  batt_lvl_high = input;
+  set_batt_mhz_info(batt_lvl_low, batt_lvl_high, mhz_lvl_low, mhz_lvl_high, batt_ctrl_disable_chrg);
+  return count;
+}
+
+static ssize_t show_battery_ctrl_cpu_mhz_lvl_low(struct cpufreq_policy *policy, char *buf)
+{
+  return sprintf(buf, "%u\n", mhz_lvl_low);
+}
+
+
+static ssize_t store_battery_ctrl_cpu_mhz_lvl_low(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+  unsigned int input;
+  int ret;
+
+  ret = sscanf(buf, "%u", &input);
+
+  if (ret != 1)
+    return -EINVAL;
+  
+  //pr_alert("BATT_SET_LVL_LOW1: %u-%u-%u\n", input, policy->min, policy->max);
+  
+  if (input < 300000 || input > 2457600)
+    input = 0;
+  //pr_alert("BATT_SET_LVL_LOW2: %u-%u-%u\n", input, policy->min, policy->max);
+  mhz_lvl_low = input;
+  //pr_alert("BATT_SET_LVL_LOW3: %u-%u-%u\n", dbs_tuners_ins.battery_ctrl_cpu_mhz_lvl_low, policy->min, policy->max);
+  set_batt_mhz_info(batt_lvl_low, batt_lvl_high, mhz_lvl_low, mhz_lvl_high, batt_ctrl_disable_chrg);
+  return count;
+}
+
+static ssize_t show_battery_ctrl_cpu_mhz_lvl_high(struct cpufreq_policy *policy, char *buf)
+{
+  return sprintf(buf, "%u\n", mhz_lvl_high);
+}
+
+
+static ssize_t store_battery_ctrl_cpu_mhz_lvl_high(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+  unsigned int input;
+  int ret;
+
+  ret = sscanf(buf, "%u", &input);
+
+  if (ret != 1)
+    return -EINVAL;
+  
+  //pr_alert("BATT_SET_LVL_LOW1: %u-%u-%u\n", input, policy->min, policy->max);
+  
+  if (input < 100000 || input > 2100000)
+    input = 0;
+  //pr_alert("BATT_SET_LVL_LOW2: %u-%u-%u\n", input, policy->min, policy->max);
+  mhz_lvl_high = input;
+  //pr_alert("BATT_SET_LVL_LOW3: %u-%u-%u\n", dbs_tuners_ins.battery_ctrl_cpu_mhz_lvl_low, policy->min, policy->max);
+  set_batt_mhz_info(batt_lvl_low, batt_lvl_high, mhz_lvl_low, mhz_lvl_high, batt_ctrl_disable_chrg);
+  return count;
+}
+
+static ssize_t show_battery_ctrl_disable_chrg(struct cpufreq_policy *policy, char *buf)
+{
+  	return sprintf(buf, "%u\n", batt_ctrl_disable_chrg);
+}
+
+
+static ssize_t store_battery_ctrl_disable_chrg(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+  	unsigned int input;
+  	int ret;
+
+  	ret = sscanf(buf, "%u", &input);
+
+  	if (ret != 1)
+		return -EINVAL;
+  
+	if (input != 0 && input != 1)
+  	  	input = 0;
+  	batt_ctrl_disable_chrg = input;
+  	set_batt_mhz_info(batt_lvl_low, batt_lvl_high, mhz_lvl_low, mhz_lvl_high, batt_ctrl_disable_chrg);
+  	return count;
+}
+
+static ssize_t show_disable_som_call_in_progress(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", Ldisable_som_call_in_progress);
+}
+static ssize_t store_disable_som_call_in_progress(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int value = 0;
+	unsigned int ret;
+	ret = sscanf(buf, "%u", &value);
+	if (value > 1)
+		value = 1;
+	if (value < 0)
+		value = 0;
+	Ldisable_som_call_in_progress = value;
+
+	return count;
+}
+
+unsigned int set_battery_max_level(unsigned int value)
+{
+	struct cpufreq_policy *policy = NULL;
+	policy = cpufreq_cpu_get(0);
+	if ((Lonoff == 1  && policy->max != value)|| (Lonoff == 0 && value < Lscreen_off_scaling_mhz))
+	{
+		if (vfreq_lock == 1)
+		{
+			vfreq_lock = 0;
+			vfreq_lock_tempOFF = true;
+		}
+		if (!Lcharging_mhz_active)
+		{
+			set_cpu_min_max(0, value, 0);
+		}
+		pr_alert("SET_BATTERY_MAX_LEVEL: %u\n", value);
+	}
+	if (Lscreen_off_scaling_mhz_orig != 0)
+		return Lscreen_off_scaling_mhz_orig;
+	else
+		return policy->user_policy.max;
+}
+
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
 cpufreq_freq_attr_ro(cpuinfo_min_freq);
 cpufreq_freq_attr_ro(cpuinfo_max_freq);
@@ -1024,6 +1247,14 @@ cpufreq_freq_attr_rw(UV_mV_table);
 cpufreq_freq_attr_ro(UV_mV_table_stock);
 cpufreq_freq_attr_rw(screen_off_scaling_enable);
 cpufreq_freq_attr_rw(screen_off_scaling_mhz);
+cpufreq_freq_attr_rw(disable_som_call_in_progress);
+cpufreq_freq_attr_rw(charging_max_mhz);
+cpufreq_freq_attr_rw(charging_min_mhz);
+cpufreq_freq_attr_rw(battery_ctrl_batt_lvl_low);
+cpufreq_freq_attr_rw(battery_ctrl_batt_lvl_high);
+cpufreq_freq_attr_rw(battery_ctrl_cpu_mhz_lvl_low);
+cpufreq_freq_attr_rw(battery_ctrl_cpu_mhz_lvl_high);
+cpufreq_freq_attr_rw(battery_ctrl_disable_chrg);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -1050,6 +1281,14 @@ static struct attribute *default_attrs[] = {
 	&UV_mV_table_stock.attr,
 	&screen_off_scaling_enable.attr,
 	&screen_off_scaling_mhz.attr,
+	&disable_som_call_in_progress.attr,
+	&charging_min_mhz.attr,
+	&charging_max_mhz.attr,
+	&battery_ctrl_batt_lvl_low.attr,
+	&battery_ctrl_batt_lvl_high.attr,
+	&battery_ctrl_cpu_mhz_lvl_low.attr,
+	&battery_ctrl_cpu_mhz_lvl_high.attr,
+	&battery_ctrl_disable_chrg.attr,
 	NULL
 };
 
@@ -2312,6 +2551,9 @@ static void cpufreq_gov_resume(void)
 			vfreq_lock_tempOFF = true;
 		}
 		value = Lscreen_off_scaling_mhz_orig;
+		mhz_lvl = get_batt_level();
+		if (mhz_lvl > 0)
+			value = mhz_lvl;
 		if (!Lcharging_mhz_active)
 		{
 			set_cpu_min_max(0, value, 0);
@@ -2356,6 +2598,9 @@ static void cpufreq_gov_suspend(void)
 					vfreq_lock_tempOFF = true;
 				}
 				value = Lscreen_off_scaling_mhz;
+				mhz_lvl = get_batt_level();
+				if (mhz_lvl > 0)
+					value = mhz_lvl;
 				if (!Lcharging_mhz_active)
 				{
 					set_cpu_min_max(0, value, 0);
