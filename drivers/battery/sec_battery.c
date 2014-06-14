@@ -26,6 +26,16 @@ unsigned int is_charging;
 #define TUNER_IS_OFF 0
 #endif
 
+//KT Specifics
+unsigned int gbatt_lvl_low = 0;
+unsigned int gbatt_lvl_high = 0;
+unsigned int gmhz_lvl_low = 0;
+unsigned int gmhz_lvl_high = 0;
+unsigned int gbatt_soc = 0;
+unsigned int gbatt_chg = 0;
+unsigned int gdisable_chrg = 0;
+extern unsigned int set_battery_max_level(unsigned int value);
+static unsigned int Lscreen_off_scaling_mhz_orig = 0;
 
 static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(batt_reset_soc),
@@ -1629,6 +1639,38 @@ static bool sec_bat_fullcharged_check(
 	return true;
 }
 
+void set_batt_mhz_info(unsigned int batt_lvl_low, unsigned int batt_lvl_high, unsigned int mhz_lvl_low, unsigned int mhz_lvl_high, unsigned int disable_chrg)
+{
+	gbatt_lvl_low = batt_lvl_low;
+	gbatt_lvl_high = batt_lvl_high;
+	gmhz_lvl_low = mhz_lvl_low;
+	gmhz_lvl_high = mhz_lvl_high;
+	gdisable_chrg = disable_chrg;
+}
+
+unsigned int get_batt_level(void)
+{
+	//Exit if user disables battery control while plugged in
+	if (gdisable_chrg == 1 && (gbatt_chg > 1))
+		return Lscreen_off_scaling_mhz_orig;
+
+	if (gbatt_lvl_low > 0 && gmhz_lvl_low > 0)
+	{
+		if (gbatt_soc <= gbatt_lvl_low)
+			return gmhz_lvl_low;
+
+	}
+	if (gbatt_lvl_high > 0 && gmhz_lvl_high > 0)
+	{
+		if (gbatt_soc <= gbatt_lvl_high)
+			return gmhz_lvl_high;
+	}
+	if ((gbatt_lvl_low > 0 && gbatt_soc > gbatt_lvl_low) || (gmhz_lvl_high > 0 && gbatt_soc > gbatt_lvl_high))
+		return Lscreen_off_scaling_mhz_orig;
+	else
+		return 0;
+}
+
 static void sec_bat_get_battery_info(
 				struct sec_battery_info *battery)
 {
@@ -1935,6 +1977,7 @@ static void sec_bat_set_polling(
 static void sec_bat_monitor_work(
 				struct work_struct *work)
 {
+	unsigned int mhz_lvl = 0;
 	struct sec_battery_info *battery =
 		container_of(work, struct sec_battery_info,
 		monitor_work.work);
@@ -2050,6 +2093,12 @@ skip_monitor:
 		send_cable_state(is_charging);
 		send_cable_state_kt(is_charging);
 	}
+	//KT battery Mhz settings
+	gbatt_soc = battery->capacity;
+	gbatt_chg = battery->cable_type;
+	mhz_lvl = get_batt_level();
+	if (mhz_lvl > 0)
+		Lscreen_off_scaling_mhz_orig = set_battery_max_level(mhz_lvl);
 	
 	return;
 }
