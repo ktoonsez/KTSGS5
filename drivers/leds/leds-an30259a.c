@@ -27,6 +27,7 @@
 #include <linux/gpio.h>
 #include <linux/time.h>
 #include <linux/syscalls.h>
+#include <linux/cpufreq_kt.h>
 
 /* AN30259A register map */
 #define AN30259A_REG_SRESET		0x00
@@ -457,7 +458,8 @@ static void an30259a_start_led_pattern(int mode)
 	unsigned int delay_on_time = 500;
 	unsigned int delay_off_time = 2000;
 	client = b_client;
-
+	
+	gkt_boost_cpu_call(false, true);
 	if (block_leds_check_allowed)
 	{
 		if (!check_restrictions())
@@ -775,6 +777,7 @@ static ssize_t store_an30259a_led_blink(struct device *dev,
 	u8 led_g_brightness = 0;
 	u8 led_b_brightness = 0;
 
+	gkt_boost_cpu_call(false, true);
 	retval = sscanf(buf, "0x%x %d %d", &led_brightness,
 				&delay_on_time, &delay_off_time);
 
