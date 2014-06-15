@@ -32,6 +32,9 @@
 
 #include "synaptics_i2c_rmi.h"
 
+static int panel_colors = 2;
+extern void panel_load_colors(unsigned int value);
+
 #define FACTORY_MODE
 
 #ifdef TOUCHKEY_ENABLE
@@ -1051,6 +1054,32 @@ static ssize_t cmd_result_show(struct device *dev,
 static ssize_t cmd_list_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t panel_colors_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", panel_colors);
+}
+
+static ssize_t panel_colors_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	int ret;
+	unsigned int value;
+
+	ret = sscanf(buf, "%d\n", &value);
+	if (ret != 1)
+		return -EINVAL;
+
+	if (value < 0)
+		value = 0;
+	else if (value > 4)
+		value = 4;
+
+	panel_colors = value;
+
+	panel_load_colors(panel_colors);
+
+	return size;
+}
+
 #ifdef TOUCHKEY_ENABLE
 static ssize_t sec_touchkey_threshold_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
@@ -1090,13 +1119,15 @@ static DEVICE_ATTR(cmd, S_IWUSR | S_IWGRP, NULL, cmd_store);
 static DEVICE_ATTR(cmd_status, S_IRUGO, cmd_status_show, NULL);
 static DEVICE_ATTR(cmd_result, S_IRUGO, cmd_result_show, NULL);
 static DEVICE_ATTR(cmd_list, S_IRUGO, cmd_list_show, NULL);
-
+static DEVICE_ATTR(panel_colors, S_IRUGO | S_IWUSR | S_IWGRP,
+			panel_colors_show, panel_colors_store);
 
 static struct attribute *cmd_attributes[] = {
 	&dev_attr_cmd.attr,
 	&dev_attr_cmd_status.attr,
 	&dev_attr_cmd_result.attr,
 	&dev_attr_cmd_list.attr,
+	&dev_attr_panel_colors.attr,
 	NULL,
 };
 
