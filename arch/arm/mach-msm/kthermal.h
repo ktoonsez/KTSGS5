@@ -23,15 +23,17 @@ struct kmsm_thermal_data {
 	uint32_t core_temp_hysteresis_degC;
 	uint32_t core_control_mask;
 	long current_temp;
+	int use_kthermal;
 };
 
 static struct kmsm_thermal_data kmsm_thermal_info = {
 	.sensor_id = 0,
 	.isthrottling = false,
 	.poll_speed = 1000,
-	.temp_limit_degC_start = 70,
-	.temp_limit_degC_stop = 67,
+	.temp_limit_degC_start = 77,
+	.temp_limit_degC_stop = 75,
 	.freq_steps_while_throttling = 1,
 	.minimum_throttle_mhz = 1036800,
 	.current_temp = 0,
+	.use_kthermal = 0,
 };
