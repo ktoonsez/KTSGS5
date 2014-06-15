@@ -241,7 +241,7 @@ static struct dsi_cmd_desc mdni_tune_cmd[] = {
 };
 #endif
 
-static int mipi_samsung_disp_send_cmd(
+int mipi_samsung_disp_send_cmd(
 		enum mipi_samsung_cmd_list cmd,
 		unsigned char lock);
 extern void mdss_dsi_panel_touchsensing(int enable);
@@ -1758,7 +1758,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
-static int mipi_samsung_disp_send_cmd(
+int mipi_samsung_disp_send_cmd(
 		enum mipi_samsung_cmd_list cmd,
 		unsigned char lock)
 {
