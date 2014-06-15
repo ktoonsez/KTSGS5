@@ -46,14 +46,17 @@ static void __cpuinit check_tempk(struct work_struct *work)
 	
 	tsens_dev.sensor_num = kmsm_thermal_info.sensor_id;
 	ret = tsens_get_temp(&tsens_dev, &temp);
+	kmsm_thermal_info.current_temp = temp;
 	if (ret) {
-		pr_debug("%s: Unable to read TSENS sensor %d\n",
-				KBUILD_MODNAME, tsens_dev.sensor_num);
+		pr_alert("%s: Unable to read TSENS sensor %d, ERROR: %d\n",
+				KBUILD_MODNAME, tsens_dev.sensor_num, ret);
 		goto reschedule;
 	}
 	//pr_alert("CHECK TEMP %lu-%d-%d\n", temp, kmsm_thermal_info.temp_limit_degC_start, kmsm_thermal_info.temp_limit_degC_stop);
-	kmsm_thermal_info.current_temp = temp;
 	
+	if (!kmsm_thermal_info.use_kthermal)
+		goto reschedule;
+		
 	if (temp >= kmsm_thermal_info.temp_limit_degC_start)
 	{
 		unsigned int i;
@@ -166,6 +169,28 @@ static ssize_t store_poll_speed(struct kobject *kobj,
 	return count;
 }
 
+static ssize_t show_use_kthermal(struct kobject *kobj,
+				     struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", kmsm_thermal_info.use_kthermal);
+}
+
+static ssize_t store_use_kthermal(struct kobject *kobj,
+			struct attribute *attr, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	unsigned int value = 0;
+
+	ret = sscanf(buf, "%u", &value);
+	if (ret != 1)
+		return -EINVAL;
+	
+	if (value != 0 && value != 1)
+		value = 0;
+	kmsm_thermal_info.use_kthermal = value;
+	return count;
+}
+
 static ssize_t show_current_temp(struct kobject *kobj,
 				     struct attribute *attr, char *buf)
 {
@@ -270,6 +295,7 @@ static struct global_attr temp_limit_degC_start_attr = __ATTR(temp_limit_degC_st
 static struct global_attr temp_limit_degC_stop_attr = __ATTR(temp_limit_degC_stop, 0666, show_temp_limit_degC_stop, store_temp_limit_degC_stop);
 static struct global_attr freq_steps_while_throttling_attr = __ATTR(freq_steps_while_throttling, 0666, show_freq_steps_while_throttling, store_freq_steps_while_throttling);
 static struct global_attr minimum_throttle_mhz_attr = __ATTR(minimum_throttle_mhz, 0666, show_minimum_throttle_mhz, store_minimum_throttle_mhz);
+static struct global_attr use_kthermal_attr = __ATTR(use_kthermal, 0666, show_use_kthermal, store_use_kthermal);
 
 static struct attribute *kthermal_attributes[] = {
 	&isthrottling_attr.attr,
@@ -279,6 +305,7 @@ static struct attribute *kthermal_attributes[] = {
 	&temp_limit_degC_stop_attr.attr,
 	&freq_steps_while_throttling_attr.attr,
 	&minimum_throttle_mhz_attr.attr,
+	&use_kthermal_attr.attr,
 	NULL,
 };
 
