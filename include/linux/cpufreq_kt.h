@@ -12,6 +12,8 @@ extern void ktoonservative_boostpulse(bool boost_for_button);
 extern unsigned int isenable_oc;
 extern unsigned int isBooted;
 
+extern unsigned int model_type;
+
 extern void set_screen_on_off_mhz(bool onoff);
 
 extern void send_cable_state(unsigned int state);
