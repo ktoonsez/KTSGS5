@@ -61,6 +61,9 @@ unsigned int kt_freq_control[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
  */
 #define MIN_SAMPLING_RATE_RATIO			(2)
 
+static bool turned_off_super_conservative_screen_off = false;
+static bool fake_screen_on = false;
+
 static bool disable_hotplug_bt_active = false;
 static unsigned int min_sampling_rate;
 static unsigned int stored_sampling_rate = 45000;
@@ -1631,7 +1634,9 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		if (stored_sampling_rate != 0 && screen_is_on)
 			dbs_tuners_ins.sampling_rate = stored_sampling_rate;
 		this_dbs_info->down_skip = 0;
-		
+		if (!boost_hold_cycles_cnt)
+			this_dbs_info->requested_freq = policy->min;
+			
 		if (boost_hold_cycles_cnt >= dbs_tuners_ins.boost_hold_cycles)
 		{
 			boostpulse_relayf = false;
@@ -1642,6 +1647,17 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 					kt_freq_control[cpu] = 0;
 			}
 			boost_the_gpu(dbs_tuners_ins.touch_boost_gpu, false);
+			if (turned_off_super_conservative_screen_off)
+			{
+				dbs_tuners_ins.super_conservative_screen_off = 1;
+				turned_off_super_conservative_screen_off = false;
+			}
+			//pr_alert("BOOST ENDED: %d - %d - %d - %d", trmlpolicy[0].cur, trmlpolicy[1].cur, trmlpolicy[2].cur, trmlpolicy[3].cur);
+			if (!screen_is_on && fake_screen_on)
+			{
+				cpufreq_gov_suspend();
+				fake_screen_on = false;
+			}
 			goto boostcomplete;
 		}
 		boost_hold_cycles_cnt++;
@@ -1653,21 +1669,14 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 				if (&trmlpolicy[cpu] != NULL)
 				{
 					if (cpu_online(cpu))
-					{
-						if (trmlpolicy[cpu].cur < dbs_tuners_ins.touch_boost_cpu)
-						{
-							//__cpufreq_driver_target(&trmlpolicy[cpu], dbs_tuners_ins.touch_boost_cpu,
-							//	CPUFREQ_RELATION_H);
-							kt_freq_control[cpu] = dbs_tuners_ins.touch_boost_cpu;
-							//pr_alert("BOOST EXTRA CPUs: %d\n", cpu);
-						}
-					}
+						kt_freq_control[cpu] = dbs_tuners_ins.touch_boost_cpu;
 				}
 			}
 		}
 		
 		/* if we are already at full speed then break out early */
-		if (this_dbs_info->requested_freq == policy->max || policy->cur > dbs_tuners_ins.touch_boost_cpu || this_dbs_info->requested_freq > dbs_tuners_ins.touch_boost_cpu)
+		//if (this_dbs_info->requested_freq == policy->max || policy->cur > dbs_tuners_ins.touch_boost_cpu || this_dbs_info->requested_freq > dbs_tuners_ins.touch_boost_cpu)
+		if (policy->cur > dbs_tuners_ins.touch_boost_cpu)
 			return;
 		
 		this_dbs_info->requested_freq = dbs_tuners_ins.touch_boost_cpu;
@@ -2013,7 +2022,16 @@ void ktoonservative_boostpulse(bool boost_for_button)
 				if (screen_is_on)
 					check_boost_cores_up(dbs_tuners_ins.boost_2nd_core_on_button_screen_on, dbs_tuners_ins.boost_3rd_core_on_button_screen_on, dbs_tuners_ins.boost_4th_core_on_button_screen_on);
 				else
+				{
+					cpufreq_gov_resume();
+					fake_screen_on = true;
+					if (dbs_tuners_ins.super_conservative_screen_off)
+					{
+						dbs_tuners_ins.super_conservative_screen_off = 0;
+						turned_off_super_conservative_screen_off = true;
+					}
 					check_boost_cores_up(dbs_tuners_ins.boost_2nd_core_on_button_screen_off, dbs_tuners_ins.boost_3rd_core_on_button_screen_off, dbs_tuners_ins.boost_4th_core_on_button_screen_off);
+				}
 			}
 			else
 				check_boost_cores_up(dbs_tuners_ins.touch_boost_2nd_core, dbs_tuners_ins.touch_boost_3rd_core, dbs_tuners_ins.touch_boost_4th_core);

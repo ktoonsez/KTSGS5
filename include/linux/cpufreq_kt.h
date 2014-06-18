@@ -16,6 +16,9 @@ extern unsigned int model_type;
 
 extern void set_screen_on_off_mhz(bool onoff);
 
+extern void cpufreq_gov_suspend(void);
+extern void cpufreq_gov_resume(void);
+
 extern void send_cable_state(unsigned int state);
 extern void send_cable_state_kt(unsigned int state);
 extern unsigned int is_charging;

@@ -680,6 +680,30 @@ static ssize_t __ref store_scaling_max_freq(struct cpufreq_policy *policy, const
 	return count;
 }
 
+static ssize_t __ref store_scaling_max_freq_kt(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	unsigned int value = 0;
+	struct cpufreq_policy new_policy;
+
+	ret = sscanf(buf, "%u", &value);
+	if (ret != 1)
+		return -EINVAL;
+	
+	if (GLOBALKT_MAX_FREQ_LIMIT >= GLOBALKT_MIN_FREQ_LIMIT && GLOBALKT_MAX_FREQ_LIMIT <= 2841600)
+		GLOBALKT_MAX_FREQ_LIMIT = value;
+	else if (GLOBALKT_MAX_FREQ_LIMIT < GLOBALKT_MIN_FREQ_LIMIT)
+		GLOBALKT_MAX_FREQ_LIMIT = GLOBALKT_MIN_FREQ_LIMIT;
+	else
+		GLOBALKT_MAX_FREQ_LIMIT = 2841600;
+	return count;
+}
+
+static ssize_t show_scaling_max_freq_kt(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", GLOBALKT_MAX_FREQ_LIMIT);
+}
+
 static ssize_t store_scaling_booted(struct cpufreq_policy *policy, const char *buf, size_t count)
 {
 	unsigned int ret = -EINVAL;
@@ -704,7 +728,7 @@ static ssize_t store_scaling_booted(struct cpufreq_policy *policy, const char *b
 		new_policy.max = 2457600;
 		policy->user_policy.max = 2457600;
 		new_policy.cpuinfo.min_freq = GLOBALKT_MIN_FREQ_LIMIT;
-		new_policy.cpuinfo.max_freq = GLOBALKT_MAX_FREQ_LIMIT;
+		new_policy.cpuinfo.max_freq = 2841600;
 		new_policy.user_policy.min = 300000;
 		new_policy.user_policy.max = 2457600;
 		ret = __cpufreq_set_policy(policy, &new_policy);
@@ -727,10 +751,6 @@ static ssize_t store_enable_oc(struct cpufreq_policy *policy, const char *buf, s
 	ret = sscanf(buf, "%u", &value);
 	
 	isenable_oc = value;
-	if (isenable_oc)
-		GLOBALKT_MAX_FREQ_LIMIT = 2841600;
-	else
-		GLOBALKT_MAX_FREQ_LIMIT = 2457600;
 	return count;
 }
 
@@ -1240,6 +1260,7 @@ cpufreq_freq_attr_rw(scaling_min_freq);
 
 
 cpufreq_freq_attr_rw(scaling_max_freq);
+cpufreq_freq_attr_rw(scaling_max_freq_kt);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(scaling_booted);
@@ -1265,6 +1286,7 @@ static struct attribute *default_attrs[] = {
 	&cpuinfo_transition_latency.attr,
 	&scaling_min_freq.attr,
 	&scaling_max_freq.attr,
+	&scaling_max_freq_kt.attr,
 	&affected_cpus.attr,
 	&cpu_utilization.attr,
 	&call_in_prog.attr,
@@ -2410,11 +2432,11 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 		goto error_out;
 
 	//Do KT checker
-	if (policy->cpuinfo.min_freq != GLOBALKT_MIN_FREQ_LIMIT || policy->cpuinfo.max_freq != GLOBALKT_MAX_FREQ_LIMIT)
-	{
-		policy->cpuinfo.min_freq = GLOBALKT_MIN_FREQ_LIMIT;
-		policy->cpuinfo.max_freq = GLOBALKT_MAX_FREQ_LIMIT;
-	}
+	//if (policy->cpuinfo.min_freq != GLOBALKT_MIN_FREQ_LIMIT || policy->cpuinfo.max_freq != GLOBALKT_MAX_FREQ_LIMIT)
+	//{
+	//	policy->cpuinfo.min_freq = GLOBALKT_MIN_FREQ_LIMIT;
+	//	policy->cpuinfo.max_freq = GLOBALKT_MAX_FREQ_LIMIT;
+	//}
 	if (policy->min < GLOBALKT_MIN_FREQ_LIMIT || policy->max > GLOBALKT_MAX_FREQ_LIMIT)
 	{
 		policy->min = GLOBALKT_MIN_FREQ_LIMIT;
@@ -2531,7 +2553,7 @@ no_policy:
 }
 EXPORT_SYMBOL(cpufreq_update_policy);
 
-static void cpufreq_gov_resume(void)
+void cpufreq_gov_resume(void)
 {
 	struct cpufreq_policy *policy = NULL;
 	unsigned int value;
@@ -2567,7 +2589,7 @@ static void cpufreq_gov_resume(void)
 	
 }
 
-static void cpufreq_gov_suspend(void)
+void cpufreq_gov_suspend(void)
 {
 	struct cpufreq_policy *policy = NULL;
 	unsigned int ret = -EINVAL;

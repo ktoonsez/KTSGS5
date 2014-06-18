@@ -18,7 +18,7 @@ void __ref gkt_online_work_fn(struct work_struct *work)
 			{
 				ret = cpufreq_get_policy(&new_policy, cpu);
 				if (!ret)
-					__cpufreq_driver_target(&new_policy, 810000, CPUFREQ_RELATION_H);
+					__cpufreq_driver_target(&new_policy, 1804800, CPUFREQ_RELATION_H);
 			}
 		}
 	}

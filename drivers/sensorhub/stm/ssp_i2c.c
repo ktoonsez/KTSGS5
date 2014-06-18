@@ -346,6 +346,11 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 		pr_alert("KT ON CALL DISABLE: %d-%d\n", uInst, uSensorType);
 		set_call_in_progress(false);
 	}
+	if (uInst == ADD_LIBRARY && uSensorType == PROXIMITY_SENSOR)
+	{
+		pr_alert("KT SENSOR BOOSTER: %d-%d\n", uInst, uSensorType);
+		gkt_boost_cpu_call(false, true);
+	}
 
 	return iRet;
 }
