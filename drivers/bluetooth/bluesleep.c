@@ -24,6 +24,7 @@
  * 2009-Aug-10  Motorola         Changed "add_timer" to "mod_timer" to solve
  *                               race when flurry of queued work comes in.
 */
+#include <linux/cpufreq_kt.h>
 
 #include <linux/module.h>       /* kernel module definitions */
 #include <linux/errno.h>
@@ -81,6 +82,8 @@ enum msm_hs_clk_states_e {
 	MSM_HS_CLK_REQUEST_OFF,  /* disable after TX and RX flushed */
 	MSM_HS_CLK_ON,           /* clock enabled */
 };
+
+static bool bt_conn_state = false;
 
 struct bluesleep_info {
 	unsigned host_wake;
@@ -190,6 +193,13 @@ static void hsuart_power(int on)
 	}
 
 	if (on) {
+		if (!bt_conn_state)
+		{
+			set_bluetooth_state(1);
+			set_bluetooth_state_kt(true);
+			bt_conn_state = true;
+			pr_alert("KT BLUETOOTH IN USE");
+		}
 		if(test_bit(BT_TXDATA, &flags)) {
 			BT_DBG("hsuart_power on");
 			msm_hs_request_clock_on(bsi->uport);
@@ -207,6 +217,13 @@ static void hsuart_power(int on)
 			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
 		}
 	} else {
+		if (bt_conn_state)
+		{
+			set_bluetooth_state(0);
+			set_bluetooth_state_kt(false);
+			bt_conn_state = false;
+			pr_alert("KT BLUETOOTH NOT IN USE");
+		}
 		BT_DBG("hsuart_power off");
 		msm_hs_set_mctrl(bsi->uport, 0);
 		msm_hs_request_clock_off(bsi->uport);

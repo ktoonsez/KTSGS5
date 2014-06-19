@@ -639,6 +639,10 @@ static ssize_t __ref store_scaling_min_freq(struct cpufreq_policy *policy, const
 		//Set extra CPU cores to same speed
 		if (policy->cpu == 0)
 			set_cpu_min_max(value, 0, 1);
+
+	Lbluetooth_scaling_mhz_orig = value;
+	Lmusic_play_scaling_mhz_orig = value;
+	Lcharging_min_mhz_orig = value;
 	}
 	
 	return count;
@@ -811,6 +815,44 @@ static ssize_t store_screen_off_scaling_mhz(struct cpufreq_policy *policy,
 	if (value < GLOBALKT_MIN_FREQ_LIMIT)
 		value = GLOBALKT_MIN_FREQ_LIMIT;
 	Lscreen_off_scaling_mhz = value;
+
+	return count;
+}
+
+static ssize_t show_bluetooth_scaling_mhz(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", Lbluetooth_scaling_mhz);
+}
+static ssize_t store_bluetooth_scaling_mhz(struct cpufreq_policy *policy,
+					const char *buf, size_t count)
+{
+	unsigned int value = 0;
+	unsigned int ret;
+	ret = sscanf(buf, "%u", &value);
+	if (value > GLOBALKT_MAX_FREQ_LIMIT)
+		value = GLOBALKT_MAX_FREQ_LIMIT;
+	if (value < GLOBALKT_MIN_FREQ_LIMIT && value != 0)
+		value = GLOBALKT_MIN_FREQ_LIMIT;
+	Lbluetooth_scaling_mhz = value;
+
+	return count;
+}
+
+static ssize_t show_music_play_scaling_mhz(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%u\n", Lmusic_play_scaling_mhz);
+}
+static ssize_t store_music_play_scaling_mhz(struct cpufreq_policy *policy,
+					const char *buf, size_t count)
+{
+	unsigned int value = 0;
+	unsigned int ret;
+	ret = sscanf(buf, "%u", &value);
+	if (value > GLOBALKT_MAX_FREQ_LIMIT)
+		value = GLOBALKT_MAX_FREQ_LIMIT;
+	if (value < GLOBALKT_MIN_FREQ_LIMIT && value != 0)
+		value = GLOBALKT_MIN_FREQ_LIMIT;
+	Lmusic_play_scaling_mhz = value;
 
 	return count;
 }
@@ -1230,6 +1272,66 @@ unsigned int set_battery_max_level(unsigned int value)
 		return policy->user_policy.max;
 }
 
+bool set_music_playing_state(bool val)
+{
+	unsigned int value;
+	bool ret = false;
+	if (Lmusic_play_scaling_mhz != 0)
+	{
+		if (vfreq_lock == 1)
+		{
+			vfreq_lock = 0;
+			vfreq_lock_tempOFF = true;
+		}
+		if (val && ((bluetooth_scaling_mhz_active && Lmusic_play_scaling_mhz > Lbluetooth_scaling_mhz) || !bluetooth_scaling_mhz_active) && ((Lcharging_mhz_active && Lmusic_play_scaling_mhz > Lcharging_min_mhz) || !Lcharging_mhz_active))
+		{
+			music_play_scaling_mhz_active = true;
+			value = Lmusic_play_scaling_mhz;
+			set_cpu_min_max(value, 0, 0);
+			ret = true;
+		}
+		else
+		{
+			music_play_scaling_mhz_active = false;
+			value = Lmusic_play_scaling_mhz_orig;
+			if (((bluetooth_scaling_mhz_active && value > Lbluetooth_scaling_mhz) || !bluetooth_scaling_mhz_active) && ((Lcharging_mhz_active && value > Lcharging_min_mhz) || !Lcharging_mhz_active))
+			{
+				set_cpu_min_max(value, 0, 0);
+				ret = true;
+			}
+		}
+	}
+	return ret;
+}
+
+void set_bluetooth_state(unsigned int val)
+{
+	unsigned int value;
+	if (Lbluetooth_scaling_mhz != 0)
+	{
+		if (vfreq_lock == 1)
+		{
+			vfreq_lock = 0;
+			vfreq_lock_tempOFF = true;
+		}
+		if (val == 1 && ((music_play_scaling_mhz_active && Lbluetooth_scaling_mhz > Lmusic_play_scaling_mhz) || !music_play_scaling_mhz_active) && ((Lcharging_mhz_active && Lbluetooth_scaling_mhz > Lcharging_min_mhz) || !Lcharging_mhz_active))
+		{
+			bluetooth_scaling_mhz_active = true;
+			value = Lbluetooth_scaling_mhz;
+			set_cpu_min_max(value, 0, 0);
+		}
+		else
+		{
+			bluetooth_scaling_mhz_active = false;
+			value = Lbluetooth_scaling_mhz_orig;
+			if (((music_play_scaling_mhz_active && value > Lmusic_play_scaling_mhz) || !music_play_scaling_mhz_active) && ((Lcharging_mhz_active && value > Lcharging_min_mhz) || !Lcharging_mhz_active))
+			{
+				set_cpu_min_max(value, 0, 0);
+			}
+		}
+	}
+}
+
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
 cpufreq_freq_attr_ro(cpuinfo_min_freq);
 cpufreq_freq_attr_ro(cpuinfo_max_freq);
@@ -1271,9 +1373,11 @@ cpufreq_freq_attr_rw(UV_mV_table);
 cpufreq_freq_attr_ro(UV_mV_table_stock);
 cpufreq_freq_attr_rw(screen_off_scaling_enable);
 cpufreq_freq_attr_rw(screen_off_scaling_mhz);
-cpufreq_freq_attr_rw(disable_som_call_in_progress);
+cpufreq_freq_attr_rw(bluetooth_scaling_mhz);
+cpufreq_freq_attr_rw(music_play_scaling_mhz);
 cpufreq_freq_attr_rw(charging_max_mhz);
 cpufreq_freq_attr_rw(charging_min_mhz);
+cpufreq_freq_attr_rw(disable_som_call_in_progress);
 cpufreq_freq_attr_rw(battery_ctrl_batt_lvl_low);
 cpufreq_freq_attr_rw(battery_ctrl_batt_lvl_high);
 cpufreq_freq_attr_rw(battery_ctrl_cpu_mhz_lvl_low);
@@ -1306,9 +1410,11 @@ static struct attribute *default_attrs[] = {
 	&UV_mV_table_stock.attr,
 	&screen_off_scaling_enable.attr,
 	&screen_off_scaling_mhz.attr,
-	&disable_som_call_in_progress.attr,
+	&bluetooth_scaling_mhz.attr,
+	&music_play_scaling_mhz.attr,
 	&charging_min_mhz.attr,
 	&charging_max_mhz.attr,
+	&disable_som_call_in_progress.attr,
 	&battery_ctrl_batt_lvl_low.attr,
 	&battery_ctrl_batt_lvl_high.attr,
 	&battery_ctrl_cpu_mhz_lvl_low.attr,
