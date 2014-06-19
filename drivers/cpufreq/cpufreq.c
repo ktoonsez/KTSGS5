@@ -694,12 +694,12 @@ static ssize_t __ref store_scaling_max_freq_kt(struct cpufreq_policy *policy, co
 	if (ret != 1)
 		return -EINVAL;
 	
-	if (GLOBALKT_MAX_FREQ_LIMIT >= GLOBALKT_MIN_FREQ_LIMIT && GLOBALKT_MAX_FREQ_LIMIT <= 2841600)
+	if (GLOBALKT_MAX_FREQ_LIMIT >= GLOBALKT_MIN_FREQ_LIMIT && GLOBALKT_MAX_FREQ_LIMIT <= CPUINFO_MAX_FREQ_LIMIT)
 		GLOBALKT_MAX_FREQ_LIMIT = value;
 	else if (GLOBALKT_MAX_FREQ_LIMIT < GLOBALKT_MIN_FREQ_LIMIT)
 		GLOBALKT_MAX_FREQ_LIMIT = GLOBALKT_MIN_FREQ_LIMIT;
 	else
-		GLOBALKT_MAX_FREQ_LIMIT = 2841600;
+		GLOBALKT_MAX_FREQ_LIMIT = CPUINFO_MAX_FREQ_LIMIT;
 	return count;
 }
 
@@ -725,14 +725,13 @@ static ssize_t store_scaling_booted(struct cpufreq_policy *policy, const char *b
 		}
 		isBooted = 1;
 		GLOBALKT_MIN_FREQ_LIMIT = 300000;
-		//GLOBALKT_MAX_FREQ_LIMIT = 2841600;
 		cpufreq_get_policy(&new_policy, policy->cpu);
 		new_policy.min = 300000;
 		policy->user_policy.min = 300000;
 		new_policy.max = 2457600;
 		policy->user_policy.max = 2457600;
 		new_policy.cpuinfo.min_freq = GLOBALKT_MIN_FREQ_LIMIT;
-		new_policy.cpuinfo.max_freq = 2841600;
+		new_policy.cpuinfo.max_freq = CPUINFO_MAX_FREQ_LIMIT;
 		new_policy.user_policy.min = 300000;
 		new_policy.user_policy.max = 2457600;
 		ret = __cpufreq_set_policy(policy, &new_policy);

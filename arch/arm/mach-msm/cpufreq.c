@@ -527,8 +527,11 @@ static int cpufreq_parse_dt(struct device *dev)
 	j = 0;
 	for (i = 0; i < nf; i++) {
 		unsigned long f;
-
-		f = clk_round_rate(cpu_clk[0], data[j++] * 1000);
+		unsigned long pfreq = (unsigned long) (data[j++]);
+		
+		pr_alert("FREQ TABLE1: %d - %lu", i, pfreq);
+		f = clk_round_rate(cpu_clk[0], pfreq * 1000);
+		pr_alert("FREQ TABLE2: %d - %lu", i, f);
 		if (IS_ERR_VALUE(f))
 			break;
 		f /= 1000;
@@ -553,7 +556,7 @@ static int cpufreq_parse_dt(struct device *dev)
 
 		freq_table[i].index = i;
 		freq_table[i].frequency = f;
-
+		
 		if (l2_clk) {
 			f = clk_round_rate(l2_clk, data[j++] * 1000);
 			if (IS_ERR_VALUE(f)) {
