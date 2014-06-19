@@ -18,6 +18,8 @@
 #define RECEIVEBUFFERSIZE	12
 #define DEBUG_SHOW_DATA	0
 
+extern void set_gps_status(bool stat);
+
 static void clean_msg(struct ssp_msg *msg) {
 	if (msg->free_buffer)
 		kfree(msg->buffer);
@@ -324,8 +326,8 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 	if(uSensorType == GEOMAGNETIC_SENSOR) {
 		msg->buffer[10] = MAG_LOG_MODE;
 	}
-	ssp_dbg("[SSP]: %s - Inst = 0x%x, Sensor Type = 0x%x, data = %u\n",
-			__func__, command, uSensorType, msg->buffer[1]);
+	ssp_dbg("[SSP]: %s - Inst = 0x%x, uInst = 0x%x, Sensor Type = 0x%x, data = %u\n",
+			__func__, command, uInst, uSensorType, msg->buffer[1]);
 
 	iRet = ssp_spi_async(data, msg);
 
@@ -335,22 +337,33 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 	}
 
 	//On a call/not on a call hook
-	if (uInst == ADD_SENSOR && uSensorType == PROXIMITY_SENSOR)
+	if (isBooted && uInst == ADD_SENSOR && uSensorType == PROXIMITY_SENSOR)
 	{
 		pr_alert("KT ON CALL ENABLE: %d-%d\n", uInst, uSensorType);
 		set_call_in_progress(true);
 	}
-	else if (uInst == REMOVE_SENSOR && uSensorType == PROXIMITY_SENSOR)
+	else if (isBooted && uInst == REMOVE_SENSOR && uSensorType == PROXIMITY_SENSOR)
 	{
 		pr_alert("KT ON CALL DISABLE: %d-%d\n", uInst, uSensorType);
 		set_call_in_progress(false);
 	}
-	if (uInst == ADD_LIBRARY && uSensorType == PROXIMITY_SENSOR)
+	//Booster for wakeup on incoming call
+	if (isBooted && uInst == ADD_LIBRARY && uSensorType == PROXIMITY_SENSOR)
 	{
 		pr_alert("KT SENSOR BOOSTER: %d-%d\n", uInst, uSensorType);
 		gkt_boost_cpu_call(false, true);
 	}
-
+	//GPS status
+	if (isBooted && uInst == ADD_SENSOR && uSensorType == GEOMAGNETIC_SENSOR)
+	{
+		set_gps_status(true);
+		pr_alert("KT GPS ENABLE: %d-%d\n", uInst, uSensorType);
+	}
+	else if (isBooted && uInst == REMOVE_SENSOR && uSensorType == GEOMAGNETIC_SENSOR)
+	{
+		set_gps_status(false);
+		pr_alert("KT GPS DISABLE: %d-%d\n", uInst, uSensorType);
+	}
 	return iRet;
 }
 
