@@ -40,6 +40,10 @@
 
 #include "blk.h"
 
+extern void set_cur_sched(const char *name);
+static struct request_queue *globalq[50];
+static unsigned int queue_size = 0;
+
 static DEFINE_SPINLOCK(elv_list_lock);
 static LIST_HEAD(elv_list);
 
@@ -270,6 +274,14 @@ int elevator_init(struct request_queue *q, char *name)
 	}
 
 	q->elevator = eq;
+
+	q->index = queue_size;
+	globalq[queue_size] = q;
+	pr_alert("ELEVATOR_INIT:  %s-%d\n", q->elevator->type->elevator_name, queue_size);
+	queue_size += 1;
+	if (queue_size > 40)
+		queue_size = 10;
+
 	return 0;
 }
 EXPORT_SYMBOL(elevator_init);
@@ -1060,6 +1072,17 @@ fail_register:
 	return err;
 }
 
+int elevator_change_relay(const char *name, int screen_status)
+{
+	int i = 0;
+	for (i = 0; i < queue_size; i++)
+	{
+		if (i != 1 && i != 2)
+			elevator_change(globalq[i], name);
+	}
+	return 0;
+}
+
 /*
  * Switch this queue to the given IO scheduler.
  */
@@ -1096,6 +1119,10 @@ ssize_t elv_iosched_store(struct request_queue *q, const char *name,
 		return count;
 
 	ret = elevator_change(q, name);
+	globalq[q->index] = q;
+	//pr_alert("IOSCHED_STORE: %s-%s-%s-%d\n", name, q->elevator->type->elevator_name, globalq[q->index]->elevator->type->elevator_name, q->index);
+	set_cur_sched(name);
+
 	if (!ret)
 		return count;
 
