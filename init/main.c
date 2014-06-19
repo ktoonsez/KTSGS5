@@ -614,6 +614,11 @@ asmlinkage void __init start_kernel(void)
 		pr_alert("FOUND SPRINT VARIANT");
 		model_type = 1;
 	}
+	else if (strstr(boot_command_line, "bootloader=G900I"))
+	{
+		pr_alert("FOUND AUSTRALIAN VARIANT");
+		model_type = 2;
+	}
 	else
 		pr_alert("FOUND NON-SPRINT VARIANT");
 	parse_early_param();
