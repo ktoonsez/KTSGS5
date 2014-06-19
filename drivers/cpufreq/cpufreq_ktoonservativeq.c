@@ -30,8 +30,8 @@
  * It helps to keep variable names smaller, simpler
  */
 
-#define DEF_BOOST_CPU				(1134000)
-#define DEF_BOOST_GPU				(450)
+#define DEF_BOOST_CPU				(1804800)
+#define DEF_BOOST_GPU				(462400)
 #define DEF_BOOST_HOLD_CYCLES			(22)
 #define DEF_DISABLE_hotplug			(0)
 #define CPUS_AVAILABLE				num_possible_cpus()
