@@ -835,6 +835,52 @@ static ssize_t kgsl_pwrctrl_bus_split_store(struct device *dev,
 	return count;
 }
 
+static ssize_t kgsl_pwrctrl_simple_laziness_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	return sprintf(buf, "%u\n", gsimple_laziness);
+}
+
+static ssize_t kgsl_pwrctrl_simple_laziness_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret < 0 || input > 1000)
+		return -EINVAL;
+
+	gsimple_laziness = input;
+	return count;
+}
+
+static ssize_t kgsl_pwrctrl_simple_ramp_threshold_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	return sprintf(buf, "%u\n", gsimple_ramp_up_threshold);
+}
+
+static ssize_t kgsl_pwrctrl_simple_ramp_threshold_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret < 0 || input > 100000)
+		return -EINVAL;
+
+	gsimple_ramp_up_threshold = input;
+	return count;
+}
+
 DEVICE_ATTR(gpuclk, 0644, kgsl_pwrctrl_gpuclk_show, kgsl_pwrctrl_gpuclk_store);
 DEVICE_ATTR(max_gpuclk, 0644, kgsl_pwrctrl_max_gpuclk_show,
 	kgsl_pwrctrl_max_gpuclk_store);
@@ -878,6 +924,13 @@ DEVICE_ATTR(bus_split, 0644,
 	kgsl_pwrctrl_bus_split_show,
 	kgsl_pwrctrl_bus_split_store);
 
+DEVICE_ATTR(simple_laziness, 0664,
+	kgsl_pwrctrl_simple_laziness_show,
+	kgsl_pwrctrl_simple_laziness_store);
+DEVICE_ATTR(simple_ramp_threshold, 0664,
+	kgsl_pwrctrl_simple_ramp_threshold_show,
+	kgsl_pwrctrl_simple_ramp_threshold_store);
+
 static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_gpuclk,
 	&dev_attr_max_gpuclk,
@@ -895,6 +948,8 @@ static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_force_bus_on,
 	&dev_attr_force_rail_on,
 	&dev_attr_bus_split,
+	&dev_attr_simple_laziness,
+	&dev_attr_simple_ramp_threshold,
 	NULL
 };
 
