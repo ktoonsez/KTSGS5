@@ -159,4 +159,8 @@ int __must_check kgsl_active_count_get_light(struct kgsl_device *device);
 void kgsl_active_count_put(struct kgsl_device *device);
 int kgsl_active_count_wait(struct kgsl_device *device, int count);
 
+//KT Specifics
+extern int gsimple_laziness;
+extern int gsimple_ramp_up_threshold;
+
 #endif /* __KGSL_PWRCTRL_H */
