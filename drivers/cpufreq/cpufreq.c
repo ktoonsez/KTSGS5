@@ -92,6 +92,7 @@ unsigned int batt_ctrl_disable_chrg;
 
 extern void set_batt_mhz_info(unsigned int batt_lvl_low, unsigned int batt_lvl_high, unsigned int mhz_lvl_low, unsigned int mhz_lvl_high, unsigned int disable_chrg);
 extern unsigned int get_batt_level(void);
+extern void set_max_gpuclk_so(unsigned long val);
 
 //Global placeholder for CPU policies
 struct cpufreq_policy trmlpolicy[10];
@@ -819,6 +820,25 @@ static ssize_t store_screen_off_scaling_mhz(struct cpufreq_policy *policy,
 	return count;
 }
 
+static ssize_t show_screen_off_GPU_mhz(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%ld\n", Lscreen_off_GPU_mhz);
+}
+static ssize_t store_screen_off_GPU_mhz(struct cpufreq_policy *policy,
+					const char *buf, size_t count)
+{
+	unsigned long value = 0;
+	unsigned int ret;
+	ret = sscanf(buf, "%ld", &value);
+	if (value > 578000000)
+		value = 578000000;
+	if (value < 200000000 && value != 0)
+		value = 200000000;
+	Lscreen_off_GPU_mhz = value;
+
+	return count;
+}
+
 static ssize_t show_bluetooth_scaling_mhz(struct cpufreq_policy *policy, char *buf)
 {
 	return sprintf(buf, "%u\n", Lbluetooth_scaling_mhz);
@@ -1426,6 +1446,7 @@ cpufreq_freq_attr_rw(UV_mV_table);
 cpufreq_freq_attr_ro(UV_mV_table_stock);
 cpufreq_freq_attr_rw(screen_off_scaling_enable);
 cpufreq_freq_attr_rw(screen_off_scaling_mhz);
+cpufreq_freq_attr_rw(screen_off_GPU_mhz);
 cpufreq_freq_attr_rw(bluetooth_scaling_mhz);
 cpufreq_freq_attr_rw(music_play_scaling_mhz);
 cpufreq_freq_attr_rw(charging_max_mhz);
@@ -1467,6 +1488,7 @@ static struct attribute *default_attrs[] = {
 	&UV_mV_table_stock.attr,
 	&screen_off_scaling_enable.attr,
 	&screen_off_scaling_mhz.attr,
+	&screen_off_GPU_mhz.attr,
 	&bluetooth_scaling_mhz.attr,
 	&music_play_scaling_mhz.attr,
 	&charging_min_mhz.attr,
@@ -2763,6 +2785,12 @@ void cpufreq_gov_resume(void)
 		//pr_alert("CPUFREQ_GOV_RESUME_FREQ2: %u\n", value);
 	}
 	
+	//GPU Control
+	if  (!call_in_progress || Ldisable_som_call_in_progress == 0)
+	{
+		if (Lscreen_off_GPU_mhz > 0)
+			set_max_gpuclk_so(0);
+	}
 }
 
 void cpufreq_gov_suspend(void)
@@ -2818,6 +2846,9 @@ void cpufreq_gov_suspend(void)
 			}
 		}
 	}
+	//GPU Control
+	if (Lscreen_off_GPU_mhz > 0 && (!call_in_progress || Ldisable_som_call_in_progress == 0))
+		set_max_gpuclk_so(Lscreen_off_GPU_mhz);
 }
 
 void set_call_in_progress(bool state)
