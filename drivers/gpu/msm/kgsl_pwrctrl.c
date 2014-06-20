@@ -38,6 +38,7 @@
 int boost_level = -1;
 struct kgsl_device *Gbldevice;
 unsigned long internal_max = 578000000;
+unsigned long orig_max = 0;
 
 /*
  * Expected delay for post-interrupt processing on A3xx.
@@ -447,6 +448,33 @@ void boost_the_gpu(unsigned int freq, bool getfreq)
 		boost_level = -1;
 }
 
+void set_max_gpuclk_so(unsigned long val)
+{
+	struct kgsl_pwrctrl *pwr;
+	int level;
+
+	pwr = &Gbldevice->pwrctrl;
+	
+	if (val == 0)
+		val = orig_max;
+	else if (val != 0 && orig_max == 0)
+		orig_max = pwr->pwrlevels[pwr->thermal_pwrlevel].gpu_freq;
+		
+	mutex_lock(&Gbldevice->mutex);
+	level = _get_nearest_pwrlevel(pwr, val);
+	if (level < 0)
+		goto done;
+
+	pwr->thermal_pwrlevel = level;
+
+	if (pwr->thermal_pwrlevel > pwr->active_pwrlevel)
+		kgsl_pwrctrl_pwrlevel_change(Gbldevice, pwr->thermal_pwrlevel);
+
+done:
+	mutex_unlock(&Gbldevice->mutex);
+	
+}
+
 static int kgsl_pwrctrl_max_gpuclk_store(struct device *dev,
 					 struct device_attribute *attr,
 					 const char *buf, size_t count)
@@ -481,7 +509,8 @@ static int kgsl_pwrctrl_max_gpuclk_store(struct device *dev,
 
 	if (pwr->thermal_pwrlevel > pwr->active_pwrlevel)
 		kgsl_pwrctrl_pwrlevel_change(device, pwr->thermal_pwrlevel);
-
+	orig_max = val;
+	
 done:
 	mutex_unlock(&device->mutex);
 	return count;
