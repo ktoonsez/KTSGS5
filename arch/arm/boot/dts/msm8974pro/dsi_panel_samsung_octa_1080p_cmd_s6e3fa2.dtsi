@@ -258,8 +258,8 @@
 								29 01 00 00 00 00 02 12 00 ];
 			samsung,panel-ldi-partial-disp-off = [29 01 00 00 00 00 02 13 00];
 
-			qcom,panel-display-on-cmds = [05 01 00 00 32 00 02 29 00];
-			qcom,panel-display-off-cmds = [05 01 00 00 32 00 02 28 00];
+			qcom,panel-display-on-cmds = [05 01 00 00 00 00 02 29 00];
+			qcom,panel-display-off-cmds = [05 01 00 00 00 00 02 28 00];
 
 			samsung,panel-elvss-lowtemp-cmds-list = [
 								29 01 00 00 00 00 02 B0 05

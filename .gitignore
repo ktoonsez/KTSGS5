@@ -72,7 +72,24 @@ kernel/config_data.h
 scripts/recordmcount
 kernel/usr/*
 Package/*
-firmware/*
+
+firmware/tsp_synaptics/*.S
+firmware/tsp_synaptics/*.o
+firmware/tsp_synaptics/*.fw
+firmware/av7110/*.S
+firmware/av7110/*.o
+firmware/ice40xx/*.S
+firmware/ice40xx/*.o
+firmware/ice40xx/*.fw
+firmware/keyspan_pda/*.S
+firmware/keyspan_pda/*.o
+firmware/tkey/*.S
+firmware/tkey/*.o
+firmware/tkey/*.fw
+firmware/*.S
+firmware/*.o
+firmware/*.fw
+
 arch/arm/include/generated*
 
 arch/arm/boot/compressed/lib1funcs.S

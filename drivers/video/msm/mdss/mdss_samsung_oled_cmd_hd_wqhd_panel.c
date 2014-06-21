@@ -443,8 +443,6 @@ static int mdss_dsi_extra_power(struct mdss_panel_data *pdata, int enable)
 	}
 
 	if (enable) {
-			msleep(1);
-			
 			pr_info("%s: lvs4(VDD3) enable.\n",__func__);
 		
 			ret = regulator_enable( /*VDD3 :1.8V*/
@@ -455,17 +453,17 @@ static int mdss_dsi_extra_power(struct mdss_panel_data *pdata, int enable)
 				return ret;
 			}
 
-			msleep(5);
+			usleep_range(5000, 5000);
 
 			pr_debug("%s: disp_en_gpio set high  \n", __func__);
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);/* VDDR :1.5*/
-			msleep(10);
+			usleep_range(5000, 5000);
 
 	}
 	else{
 			pr_debug("%s: disp_en_gpio set low  \n", __func__);
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);/* VDDR :1.5*/
-			msleep(5);
+			usleep_range(5000, 5000);
 
 			pr_info("%s lvs4(VDD3) diable\n", __func__);
 			mdelay(1);
@@ -476,7 +474,7 @@ static int mdss_dsi_extra_power(struct mdss_panel_data *pdata, int enable)
 					__func__);
 			}
 	   	
-			msleep(10);
+			usleep_range(5000, 5000);
 	}
 	pr_debug("%s: --\n", __func__);
 	return ret;
@@ -522,13 +520,13 @@ void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 
 	if (enable) {
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
-		msleep(10);
+		usleep_range(5000, 5000);
 		wmb();
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		msleep(10);
+		usleep_range(5000, 5000);
 		wmb();
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
-		msleep(10);
+		usleep_range(5000, 5000);
 		wmb();
 		
 	} else {
