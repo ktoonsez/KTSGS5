@@ -830,8 +830,8 @@ static ssize_t store_screen_off_GPU_mhz(struct cpufreq_policy *policy,
 	unsigned long value = 0;
 	unsigned int ret;
 	ret = sscanf(buf, "%ld", &value);
-	if (value > 578000000)
-		value = 578000000;
+	if (value > 657500000)
+		value = 657500000;
 	if (value < 200000000 && value != 0)
 		value = 200000000;
 	Lscreen_off_GPU_mhz = value;
