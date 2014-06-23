@@ -1191,7 +1191,7 @@ static ssize_t store_touch_boost_gpu(struct kobject *a, struct attribute *b,
 	int ret;
 	ret = sscanf(buf, "%u", &input);
 
-	if (input != 128000 && input != 200000 && input != 320000 && input != 389000 && input != 462400 && input != 578000)
+	if (input != 128000 && input != 200000 && input != 320000 && input != 389000 && input != 462400 && input != 578000 && input != 657500)
 		input = 0;
 	
 	if (input == 0)
