@@ -103,7 +103,8 @@ scripts/bin2c
 scripts/genksyms/*
 scripts/kconfig/*
 scripts/selinux/*
-security/selinux/*
+security/selinux/av_permissions.h
+security/selinux/flask.h
 
 #
 # Top-level generic files
