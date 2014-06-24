@@ -1653,9 +1653,10 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 				turned_off_super_conservative_screen_off = false;
 			}
 			//pr_alert("BOOST ENDED: %d - %d - %d - %d", trmlpolicy[0].cur, trmlpolicy[1].cur, trmlpolicy[2].cur, trmlpolicy[3].cur);
-			if (!screen_is_on && fake_screen_on)
+			if (fake_screen_on)
 			{
-				cpufreq_gov_suspend();
+				if (!screen_is_on)
+					cpufreq_gov_suspend();
 				fake_screen_on = false;
 			}
 			goto boostcomplete;
