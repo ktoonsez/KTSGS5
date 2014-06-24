@@ -101,7 +101,7 @@ firmware/tsp_melfas/PUBL.fw
 firmware/tsp_melfas/PUBL.fw.gen.S
 scripts/bin2c
 scripts/genksyms/*
-scripts/kconfig/*
+scripts/kconfig/zconf.lex.c
 scripts/selinux/*
 security/selinux/av_permissions.h
 security/selinux/flask.h
