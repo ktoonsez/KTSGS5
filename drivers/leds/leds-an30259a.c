@@ -630,6 +630,7 @@ static void an30259a_set_led_blink(enum an30259a_led_enum led,
 		leds_on(led, false, false, brightness);
 		return;
 	}
+	gkt_boost_cpu_call(false, true);
 
 	if (brightness > LED_MAX_CURRENT)
 		brightness = LED_MAX_CURRENT;
