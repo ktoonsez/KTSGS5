@@ -13,6 +13,7 @@
  *
  */
 #include "ssp.h"
+#include <linux/cpufreq_kt.h>
 
 #define LIMIT_DELAY_CNT		200
 #define RECEIVEBUFFERSIZE	12
