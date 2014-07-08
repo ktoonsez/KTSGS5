@@ -231,6 +231,7 @@ struct msm_fb_data_type {
 	u32 dcm_state;
 	struct list_head proc_list;
 
+	u32 wait_for_kickoff;
 	int blank_mode;
 };
 
