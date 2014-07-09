@@ -3956,7 +3956,6 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 		ad->mfd = mfd;
 		ad->bl_mfd = bl_mfd;
 	}
-ad_config_exit:
 	mutex_unlock(&ad->lock);
 	ctl = mfd_to_ctl(mfd);
 	return ret;
