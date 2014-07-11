@@ -692,6 +692,11 @@ static int change_to_bootmode(struct ssp_data *data)
 		usleep_range(15000, 15500);
 	}
 
+	data->spi->mode = SPI_MODE_0;
+	if (spi_setup(data->spi))
+		pr_err("failed to setup spi mode for boot\n");
+	usleep_range(1000, 1100);
+
 	ret = stm32fwu_spi_write(data->spi, &syncb, 1);
 #if SSP_STM_DEBUG
 	pr_info("[SSP] stm32fwu_spi_write(sync byte) returned %d\n", ret);
@@ -762,6 +767,11 @@ static int update_mcu_bin(struct ssp_data *data, int iBinType)
 /* STM : GO USER ADDR */
 	stm32fwu_spi_send_cmd(data->spi, &cmd);
 	send_addr(data->spi, STM_APP_ADDR, 0);
+
+	data->spi->mode = SPI_MODE_1;
+	if (spi_setup(data->spi))
+		pr_err("failed to setup spi mode for app\n");
+	usleep_range(1000, 1100);
 
 	return iRet;
 }
