@@ -36,6 +36,8 @@
 extern ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf);
 extern ssize_t show_UV_mV_table_stock(struct cpufreq_policy *policy, char *buf);
 extern ssize_t store_UV_mV_table(struct cpufreq_policy *policy,const char *buf, size_t count);
+extern ssize_t show_auto_hotplug_enable_core_loads(struct cpufreq_policy *policy, char *buf);
+extern ssize_t store_auto_hotplug_enable_core_loads(struct cpufreq_policy *policy, const char *buf, size_t count);
 
 //KT Specifics
 #define CPUS_AVAILABLE	num_possible_cpus()
@@ -690,7 +692,6 @@ static ssize_t __ref store_scaling_max_freq_kt(struct cpufreq_policy *policy, co
 {
 	unsigned int ret = -EINVAL;
 	unsigned int value = 0;
-	struct cpufreq_policy new_policy;
 
 	ret = sscanf(buf, "%u", &value);
 	if (ret != 1)
@@ -1457,6 +1458,7 @@ cpufreq_freq_attr_rw(scaling_sched_screen_off);
 cpufreq_freq_attr_rw(scaling_governor_gps);
 cpufreq_freq_attr_rw(scaling_sched_gps);
 cpufreq_freq_attr_rw(enable_auto_hotplug);
+cpufreq_freq_attr_rw(auto_hotplug_enable_core_loads);
 cpufreq_freq_attr_rw(battery_ctrl_batt_lvl_low);
 cpufreq_freq_attr_rw(battery_ctrl_batt_lvl_high);
 cpufreq_freq_attr_rw(battery_ctrl_cpu_mhz_lvl_low);
@@ -1499,6 +1501,7 @@ static struct attribute *default_attrs[] = {
 	&scaling_governor_gps.attr,
 	&scaling_sched_gps.attr,
 	&enable_auto_hotplug.attr,
+	&auto_hotplug_enable_core_loads.attr,
 	&battery_ctrl_batt_lvl_low.attr,
 	&battery_ctrl_batt_lvl_high.attr,
 	&battery_ctrl_cpu_mhz_lvl_low.attr,
