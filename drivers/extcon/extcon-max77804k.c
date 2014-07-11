@@ -1055,6 +1055,9 @@ static int max77804k_muic_set_path(struct max77804k_muic_info *info, int path)
 	}
 
 	switch (path) {
+	case PATH_OPEN:
+		val = MAX77804K_MUIC_CTRL1_BIN_0_000;
+		break;
 	case PATH_USB_AP:
 		val = MAX77804K_MUIC_CTRL1_BIN_1_001;
 		break;
@@ -1715,6 +1718,35 @@ static int __devinit max77804k_muic_probe(struct platform_device *pdev)
 	return ret;
 }
 
+#if !defined(CONFIG_SEC_FACTORY)
+static int max77804k_suspend(struct device *dev)
+{
+    struct max77804k_muic_info *info = dev_get_drvdata(dev);
+    if (info)
+	max77804k_muic_set_path(info, PATH_OPEN);
+    else
+	pr_err("%s, dev_get_drvdata fail\n", __func__);
+
+    return 0;
+}
+
+static int max77804k_resume(struct device *dev)
+{
+    struct max77804k_muic_info *info = dev_get_drvdata(dev);
+    if (info)
+	max77804k_muic_set_path(info, info->path);
+    else
+	pr_err("%s, dev_get_drvdata fail\n", __func__);
+
+    return 0;
+}
+
+static const struct dev_pm_ops max77804k_dev_pm_ops = {
+    .suspend	= max77804k_suspend,
+    .resume	= max77804k_resume,
+};
+#endif
+
 static int __devexit max77804k_muic_remove(struct platform_device *pdev)
 {
 	struct max77804k_muic_info *info = platform_get_drvdata(pdev);
@@ -1759,6 +1791,9 @@ static struct platform_driver max77804k_muic_driver = {
 	.driver		= {
 		.name	= DEV_NAME,
 		.owner	= THIS_MODULE,
+#if !defined(CONFIG_SEC_FACTORY)
+		.pm	= &max77804k_dev_pm_ops,
+#endif
 		.shutdown = max77804k_muic_shutdown,
 	},
 	.probe		= max77804k_muic_probe,
