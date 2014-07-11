@@ -450,6 +450,27 @@ inline void hotplugap_boostpulse(void)
 	}
 }
 
+ssize_t show_auto_hotplug_enable_core_loads(struct cpufreq_policy *policy, char *buf)
+{
+	int i, len = 0;
+	for (i = 0; i < 4; i++)
+	{
+		len += sprintf(buf + len, "%d ", enable_load[i]);
+	}
+	return len;
+}
+
+ssize_t store_auto_hotplug_enable_core_loads(struct cpufreq_policy *policy,
+					const char *buf, size_t count)
+{
+	unsigned int ret;
+	
+	ret = sscanf(buf, "%d %d %d %d", &enable_load[0], &enable_load[1], &enable_load[2], &enable_load[3]);
+
+	return count;
+}
+
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void auto_hotplug_early_suspend(struct early_suspend *handler)
 {
