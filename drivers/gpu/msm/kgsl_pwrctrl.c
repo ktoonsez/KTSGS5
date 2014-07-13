@@ -27,6 +27,8 @@
 #include "kgsl_trace.h"
 #include "kgsl_sharedmem.h"
 
+#include <linux/cpufreq_kt.h>
+
 #define KGSL_PWRFLAGS_POWER_ON 0
 #define KGSL_PWRFLAGS_CLK_ON   1
 #define KGSL_PWRFLAGS_AXI_ON   2
@@ -35,6 +37,8 @@
 #define UPDATE_BUSY_VAL		1000000
 #define UPDATE_BUSY		50
 
+unsigned int cur_gpu_step;
+unsigned int cur_max_pwrlevel;
 int boost_level = -1;
 struct kgsl_device *Gbldevice;
 unsigned long internal_max = 578000000;
@@ -305,7 +309,7 @@ static int kgsl_pwrctrl_max_pwrlevel_store(struct device *dev,
 		level = pwr->min_pwrlevel;
 
 	pwr->max_pwrlevel = level;
-
+	cur_max_pwrlevel = level;
 
 	max_level = max_t(int, pwr->thermal_pwrlevel, pwr->max_pwrlevel);
 
@@ -566,6 +570,7 @@ static int kgsl_pwrctrl_gpuclk_show(struct device *dev,
 	if (device == NULL)
 		return 0;
 	pwr = &device->pwrctrl;
+	cur_gpu_step = pwr->active_pwrlevel;
 	return snprintf(buf, PAGE_SIZE, "%ld\n", kgsl_pwrctrl_active_freq(pwr));
 }
 
