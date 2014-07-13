@@ -190,6 +190,7 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 	pwr->active_pwrlevel = new_level;
 	pwr->bus_mod = 0;
 	pwrlevel = &pwr->pwrlevels[pwr->active_pwrlevel];
+	cur_gpu_step = new_level;
 
 	kgsl_pwrctrl_buslevel_update(device, true);
 	if (test_bit(KGSL_PWRFLAGS_AXI_ON, &pwr->power_flags))
@@ -556,7 +557,7 @@ static int kgsl_pwrctrl_gpuclk_store(struct device *dev,
 	level = _get_nearest_pwrlevel(pwr, val);
 	if (level >= 0)
 		kgsl_pwrctrl_pwrlevel_change(device, level);
-
+	
 	mutex_unlock(&device->mutex);
 	return count;
 }
@@ -570,7 +571,6 @@ static int kgsl_pwrctrl_gpuclk_show(struct device *dev,
 	if (device == NULL)
 		return 0;
 	pwr = &device->pwrctrl;
-	cur_gpu_step = pwr->active_pwrlevel;
 	return snprintf(buf, PAGE_SIZE, "%ld\n", kgsl_pwrctrl_active_freq(pwr));
 }
 
