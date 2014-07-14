@@ -28,6 +28,8 @@
 #include <mach/sec_debug.h>
 #endif
 
+extern void screenwake_setdev(struct qpnp_pon * pon);
+
 #ifdef CONFIG_ARCH_MSM8226  //should be removed
 extern struct class *sec_class;
 #endif
@@ -1335,7 +1337,8 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 			dev_attr_sec_powerkey_pressed.attr.name);
 	}
 	dev_set_drvdata(sec_powerkey, pon);
-
+	screenwake_setdev(pon);
+	
 	return rc;
 }
 

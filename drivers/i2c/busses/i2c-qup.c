@@ -38,6 +38,7 @@
 #include <mach/board.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_bus_board.h>
+#include <linux/kt_wake_funcs.h>
 
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION("0.2");
@@ -962,6 +963,17 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		return -EIO;
 	}
 
+	if (screen_wake_options && dev->pwr_state == 0) {
+		if (dev->clk_ctl == 0) {
+			if (dev->pdata->src_clk_rate > 0)
+				clk_set_rate(dev->clk,
+						dev->pdata->src_clk_rate);
+			else
+				dev->pdata->src_clk_rate = DEFAULT_CLK_RATE;
+		}
+		qup_i2c_pwr_mgmt(dev, 1);
+	}
+
 	/* Initialize QUP registers during first transfer */
 	if (dev->clk_ctl == 0) {
 		int fs_div;
@@ -1155,6 +1167,15 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 					if (timeout)
 						goto timeout_err;
 				}
+				if (screen_wake_options)
+				{
+					pm_runtime_disable(dev->dev);
+					pm_runtime_set_active(dev->dev);
+					qup_i2c_request_gpios(dev);
+					qup_i2c_pwr_mgmt(dev, 1);
+					//pm_runtime_enable(dev->dev);
+				}
+				
 				qup_i2c_recover_bus_busy(dev);
 				dev_err(dev->dev,
 					"Transaction timed out, SL-AD = 0x%x\n",
@@ -1163,7 +1184,14 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 				dev_err(dev->dev, "I2C Status: %x\n", istatus);
 				dev_err(dev->dev, "QUP Status: %x\n", qstatus);
 				dev_err(dev->dev, "OP Flags: %x\n", op_flgs);
+				dev_err(dev->dev, "CLK Rate: %x\n", dev->pdata->src_clk_rate);
 				writel_relaxed(1, dev->base + QUP_SW_RESET);
+				if (screen_wake_options)
+				{
+					dev->pdata->src_clk_rate = 50000000;
+					clk_set_rate(dev->clk, dev->pdata->src_clk_rate);
+				}
+
 				/* Make sure that the write has gone through
 				 * before returning from the function
 				 */
@@ -1265,7 +1293,8 @@ timeout_err:
 	dev->cnt = 0;
 	mutex_unlock(&dev->mlock);
 	pm_runtime_mark_last_busy(dev->dev);
-	pm_runtime_put_autosuspend(dev->dev);
+	if (!screen_wake_options)
+		pm_runtime_put_autosuspend(dev->dev);
 	return ret;
 }
 
@@ -1541,7 +1570,9 @@ blsp_core_init:
 	if (ret)
 		dev_info(&pdev->dev, "clk_set_rate(core_clk, %dHz):%d\n",
 					dev->pdata->src_clk_rate, ret);
-
+	if (screen_wake_options)
+		pr_alert("SET QUP CLK - %d", dev->pdata->src_clk_rate);
+	
 	clk_prepare_enable(dev->clk);
 	clk_prepare_enable(dev->pclk);
 	/*
@@ -1632,10 +1663,12 @@ blsp_core_init:
 			dev->adapter.dev.of_node = pdev->dev.of_node;
 			of_i2c_register_devices(&dev->adapter);
 		}
-
-		pm_runtime_set_autosuspend_delay(&pdev->dev, MSEC_PER_SEC);
-		pm_runtime_use_autosuspend(&pdev->dev);
-		pm_runtime_enable(&pdev->dev);
+		if (!screen_wake_options)
+		{
+			pm_runtime_set_autosuspend_delay(&pdev->dev, MSEC_PER_SEC);
+			pm_runtime_use_autosuspend(&pdev->dev);
+			pm_runtime_enable(&pdev->dev);
+		}
 		return 0;
 	}
 
@@ -1729,17 +1762,21 @@ qup_i2c_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int i2c_qup_pm_suspend_runtime(struct device *device)
 {
-	struct platform_device *pdev = to_platform_device(device);
-	struct qup_i2c_dev *dev = platform_get_drvdata(pdev);
-	dev_dbg(device, "pm_runtime: suspending...\n");
-	/* Grab mutex to ensure ongoing transaction is over */
-	mutex_lock(&dev->mlock);
-	dev->suspended = 1;
-	mutex_unlock(&dev->mlock);
-	if (dev->pwr_state != 0) {
-		qup_i2c_pwr_mgmt(dev, 0);
-		qup_i2c_free_gpios(dev);
+	if (!screen_wake_options)
+	{
+		struct platform_device *pdev = to_platform_device(device);
+		struct qup_i2c_dev *dev = platform_get_drvdata(pdev);
+		dev_dbg(device, "pm_runtime: suspending...\n");
+		/* Grab mutex to ensure ongoing transaction is over */
+		mutex_lock(&dev->mlock);
+		dev->suspended = 1;
+		mutex_unlock(&dev->mlock);
+		if (dev->pwr_state != 0) {
+			qup_i2c_pwr_mgmt(dev, 0);
+			qup_i2c_free_gpios(dev);
+		}
 	}
+	pr_alert("PM: SUSPEND RUNTIME");
 	return 0;
 }
 
@@ -1767,9 +1804,12 @@ static int qup_i2c_suspend(struct device *device)
 		/*
 		 * set the device's runtime PM status to 'suspended'
 		 */
-		pm_runtime_disable(device);
-		pm_runtime_set_suspended(device);
-		pm_runtime_enable(device);
+		if (!screen_wake_options)
+		{
+			pm_runtime_disable(device);
+			pm_runtime_set_suspended(device);
+			pm_runtime_enable(device);
+		}
 	}
 	return 0;
 }
