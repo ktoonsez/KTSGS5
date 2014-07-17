@@ -739,11 +739,8 @@ static struct i2c_driver pn547_driver = {
 
 static int __init pn547_dev_init(void)
 {
-	pr_info("Loading pn547 driver - %d\n", model_type);
-	if (!model_type)
-		return i2c_add_driver(&pn547_driver);
-	else
-		return 0;
+	pr_info("Loading pn547 driver\n");
+	return i2c_add_driver(&pn547_driver);
 }
 
 module_init(pn547_dev_init);
