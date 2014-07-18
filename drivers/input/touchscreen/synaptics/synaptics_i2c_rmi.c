@@ -234,8 +234,9 @@ int SYN_I2C_RETRY_TIMES = 10;
 int GPIO_CFG_KT = GPIO_CFG_2MA;
 static struct delayed_work lockout_touch_work;
 static bool lockout_touch_work_done = false;
-//static struct synaptics_rmi4_data *grmi4_data;
+static struct synaptics_rmi4_data *grmi4_data; //grmi4_data->input_dev
 static struct wake_lock wakelock;
+static bool kt_screen_trigger = true;
 
 static void lockout_touch_work_func(struct work_struct *work)
 {
@@ -1787,6 +1788,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #endif
 			
 			// ***** KT WAKE AND SLEEP OPTIONS *****
+			//pr_alert("TOUCH  %d - %d - %d - %d - %d", screen_is_off, screen_wake_options, call_in_progress, x, y);
 			if (screen_is_off && screen_wake_options && !call_in_progress)
 				check_touch_off(x, y, rmi4_data->finger[finger].state, touch_count);
 			if (!screen_is_off && screen_sleep_options == 1 && !call_in_progress)
@@ -1817,7 +1819,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 
 		if (rmi4_data->finger[finger].state && (!finger_status)) {
-#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
+/*#if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 			dev_info(&rmi4_data->i2c_client->dev, "[%d][R] 0x%02x M[%d], Ver[%02X%02X][%X/%d]\n",
 					finger, finger_status, rmi4_data->finger[finger].mcount,
 					rmi4_data->ic_revision_of_ic, rmi4_data->fw_version_of_ic, rmi4_data->lcd_id, system_rev);
@@ -1825,7 +1827,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			dev_info(&rmi4_data->i2c_client->dev, "[%d][R] 0x%02x M[%d], Ver[%02X%02X][%X/%d]\n",
 					finger, finger_status, rmi4_data->finger[finger].mcount,
 					rmi4_data->ic_revision_of_ic, rmi4_data->fw_version_of_ic, rmi4_data->lcd_id, system_rev);
-#endif
+#endif*/
 			rmi4_data->finger[finger].mcount = 0;
 		}
 
@@ -5330,6 +5332,7 @@ err_tsp_reboot:
 /* turn off touch IC, will be turned by InputRedaer */
 	synaptics_rmi4_stop_device(rmi4_data);
 #endif
+	grmi4_data = rmi4_data;
 	return retval;
 
 #if defined(CONFIG_LEDS_CLASS) && defined(TOUCHKEY_ENABLE)
@@ -5373,6 +5376,19 @@ err_mem_regulator:
 
 	printk(KERN_ERR "%s: driver unload done..\n", __func__);
 	return retval;
+}
+
+void trigger_open_close(bool is_on)
+{
+	kt_screen_trigger = true;
+	if (grmi4_data != NULL)
+	{
+		if (is_on)
+			synaptics_rmi4_input_open(grmi4_data->input_dev);
+		else
+			synaptics_rmi4_input_close(grmi4_data->input_dev);
+	}
+	kt_screen_trigger = false;
 }
 
 #ifdef USE_SHUTDOWN_CB
@@ -5613,7 +5629,7 @@ static int synaptics_rmi4_stop_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	mutex_lock(&rmi4_data->rmi4_device_mutex);
 	
-	if (rmi4_data->touch_stopped) {
+	if (rmi4_data->touch_stopped || (screen_is_off)) {
 		dev_err(&rmi4_data->i2c_client->dev, "%s already power off\n",
 				__func__);
 		goto out;
@@ -5649,15 +5665,14 @@ static int synaptics_rmi4_start_device(struct synaptics_rmi4_data *rmi4_data)
 	int retval = 0;
 	mutex_lock(&rmi4_data->rmi4_device_mutex);
 
-	pr_alert("START DEVICE\n");
-	screen_is_off = false;
-		
-	if (!rmi4_data->touch_stopped && !screen_wake_options_when_off) {
+	if ((!rmi4_data->touch_stopped && !screen_wake_options_when_off) || !screen_is_off || !kt_screen_trigger) { // && !screen_wake_options_when_off
 		dev_err(&rmi4_data->i2c_client->dev, "%s already power on\n",
 				__func__);
 		goto out;
 	}
-
+	pr_alert("START DEVICE\n");
+	screen_is_off = false;
+		
 	synaptics_power_ctrl(rmi4_data, true);
 	rmi4_data->current_page = MASK_8BIT;
 	rmi4_data->touch_stopped = false;
@@ -5705,7 +5720,9 @@ static int synaptics_rmi4_input_open(struct input_dev *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = input_get_drvdata(dev);
 	int retval;
-
+	if (!kt_screen_trigger)
+		return 0;
+		
 	dev_info(&rmi4_data->i2c_client->dev, "%s %s\n", __func__, rmi4_data->use_deepsleep ? "wakeup" : "");
 	pr_alert("INPUT OPEN - %s\n", rmi4_data->use_deepsleep ? "deepsleep" : "");
 
@@ -5719,13 +5736,16 @@ static int synaptics_rmi4_input_open(struct input_dev *dev)
 			dev_err(&rmi4_data->i2c_client->dev,
 					"%s: Failed to start device\n", __func__);
 	}
-
+	kt_screen_trigger = false;
+	
 	return 0;
 }
 
 static void synaptics_rmi4_input_close(struct input_dev *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = input_get_drvdata(dev);
+	if (!kt_screen_trigger)
+		return;
 
 	dev_info(&rmi4_data->i2c_client->dev, "%s %s\n", __func__, rmi4_data->use_deepsleep ? "deepsleep" : "");
 	pr_alert("INPUT CLOSE - %s\n", rmi4_data->use_deepsleep ? "deepsleep" : "");

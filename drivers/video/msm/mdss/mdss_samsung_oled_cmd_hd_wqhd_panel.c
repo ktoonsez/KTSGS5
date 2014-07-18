@@ -2252,7 +2252,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	set_screen_on_off_mhz(true);
 	if (ktoonservative_is_active)
 		ktoonservative_screen_is_on(true);
-
+	trigger_open_close(true);
+	
 #if defined(CONFIG_LCD_HMT)
 	static int is_first = 1;
 #endif
@@ -2391,7 +2392,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	set_screen_on_off_mhz(false);
 	if (ktoonservative_is_active)
 		ktoonservative_screen_is_on(false);
-
+	trigger_open_close(false);
+	
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
