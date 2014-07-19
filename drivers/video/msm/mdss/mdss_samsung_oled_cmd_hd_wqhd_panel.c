@@ -2253,6 +2253,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (ktoonservative_is_active)
 		ktoonservative_screen_is_on(true);
 	trigger_open_close(true);
+	trigger_open_close_touchkey(true);
 	
 #if defined(CONFIG_LCD_HMT)
 	static int is_first = 1;
@@ -2393,6 +2394,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ktoonservative_is_active)
 		ktoonservative_screen_is_on(false);
 	trigger_open_close(false);
+	trigger_open_close_touchkey(false);
 	
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
