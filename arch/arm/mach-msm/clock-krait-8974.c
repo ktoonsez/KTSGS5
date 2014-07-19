@@ -677,7 +677,13 @@ ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf,
 		if (sscanf(buf, " %d%n", &val, &offset) == 1)
 		{
 			for (j = 0; j < NR_CPUS; j++)
+			{
+				if (val > CPU_VDD_MAX)
+					val = CPU_VDD_MAX;
+				if (val < CPU_VDD_MIN)
+					val = CPU_VDD_MIN;
 				cpu_clk[j]->vdd_class->vdd_uv[i] = val * 1000;
+			}
 		}
 		else
 			break;
