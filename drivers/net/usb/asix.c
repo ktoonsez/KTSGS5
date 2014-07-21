@@ -37,6 +37,7 @@
 #include <linux/mii.h>
 #include <linux/usb.h>
 #include <linux/crc32.h>
+#include <linux/if_vlan.h>
 
 #include "axusbnet.c"
 #include "asix.h"
@@ -3895,5 +3896,3 @@ module_exit(asix_exit);
 MODULE_AUTHOR("David Hollis");
 MODULE_DESCRIPTION("ASIX AX8817X based USB 2.0 Ethernet Devices");
 MODULE_LICENSE("GPL");
-
-
