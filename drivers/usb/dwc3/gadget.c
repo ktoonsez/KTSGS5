@@ -36,8 +36,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_K_PROJECT) \
-|| defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_K_PROJECT)
 #include <linux/module.h>
 #endif
 #include <linux/kernel.h>
@@ -1734,11 +1733,7 @@ static int dwc3_gadget_vbus_session(struct usb_gadget *_gadget, int is_active)
 	 * Clearing run/stop bit might occur before disconnect event is seen.
 	 * Make sure to let gadget driver know in that case.
 	 */
-#if defined(CONFIG_SEC_K_PROJECT) && defined(CONFIG_SEC_LOCALE_CHN)
 	if (!dwc->vbus_active) {
-#else
-	if (!dwc->vbus_active && dwc->start_config_issued) {
-#endif
 		dev_dbg(dwc->dev, "calling disconnect from %s\n", __func__);
 		dwc3_gadget_disconnect_interrupt(dwc);
 	}
@@ -2916,19 +2911,6 @@ static irqreturn_t dwc3_interrupt(int irq, void *_dwc)
 	return ret;
 }
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) \
-|| defined(CONFIG_SEC_KACTIVE_PROJECT)
-static struct dwc3 *sec_dwc3;
-void force_dwc3_gadget_disconnect(void)
-{
-	pr_info("usb::%s\n", __func__);
-	spin_lock(&sec_dwc3->lock);
-	dwc3_disconnect_gadget(sec_dwc3);
-	spin_unlock(&sec_dwc3->lock);
-}
-EXPORT_SYMBOL(force_dwc3_gadget_disconnect);
-#endif
-
 /**
  * dwc3_gadget_init - Initializes gadget related registers
  * @dwc: pointer to our controller context structure
@@ -3068,10 +3050,6 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 		pm_runtime_enable(&dwc->gadget.dev);
 		pm_runtime_get(&dwc->gadget.dev);
 	}
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) \
-|| defined(CONFIG_SEC_KACTIVE_PROJECT)
-	sec_dwc3 = dwc;
-#endif
 	return 0;
 
 err7:

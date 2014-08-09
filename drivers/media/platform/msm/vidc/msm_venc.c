@@ -51,11 +51,11 @@
 #define MAX_LIMIT_COEFFS 6
 /* 3x3 transformation matrix coefficients in s4.9 fixed point format */
 static u32 vpe_csc_601_to_709_matrix_coeff[MAX_MATRIX_COEFFS] = {
-	0x1BA, 0, 0, 0, 0x1C4, 0, 0, 0, 0x1C4
+	0x1B8, 0x1FCC, 0x1FA2, 0, 0x1CC, 0x34, 0, 0x22, 0x1CF
 };
 /* offset coefficients in s9 fixed point format */
 static u32 vpe_csc_601_to_709_bias_coeff[MAX_BIAS_COEFFS] = {
-    0x10, 0x10, 0x10
+    0x35, 0, 0x4
 };
 /* clamping value for Y/U/V([min,max] for Y/U/V) */
 static u32 vpe_csc_601_to_709_limit_coeff[MAX_LIMIT_COEFFS] = {
@@ -144,6 +144,14 @@ static const char *const perf_level[] = {
 	"Nominal",
 	"Performance",
 	"Turbo"
+};
+
+static const char *const intra_refresh_modes[] = {
+	"None",
+	"Cyclic",
+	"Adaptive",
+	"Cyclic Adaptive",
+	"Random"
 };
 
 enum msm_venc_ctrl_cluster {
@@ -587,6 +595,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		(1 << V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_CYCLIC_ADAPTIVE) |
 		(1 << V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_RANDOM)
 		),
+		.qmenu = intra_refresh_modes,
 		.cluster = MSM_VENC_CTRL_CLUSTER_INTRA_REFRESH,
 	},
 	{

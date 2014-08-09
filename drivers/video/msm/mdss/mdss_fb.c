@@ -120,31 +120,6 @@ void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 	complete(&mfd->no_update.comp);
 }
 
-void mdss_fb_bl_update_notify(struct msm_fb_data_type *mfd)
-{
-	if (!mfd) {
-		pr_err("%s mfd NULL\n", __func__);
-		return;
-	}
-	mutex_lock(&mfd->update.lock);
-	if (mfd->update.ref_count > 0) {
-		mutex_unlock(&mfd->update.lock);
-		mfd->update.value = NOTIFY_TYPE_BL_UPDATE;
-		complete(&mfd->update.comp);
-		mutex_lock(&mfd->update.lock);
-	}
-	mutex_unlock(&mfd->update.lock);
-
-	mutex_lock(&mfd->no_update.lock);
-	if (mfd->no_update.ref_count > 0) {
-		mutex_unlock(&mfd->no_update.lock);
-		mfd->no_update.value = NOTIFY_TYPE_BL_UPDATE;
-		complete(&mfd->no_update.comp);
-		mutex_lock(&mfd->no_update.lock);
-	}
-	mutex_unlock(&mfd->no_update.lock);
-}
-
 static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 							unsigned long *argp)
 {
@@ -162,25 +137,13 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 
 	if (notify == NOTIFY_UPDATE_START) {
 		INIT_COMPLETION(mfd->update.comp);
-		mutex_lock(&mfd->update.lock);
-		mfd->update.ref_count++;
-		mutex_unlock(&mfd->update.lock);
 		ret = wait_for_completion_interruptible_timeout(
 						&mfd->update.comp, 4 * HZ);
-		mutex_lock(&mfd->update.lock);
-		mfd->update.ref_count--;
-		mutex_unlock(&mfd->update.lock);
 		to_user = (unsigned int)mfd->update.value;
 	} else if (notify == NOTIFY_UPDATE_STOP) {
 		INIT_COMPLETION(mfd->no_update.comp);
-		mutex_lock(&mfd->no_update.lock);
-		mfd->no_update.ref_count++;
-		mutex_unlock(&mfd->no_update.lock);
 		ret = wait_for_completion_interruptible_timeout(
 						&mfd->no_update.comp, 4 * HZ);
-		mutex_lock(&mfd->no_update.lock);
-		mfd->no_update.ref_count--;
-		mutex_unlock(&mfd->no_update.lock);
 		to_user = (unsigned int)mfd->no_update.value;
 	} else {
 		if (mfd->panel_power_on) {
@@ -380,14 +343,75 @@ static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 	return ret;
 }
 
+static void __mdss_fb_idle_notify_work(struct work_struct *work)
+{
+	struct delayed_work *dw = to_delayed_work(work);
+	struct msm_fb_data_type *mfd = container_of(dw, struct msm_fb_data_type,
+		idle_notify_work);
+
+	/* Notify idle-ness here */
+	pr_debug("Idle timeout %dms expired!\n", mfd->idle_time);
+	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "idle_notify");
+}
+
+static ssize_t mdss_fb_get_idle_time(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	int ret;
+
+	ret = scnprintf(buf, PAGE_SIZE, "%d", mfd->idle_time);
+
+	return ret;
+}
+
+static ssize_t mdss_fb_set_idle_time(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	int rc = 0;
+	int idle_time = 0;
+
+	rc = kstrtoint(buf, 10, &idle_time);
+	if (rc) {
+		pr_err("kstrtoint failed. rc=%d\n", rc);
+		return rc;
+	}
+
+	pr_debug("Idle time = %d\n", idle_time);
+	mfd->idle_time = idle_time;
+
+	return count;
+}
+
+static ssize_t mdss_fb_get_idle_notify(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	int ret;
+
+	ret = scnprintf(buf, PAGE_SIZE, "%s",
+		work_busy(&mfd->idle_notify_work.work) ? "no" : "yes");
+
+	return ret;
+}
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO, mdss_fb_get_split, NULL);
 static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
+static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
+	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
+static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
 	&dev_attr_msm_fb_split.attr,
 	&dev_attr_show_blank_event.attr,
+	&dev_attr_idle_time.attr,
+	&dev_attr_idle_notify.attr,
 	NULL,
 };
 
@@ -543,6 +567,8 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		mfd->mdp_sync_pt_data.retire_threshold = 0;
 		break;
 	}
+
+	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
 	return rc;
 }
@@ -822,7 +848,6 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			mutex_unlock(&mfd->bl_lock);
 			/* Will trigger ad_setup which will grab bl_lock */
 			update_ad_input(mfd);
-			mdss_fb_bl_update_notify(mfd);
 			mutex_lock(&mfd->bl_lock);
 		}
 	}
@@ -885,6 +910,11 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mutex_lock(&mfd->update.lock);
 			mfd->update.type = NOTIFY_TYPE_UPDATE;
 			mutex_unlock(&mfd->update.lock);
+
+			/* Start the work thread to signal idle time */
+			if (mfd->idle_time)
+				schedule_delayed_work(&mfd->idle_notify_work,
+					msecs_to_jiffies(mfd->idle_time));
 		}
 		break;
 
@@ -925,6 +955,9 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	
 	pr_info("FB_NUM:%d, MDSS_FB_%s -- \n", mfd->panel_info->fb_num,
 			blank_mode ? "BLANK": "UNBLANK");
+
+	/* Notify listeners */
+	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
 
 	return ret;
 }
@@ -1349,8 +1382,6 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
 	mfd->no_update.timer.data = (unsigned long)mfd;
-	mfd->update.ref_count = 0;
-	mfd->no_update.ref_count = 0;
 	init_completion(&mfd->update.comp);
 	init_completion(&mfd->no_update.comp);
 	init_completion(&mfd->power_off_comp);
@@ -1697,10 +1728,20 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 		unsigned long event, void *data)
 {
 	struct msm_sync_pt_data *sync_pt_data;
+	struct msm_fb_data_type *mfd;
 
 	sync_pt_data = container_of(p, struct msm_sync_pt_data, notifier);
+	mfd = container_of(sync_pt_data, struct msm_fb_data_type,
+		mdp_sync_pt_data);
 
 	switch (event) {
+	case MDP_NOTIFY_FRAME_BEGIN:
+		if (mfd->idle_time) {
+			cancel_delayed_work_sync(&mfd->idle_notify_work);
+			schedule_delayed_work(&mfd->idle_notify_work,
+				msecs_to_jiffies(mfd->idle_time));
+		}
+		break;
 	case MDP_NOTIFY_FRAME_READY:
 		if (sync_pt_data->async_wait_fences)
 			mdss_fb_wait_for_fence(sync_pt_data);

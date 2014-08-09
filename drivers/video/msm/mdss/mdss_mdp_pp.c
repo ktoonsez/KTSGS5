@@ -1641,7 +1641,7 @@ int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 	if (mdata->nad_cfgs == 0)
 		valid_mixers = false;
 	for (i = 0; i < mixer_cnt && valid_mixers; i++) {
-		if (mixer_id[i] > mdata->nad_cfgs)
+		if (mixer_id[i] >= mdata->nad_cfgs)
 			valid_mixers = false;
 	}
 	if (valid_mixers && (mixer_cnt <= mdata->nmax_concurrent_ad_hw)) {
@@ -3020,10 +3020,9 @@ int mdss_mdp_hist_start(struct mdp_histogram_start_req *req)
 			pipe = mdss_mdp_pipe_get(mdata, BIT(i));
 			if (IS_ERR_OR_NULL(pipe))
 				continue;
-			if (pipe->num > MDSS_MDP_SSPP_VIG2) {
+			if (!pipe || pipe->num > MDSS_MDP_SSPP_VIG2) {
 				ret = -EINVAL;
 				pr_warn("Invalid Hist pipe (%d)", i);
-				mdss_mdp_pipe_unmap(pipe);
 				goto hist_stop_clk;
 			}
 			done_shift_bit = (pipe->num * 4);
@@ -3120,11 +3119,8 @@ int mdss_mdp_hist_stop(u32 block)
 			if (!PP_ARG(i, block))
 				continue;
 			pipe = mdss_mdp_pipe_get(mdata, BIT(i));
-			if (IS_ERR_OR_NULL(pipe)) {
-				pr_warn("Invalid Hist pipe (%d)", i);
-				continue;
-			} else if (pipe->num > MDSS_MDP_SSPP_VIG2) {
-				mdss_mdp_pipe_unmap(pipe);
+			if (IS_ERR_OR_NULL(pipe) ||
+					pipe->num > MDSS_MDP_SSPP_VIG2) {
 				pr_warn("Invalid Hist pipe (%d)", i);
 				continue;
 			}
@@ -3518,11 +3514,8 @@ int mdss_mdp_hist_collect(struct mdp_histogram_data *hist)
 				continue;
 			pipe_cnt++;
 			pipe = mdss_mdp_pipe_get(mdata, BIT(i));
-			if (IS_ERR_OR_NULL(pipe)) {
-				pr_warn("Invalid Hist pipe (%d)", i);
-				continue;
-			} else if (pipe->num > MDSS_MDP_SSPP_VIG2) {
-				mdss_mdp_pipe_unmap(pipe);
+			if (IS_ERR_OR_NULL(pipe) ||
+					pipe->num > MDSS_MDP_SSPP_VIG2) {
 				pr_warn("Invalid Hist pipe (%d)", i);
 				continue;
 			}
@@ -3530,18 +3523,14 @@ int mdss_mdp_hist_collect(struct mdp_histogram_data *hist)
 			spin_lock_irqsave(&hist_info->hist_lock, flag);
 			hist_info->read_request = 1;
 			spin_unlock_irqrestore(&hist_info->hist_lock, flag);
-			mdss_mdp_pipe_unmap(pipe);
 		}
 		for (i = pipe_num; i < MDSS_PP_ARG_NUM; i++) {
 			if (!PP_ARG(i, hist->block))
 				continue;
 			pipe_cnt++;
 			pipe = mdss_mdp_pipe_get(mdata, BIT(i));
-			if (IS_ERR_OR_NULL(pipe)) {
-				pr_warn("Invalid Hist pipe (%d)", i);
-				continue;
-			} else if (pipe->num > MDSS_MDP_SSPP_VIG2) {
-				mdss_mdp_pipe_unmap(pipe);
+			if (IS_ERR_OR_NULL(pipe) ||
+					pipe->num > MDSS_MDP_SSPP_VIG2) {
 				pr_warn("Invalid Hist pipe (%d)", i);
 				continue;
 			}
@@ -3559,11 +3548,8 @@ int mdss_mdp_hist_collect(struct mdp_histogram_data *hist)
 				continue;
 			pipe_cnt++;
 			pipe = mdss_mdp_pipe_get(mdata, BIT(i));
-			if (IS_ERR_OR_NULL(pipe)) {
-				pr_warn("Invalid Hist pipe (%d)", i);
-				continue;
-			} else if (pipe->num > MDSS_MDP_SSPP_VIG2) {
-				mdss_mdp_pipe_unmap(pipe);
+			if (IS_ERR_OR_NULL(pipe) ||
+					pipe->num > MDSS_MDP_SSPP_VIG2) {
 				pr_warn("Invalid Hist pipe (%d)", i);
 				continue;
 			}
@@ -3572,7 +3558,6 @@ int mdss_mdp_hist_collect(struct mdp_histogram_data *hist)
 			hist_info->read_request = 0;
 			INIT_COMPLETION(hist_info->comp);
 			spin_unlock_irqrestore(&hist_info->hist_lock, flag);
-			mdss_mdp_pipe_unmap(pipe);
 		}
 		if (ret || temp_ret) {
 			ret = ret ? ret : temp_ret;
@@ -3600,10 +3585,6 @@ int mdss_mdp_hist_collect(struct mdp_histogram_data *hist)
 				if (!PP_ARG(i, hist->block))
 					continue;
 				pipe = mdss_mdp_pipe_get(mdata, BIT(i));
-				if (IS_ERR_OR_NULL(pipe)) {
-					pr_warn("Invalid Hist pipe (%d)", i);
-					continue;
-				}
 				hist_info  = &pipe->pp_res.hist;
 				off = HIST_V_SIZE * i;
 				mutex_lock(&hist_info->hist_mutex);
@@ -3851,7 +3832,6 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 			struct mdss_ad_init_cfg *init_cfg)
 {
 	struct mdss_ad_info *ad;
-	struct mdss_mdp_ctl *ctl;
 	struct msm_fb_data_type *bl_mfd;
 	int lin_ret = -1, inv_ret = -1, att_ret = -1, ret = 0;
 	u32 ratio_temp, shift = 0, last_ops;
@@ -3879,10 +3859,12 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 		if (init_cfg->params.init.bl_lin_len == AD_BL_LIN_LEN) {
 			lin_ret = copy_from_user(&ad->bl_lin,
 				init_cfg->params.init.bl_lin,
-				AD_BL_LIN_LEN * sizeof(uint32_t));
+				init_cfg->params.init.bl_lin_len *
+				sizeof(uint32_t));
 			inv_ret = copy_from_user(&ad->bl_lin_inv,
 				init_cfg->params.init.bl_lin_inv,
-				AD_BL_LIN_LEN * sizeof(uint32_t));
+				init_cfg->params.init.bl_lin_len *
+				sizeof(uint32_t));
 			if (lin_ret || inv_ret)
 				ret = -ENOMEM;
 			ratio_temp =  mfd->panel_info->bl_max / AD_BL_LIN_LEN;
@@ -3891,13 +3873,14 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 				shift++;
 			}
 			ad->bl_bright_shift = shift;
-		} else if (init_cfg->params.init.bl_lin_len) {
+		} else {
 			ret = -EINVAL;
 		}
-		if (!lin_ret && !inv_ret)
+		if (ret) {
+			ad->state &= ~PP_AD_STATE_BL_LIN;
+			goto ad_config_exit;
+		} else
 			ad->state |= PP_AD_STATE_BL_LIN;
-		else
-			ad->state &= !PP_AD_STATE_BL_LIN;
 
 		if ((init_cfg->params.init.bl_att_len == AD_BL_ATT_LUT_LEN) &&
 			(init_cfg->params.init.bl_att_lut)) {
@@ -3958,7 +3941,6 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 	}
 ad_config_exit:
 	mutex_unlock(&ad->lock);
-	ctl = mfd_to_ctl(mfd);
 	return ret;
 }
 
@@ -4481,7 +4463,7 @@ static void pp_ad_calc_worker(struct work_struct *work)
 	ctl = mfd_to_ctl(ad->mfd);
 	mdata = mfd_to_mdata(ad->mfd);
 
-	if (!mdata || ad->calc_hw_num > mdata->nad_cfgs) {
+	if (!mdata || ad->calc_hw_num >= mdata->nad_cfgs) {
 		mutex_unlock(&ad->lock);
 		return;
 	}

@@ -22,11 +22,6 @@
 
 #if defined(CONFIG_SEC_K_PROJECT)
 	extern int sec_qcom_usb_rdrv;
-	extern void force_dwc3_gadget_disconnect(void);
-#endif
-
-#if defined(CONFIG_SEC_KACTIVE_PROJECT)
-	extern void force_dwc3_gadget_disconnect(void);
 #endif
 
 struct dwc3_sec {
@@ -428,18 +423,8 @@ static void sec_usb_work(int usb_mode)
 		sec_qcom_usb_rdrv,
 		usb_mode);
 	if(!usb_mode)
-	{
 /* USB3.0 Popup option */
 		usb30en = 0;
-#if !defined(CONFIG_SEC_LOCALE_CHN)
-		force_dwc3_gadget_disconnect();
-#endif
-	}
-#endif
-
-#if defined(CONFIG_SEC_KACTIVE_PROJECT)
-	if(!usb_mode)
-		force_dwc3_gadget_disconnect();
 #endif
 
 	psy = power_supply_get_by_name("dwc-usb");

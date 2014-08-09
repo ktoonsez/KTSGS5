@@ -1139,6 +1139,14 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	return rc;
 }
 
+/**
+ * mdss_mdp_footswitch_ctrl_splash() - clocks handoff for cont. splash screen
+ * @on: 1 to start handoff, 0 to complete the handoff after first frame update
+ *
+ * MDSS Clocks and GDSC are already on during continous splash screen, but
+ * increasing ref count will keep clocks from being turned off until handoff
+ * has properly happend after frame update.
+ */
 void mdss_mdp_footswitch_ctrl_splash(int on)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
@@ -1146,9 +1154,11 @@ void mdss_mdp_footswitch_ctrl_splash(int on)
 		if (on) {
 			pr_debug("Enable MDP FS for splash.\n");
 			regulator_enable(mdata->fs);
+			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 			mdss_hw_init(mdata);
 		} else {
 			pr_debug("Disable MDP FS for splash.\n");
+			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 			regulator_disable(mdata->fs);
 		}
 	} else {
@@ -1173,6 +1183,7 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 	SPRINT("dma_pipes=%d\n", mdata->ndma_pipes);
 	SPRINT("smp_count=%d\n", mdata->smp_mb_cnt);
 	SPRINT("smp_size=%d\n", mdata->smp_mb_size);
+	SPRINT("smp_mb_per_pipe=%d\n", mdata->smp_mb_per_pipe);
 	SPRINT("max_downscale_ratio=%d\n", MAX_DOWNSCALE_RATIO);
 	SPRINT("max_upscale_ratio=%d\n", MAX_UPSCALE_RATIO);
 	if (mdata->max_bw_low)

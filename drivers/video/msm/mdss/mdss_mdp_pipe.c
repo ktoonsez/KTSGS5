@@ -633,13 +633,17 @@ static int mdss_mdp_pipe_free(struct mdss_mdp_pipe *pipe)
 	pr_debug("ndx=%x pnum=%d ref_cnt=%d\n", pipe->ndx, pipe->num,
 			atomic_read(&pipe->ref_cnt));
 
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
-	mdss_mdp_pipe_sspp_term(pipe);
-	mdss_mdp_smp_free(pipe);
+	if (pipe->play_cnt) {
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+		mdss_mdp_pipe_sspp_term(pipe);
+		mdss_mdp_smp_free(pipe);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+	} else {
+		mdss_mdp_smp_unreserve(pipe);
+	}
+
 	pipe->flags = 0;
 	pipe->bwc_mode = 0;
-
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 
 	return 0;
 }
@@ -716,6 +720,7 @@ int mdss_mdp_pipe_handoff(struct mdss_mdp_pipe *pipe)
 		pipe->src_fmt->bpp);
 
 	pipe->is_handed_off = true;
+	pipe->play_cnt = 1;
 	atomic_inc(&pipe->ref_cnt);
 
 error:
@@ -958,7 +963,7 @@ static int mdss_mdp_src_addr_setup(struct mdss_mdp_pipe *pipe,
 static int mdss_mdp_pipe_solidfill_setup(struct mdss_mdp_pipe *pipe)
 {
 	int ret;
-	u32 secure, format;
+	u32 secure, format, unpack;
 
 	pr_debug("solid fill setup on pnum=%d\n", pipe->num);
 
@@ -971,9 +976,13 @@ static int mdss_mdp_pipe_solidfill_setup(struct mdss_mdp_pipe *pipe)
 	format = MDSS_MDP_FMT_SOLID_FILL;
 	secure = (pipe->flags & MDP_SECURE_OVERLAY_SESSION ? 0xF : 0x0);
 
+	/* support ARGB color format only */
+	unpack = (C3_ALPHA << 24) | (C2_R_Cr << 16) |
+		(C1_B_Cb << 8) | (C0_G_Y << 0);
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_FORMAT, format);
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_CONSTANT_COLOR,
 		pipe->bg_color);
+	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_UNPACK_PATTERN, unpack);
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_ADDR_SW_STATUS, secure);
 
 	return 0;

@@ -64,8 +64,6 @@ u8 pre_csc_update = 0xFF;
 
 #define MEM_PROTECT_SD_CTRL 0xF
 
-#define OVERLAY_MAX 10
-
 struct sd_ctrl_req {
 	unsigned int enable;
 } __attribute__ ((__packed__));
@@ -703,6 +701,7 @@ int mdss_mdp_overlay_get_buf(struct msm_fb_data_type *mfd,
 	if ((num_planes <= 0) || (num_planes > MAX_PLANES))
 		return -EINVAL;
 
+	mdss_bus_bandwidth_ctrl(1);
 	memset(data, 0, sizeof(*data));
 	for (i = 0; i < num_planes; i++) {
 		data->p[i].flags = flags;
@@ -716,6 +715,7 @@ int mdss_mdp_overlay_get_buf(struct msm_fb_data_type *mfd,
 			break;
 		}
 	}
+	mdss_bus_bandwidth_ctrl(0);
 
 	data->num_planes = i;
 
@@ -725,8 +725,11 @@ int mdss_mdp_overlay_get_buf(struct msm_fb_data_type *mfd,
 int mdss_mdp_overlay_free_buf(struct mdss_mdp_data *data)
 {
 	int i;
+
+	mdss_bus_bandwidth_ctrl(1);
 	for (i = 0; i < data->num_planes && data->p[i].len; i++)
 		mdss_mdp_put_img(&data->p[i]);
+	mdss_bus_bandwidth_ctrl(0);
 
 	data->num_planes = 0;
 
@@ -999,6 +1002,11 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	int ret = 0;
 	int sd_in_pipe = 0;
 
+	if (!ctl) {
+		pr_warn("kickoff on fb=%d without a ctl attched\n", mfd->index);
+		return ret;
+	}
+
 	if (ctl->shared_lock)
 		mutex_lock(ctl->shared_lock);
 
@@ -1187,7 +1195,7 @@ static int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
 	struct mdss_mdp_pipe *pipe;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	u32 pipe_ndx, unset_ndx = 0;
-	int i;
+	int i, destroy_pipe;
 
 	for (i = 0; unset_ndx != ndx && i < MDSS_MDP_MAX_SSPP; i++) {
 		pipe_ndx = BIT(i);
@@ -1198,16 +1206,22 @@ static int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
 				pr_warn("unknown pipe ndx=%x\n", pipe_ndx);
 				continue;
 			}
+
 			mutex_lock(&mfd->lock);
 			pipe->pid = 0;
+			destroy_pipe = pipe->play_cnt == 0;
+
 			if (!list_empty(&pipe->used_list)) {
 				list_del_init(&pipe->used_list);
-				list_add(&pipe->cleanup_list,
-					&mdp5_data->pipes_cleanup);
+				if (!destroy_pipe)
+					list_add(&pipe->cleanup_list,
+						&mdp5_data->pipes_cleanup);
 			}
 			mutex_unlock(&mfd->lock);
 			mdss_mdp_mixer_pipe_unstage(pipe);
 			mdss_mdp_pipe_unmap(pipe);
+			if (destroy_pipe)
+				mdss_mdp_pipe_destroy(pipe);
 		}
 	}
 	return 0;
@@ -1540,7 +1554,6 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 		return;
 	}
 
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	bpp = fbi->var.bits_per_pixel / 8;
 	offset = fbi->var.xoffset * bpp +
 		 fbi->var.yoffset * fbi->fix.line_length;
@@ -1605,11 +1618,9 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 	    (fbi->var.activate & FB_ACTIVATE_FORCE))
 		mfd->mdp.kickoff_fnc(mfd, NULL);
 
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	return;
 
 pan_display_error:
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	mutex_unlock(&mdp5_data->ov_lock);
 }
 
@@ -2329,17 +2340,11 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		void __user *argp)
 {
 	struct mdp_overlay_list ovlist;
-	struct mdp_overlay *req_list[OVERLAY_MAX];
 	struct mdp_overlay *overlays;
 	int i, ret;
 
 	if (copy_from_user(&ovlist, argp, sizeof(ovlist)))
 		return -EFAULT;
-
-	if (ovlist.num_overlays >= OVERLAY_MAX) {
-		pr_err("Number of overlays exceeds max\n");
-		return -EINVAL;
-	}
 
 	overlays = kmalloc(ovlist.num_overlays * sizeof(*overlays), GFP_KERNEL);
 	if (!overlays) {
@@ -2347,14 +2352,8 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		return -ENOMEM;
 	}
 
-	if (copy_from_user(req_list, ovlist.overlay_list,
-				sizeof(struct mdp_overlay*) * ovlist.num_overlays)) {
-		ret = -EFAULT;
-		goto validate_exit;
-	}
-
 	for (i = 0; i < ovlist.num_overlays; i++) {
-		if (copy_from_user(overlays + i, req_list[i],
+		if (copy_from_user(overlays + i, ovlist.overlay_list[i],
 				sizeof(struct mdp_overlay))) {
 			ret = -EFAULT;
 			goto validate_exit;
@@ -2364,7 +2363,7 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 	ret = __handle_overlay_prepare(mfd, &ovlist, overlays);
 	if (!IS_ERR_VALUE(ret)) {
 		for (i = 0; i < ovlist.num_overlays; i++) {
-			if (copy_to_user(req_list[i], overlays + i,
+			if (copy_to_user(ovlist.overlay_list[i], overlays + i,
 					sizeof(struct mdp_overlay))) {
 				ret = -EFAULT;
 				goto validate_exit;

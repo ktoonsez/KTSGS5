@@ -78,7 +78,6 @@ struct disp_info_notify {
 	struct completion comp;
 	struct mutex lock;
 	int value;
-	int ref_count;
 };
 
 struct msm_sync_pt_data {
@@ -160,6 +159,9 @@ struct msm_fb_data_type {
 	u32 dest;
 	struct fb_info *fbi;
 
+	int idle_time;
+	struct delayed_work idle_notify_work;
+
 	int op_enable;
 	u32 fb_imgType;
 	int panel_reconfig;
@@ -230,8 +232,8 @@ struct msm_fb_data_type {
 
 	u32 dcm_state;
 	struct list_head proc_list;
-
 	u32 wait_for_kickoff;
+
 	int blank_mode;
 };
 

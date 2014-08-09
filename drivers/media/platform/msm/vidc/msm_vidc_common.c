@@ -38,6 +38,14 @@
 	(__height >> 4) * (__width >> 4) * __fps; \
 })
 
+#define VIDC_BUS_LOAD(__height, __width, __fps, __br) ({\
+	__height * __width * __fps; \
+})
+
+#define GET_NUM_MBS(__h, __w) ({\
+	u32 __mbs = (__h >> 4) * (__w >> 4);\
+	__mbs;\
+})
 static bool is_turbo_requested(struct msm_vidc_core *core,
 		enum session_type type)
 {
@@ -1430,8 +1438,8 @@ void msm_comm_scale_clocks_and_bus(struct msm_vidc_inst *inst)
 
 static inline unsigned long get_ocmem_requirement(u32 height, u32 width)
 {
-	//int num_mbs = 0;
-	//num_mbs = GET_NUM_MBS(height, width);
+	int num_mbs = 0;
+	num_mbs = GET_NUM_MBS(height, width);
 	/*TODO: This should be changes once the numbers are
 	 * available from firmware*/
 	return 512 * 1024;
