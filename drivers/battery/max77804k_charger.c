@@ -920,6 +920,62 @@ static int sec_chg_get_property(struct power_supply *psy,
 	return 0;
 }
 
+static bool check_fastcharge(struct max77804k_charger_data *charger)
+{
+	bool ret = false;
+	int charge_current = 0;
+
+	/* We are in basic Fast Charge mode, so we substitute AC to USB
+	   levels */
+	if (force_fast_charge == FAST_CHARGE_FORCE_AC) {
+		switch(charger->cable_type) {
+			/* These are low current USB connections,
+			   apply 1.A level to USB */
+			case POWER_SUPPLY_TYPE_USB:
+			case POWER_SUPPLY_TYPE_USB_ACA:
+			case POWER_SUPPLY_TYPE_CARDOCK:
+			case POWER_SUPPLY_TYPE_OTG:
+				charge_current = USB_CHARGE_1000;
+				ret = true;
+				break;
+
+		}
+	/* We are in advanced Fast Charge mode, so we apply custom charging
+	   levels for both AC and USB */
+	} else if (force_fast_charge == FAST_CHARGE_FORCE_CUSTOM_MA) {
+		switch(charger->cable_type) {
+			/* These are USB connections, apply custom USB current
+			   for all of them */
+			case POWER_SUPPLY_TYPE_USB:
+			case POWER_SUPPLY_TYPE_USB_DCP:
+			case POWER_SUPPLY_TYPE_USB_CDP:
+			case POWER_SUPPLY_TYPE_USB_ACA:
+			case POWER_SUPPLY_TYPE_CARDOCK:
+			case POWER_SUPPLY_TYPE_OTG:
+				charge_current = usb_charge_level;
+				ret = true;
+				break;
+			/* These are AC connections, apply custom AC current
+			   for all of them */
+			case POWER_SUPPLY_TYPE_MAINS:
+				/* but never go above 2.2A */
+				charge_current = min(ac_charge_level, MAX_CHARGE_LEVEL);
+				ret = true;
+				break;
+			/* Don't do anything for any other kind of connections
+			   and don't touch when type is unknown */
+			default:
+				break;
+		}
+	}
+	if (ret)
+	{
+		max77804k_set_input_current(charger, charge_current);
+		max77804k_set_charge_current(charger, charge_current);
+	}
+	return ret;
+}
+
 static int sec_chg_set_property(struct power_supply *psy,
 		enum power_supply_property psp,
 		const union power_supply_propval *val)
@@ -931,7 +987,6 @@ static int sec_chg_set_property(struct power_supply *psy,
 	const int usb_charging_current = charger->pdata->charging_current[
 		POWER_SUPPLY_TYPE_USB].fast_charging_current;
 	u8 chg_cnfg_00;
-	int charge_current = 0;
 	int current_now = 0;
 	
 	switch (psp) {
@@ -1054,53 +1109,8 @@ static int sec_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		charger->siop_level = val->intval;
 		if (charger->is_charging) {
-			/* We are in basic Fast Charge mode, so we substitute AC to USB
-			   levels */
-			if (force_fast_charge == FAST_CHARGE_FORCE_AC) {
-				switch(charger->cable_type) {
-					/* These are low current USB connections,
-					   apply 1.A level to USB */
-					case POWER_SUPPLY_TYPE_USB:
-					case POWER_SUPPLY_TYPE_USB_ACA:
-					case POWER_SUPPLY_TYPE_CARDOCK:
-					case POWER_SUPPLY_TYPE_OTG:
-						charge_current = USB_CHARGE_1000;
-						current_now = charge_current;
-						goto got_override;
-						break;
-
-				}
-			/* We are in advanced Fast Charge mode, so we apply custom charging
-			   levels for both AC and USB */
-			} else if (force_fast_charge == FAST_CHARGE_FORCE_CUSTOM_MA) {
-				switch(charger->cable_type) {
-					/* These are USB connections, apply custom USB current
-					   for all of them */
-					case POWER_SUPPLY_TYPE_USB:
-					case POWER_SUPPLY_TYPE_USB_DCP:
-					case POWER_SUPPLY_TYPE_USB_CDP:
-					case POWER_SUPPLY_TYPE_USB_ACA:
-					case POWER_SUPPLY_TYPE_CARDOCK:
-					case POWER_SUPPLY_TYPE_OTG:
-						charge_current = usb_charge_level;
-						current_now = charge_current;
-						goto got_override;
-						break;
-					/* These are AC connections, apply custom AC current
-					   for all of them */
-					case POWER_SUPPLY_TYPE_MAINS:
-						/* but never go above 2.2A */
-						charge_current = min(ac_charge_level, MAX_CHARGE_LEVEL);
-						current_now = charge_current;
-						goto got_override;
-						break;
-					/* Don't do anything for any other kind of connections
-					   and don't touch when type is unknown */
-					default:
-						break;
-				}
-			}
-
+			if (check_fastcharge(charger))
+				goto got_override;
 		
 			/* decrease the charging current according to siop level */
 			current_now = charger->charging_current * val->intval / 100;
@@ -1137,11 +1147,9 @@ static int sec_chg_set_property(struct power_supply *psy,
 				max77804k_set_input_current(charger,
 					set_charging_current_max);
 			}
-got_override:
-			if (charge_current)
-				max77804k_set_input_current(charger, charge_current);
 			max77804k_set_charge_current(charger, current_now);
 		}
+got_override:
 		break;
 #if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
