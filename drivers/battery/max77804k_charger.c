@@ -924,6 +924,15 @@ static bool check_fastcharge(struct max77804k_charger_data *charger)
 {
 	bool ret = false;
 	int charge_current = 0;
+	union power_supply_propval value;
+	psy_do_property("ps", get, POWER_SUPPLY_PROP_STATUS, value)
+	
+	//Check for battery issues
+	if (value.intval == POWER_SUPPLY_HEALTH_UNSPEC_FAILURE || value.intval == POWER_SUPPLY_HEALTH_OVERHEATLIMIT)
+	{
+		max77804k_set_input_current(charger, 0);
+		return ret;
+	}
 
 	/* We are in basic Fast Charge mode, so we substitute AC to USB
 	   levels */
