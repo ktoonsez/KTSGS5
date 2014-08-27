@@ -345,14 +345,21 @@ void __init f2fs_create_root_stats(void)
 
 	f2fs_debugfs_root = debugfs_create_dir("f2fs", NULL);
 	if (!f2fs_debugfs_root)
-		return;
+		goto bail;
 
 	file = debugfs_create_file("status", S_IRUGO, f2fs_debugfs_root,
 			NULL, &stat_fops);
-	if (!file) {
-		debugfs_remove(f2fs_debugfs_root);
-		f2fs_debugfs_root = NULL;
-	}
+	if (!file)
+		goto free_debugfs_dir;
+
+	return;
+
+free_debugfs_dir:
+	debugfs_remove(f2fs_debugfs_root);
+
+bail:
+	f2fs_debugfs_root = NULL;
+	return;
 }
 
 void f2fs_destroy_root_stats(void)
