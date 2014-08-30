@@ -17,7 +17,6 @@
  *
  */
 
-#include <linux/cpufreq_kt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>

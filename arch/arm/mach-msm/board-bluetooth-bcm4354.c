@@ -216,8 +216,8 @@ static int bcm4354_bt_rfkill_set_power(void *data, bool blocked)
         }
 #endif
         pr_err("[BT] Bluetooth Power Off.\n");
-	set_bluetooth_state(0);
-	
+		set_bluetooth_state(0);
+
         ret = gpio_direction_output(FPGA_GPIO_BT_EN, 0);
   	    if (ret)
             pr_err("[BT] failed to set BT_EN.\n");

@@ -83,6 +83,8 @@
 #define LED_B_CURRENT		0x28
 #define LED_MAX_CURRENT		0xFF
 #define LED_OFF				0x00
+u32 led_default_cur = 0x28;
+u32 led_lowpower_cur = 0x05;
 
 #define	MAX_NUM_LEDS	3
 
@@ -1382,6 +1384,31 @@ static struct attribute_group sec_led_attr_group = {
 };
 #endif
 
+#ifdef CONFIG_OF
+static int an30259a_parse_dt(struct device *dev) {
+	struct device_node *np = dev->of_node;
+	int ret;
+
+	ret = of_property_read_u32(np,
+			"an30259a,default_current", &led_default_cur);
+	if (ret < 0) {
+		led_default_cur = 0x28;
+		pr_warning("%s warning dt parse[%d]\n", __func__, ret);
+	}
+
+	ret = of_property_read_u32(np,
+			"an30259a,lowpower_current", &led_lowpower_cur);
+	if (ret < 0) {
+		led_lowpower_cur = 0x05;
+		pr_warning("%s warning dt parse[%d]\n", __func__, ret);
+	}
+
+	pr_info("%s default %d, lowpower %d\n",
+			__func__, led_default_cur, led_lowpower_cur);
+	return 0;
+}
+#endif
+
 static int __devinit an30259a_initialize(struct i2c_client *client,
 					struct an30259a_led *led, int channel)
 {
@@ -1461,6 +1488,14 @@ static int __devinit an30259a_probe(struct i2c_client *client,
 			"failed to allocate driver data.\n");
 		return -ENOMEM;
 	}
+#ifdef CONFIG_OF
+	ret = an30259a_parse_dt(&client->dev);
+	if (ret) {
+		pr_err("[%s] an30259a parse dt failed\n", __func__);
+		kfree(data);
+		return ret;
+	}
+#endif
 
 	i2c_set_clientdata(client, data);
 	data->client = client;
@@ -1468,6 +1503,7 @@ static int __devinit an30259a_probe(struct i2c_client *client,
 
 	mutex_init(&data->mutex);
 	/* initialize LED */
+
 	for (i = 0; i < MAX_NUM_LEDS; i++) {
 
 		ret = an30259a_initialize(client, &data->leds[i], i);

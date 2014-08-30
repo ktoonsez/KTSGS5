@@ -368,6 +368,11 @@ static int synaptics_parse_dt(struct device *dev,
 		dev_info(dev, "%s: Unable to read synaptics,tsp-project\n", __func__);
 		dt_data->project = "0";
 	}
+	rc = of_property_read_string(np, "synaptics,sub-project", &dt_data->sub_project);
+	if (rc < 0) {
+		dev_info(dev, "%s: Unable to read synaptics,sub-project\n", __func__);
+		dt_data->sub_project = "0";
+	}
 
 	if (dt_data->extra_config[2] > 0)
 		pr_err("%s: OCTA ID = %d\n", __func__, gpio_get_value(dt_data->extra_config[2]));
@@ -1620,7 +1625,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	unsigned short d_len;
 #endif
 	unsigned char tool_type = MT_TOOL_FINGER;
-	
+
 	fingers_to_process = fhandler->num_of_data_points;
 	data_addr = fhandler->full_addr.data_base;
 	extra_data = (struct synaptics_rmi4_f12_extra_data *)fhandler->extra;
@@ -5002,11 +5007,18 @@ static void synaptics_get_firmware_name(struct synaptics_rmi4_data *rmi4_data)
 					rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 				}
 			} else if (rmi4_data->ic_revision_of_ic == SYNAPTICS_IC_REVISION_A3) {
-				/* revision A3 Firmware is not fixed. */
-				if ((strncmp(rmi->product_id_string, "s5100 A3 F", 10) == 0))
-					rmi4_data->firmware_name = FW_IMAGE_NAME_S5100_K_A3;
-				else
-					rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
+				if (strncmp(rmi4_data->dt_data->sub_project, "0", 1) != 0) {
+					if ((strncmp(rmi4_data->dt_data->sub_project, "active", 6) == 0) ||
+						(strncmp(rmi4_data->dt_data->sub_project, "sports", 6) == 0))
+						rmi4_data->firmware_name = FW_IMAGE_NAME_S5100_K_ACTIVE;
+					else
+						rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
+				} else {
+					if ((strncmp(rmi->product_id_string, "s5100 A3 F", 10) == 0))
+						rmi4_data->firmware_name = FW_IMAGE_NAME_S5100_K_A3;
+					else
+						rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
+				}
 			} else {
 				rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 			}
@@ -5154,7 +5166,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 				__func__);
 		return -ENOMEM;
 	}
-	
+
 	rmi = &(rmi4_data->rmi4_mod_info);
 
 	rmi4_data->dt_data = dt_data;
@@ -5196,7 +5208,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	mutex_init(&(rmi4_data->rmi4_reset_mutex));
 	mutex_init(&(rmi4_data->rmi4_reflash_mutex));
 	mutex_init(&(rmi4_data->rmi4_device_mutex));
-	
+
 #ifdef USE_HOVER_REZERO
 	INIT_DELAYED_WORK(&rmi4_data->rezero_work, synaptics_rmi4_rezero_work);
 #endif
@@ -5264,7 +5276,7 @@ err_tsp_reboot:
 				__func__);
 		goto err_enable_irq;
 	}
-	
+
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		retval = sysfs_create_file(&rmi4_data->input_dev->dev.kobj,
 				&attrs[attr_count].attr);
@@ -5885,7 +5897,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	dev_dbg(&rmi4_data->i2c_client->dev, "%s\n", __func__);
 
 	mutex_lock(&rmi4_data->input_dev->mutex);
-	
+
 	if (rmi4_data->input_dev->users) {
 		retval = synaptics_rmi4_start_device(rmi4_data);
 		if (retval < 0)
