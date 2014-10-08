@@ -115,10 +115,11 @@ int msm_isp_update_bandwidth(enum msm_isp_hw_client client,
 
 	mutex_lock(&bandwidth_mgr_mutex);
 	if (!isp_bandwidth_mgr.use_count ||
-	    !isp_bandwidth_mgr.bus_client) {
+		!isp_bandwidth_mgr.bus_client) {
 		pr_err("%s:error bandwidth manager inactive use_cnt:%d bus_clnt:%d\n",
-		       __func__, isp_bandwidth_mgr.use_count,
-		       isp_bandwidth_mgr.bus_client);
+			__func__, isp_bandwidth_mgr.use_count,
+			isp_bandwidth_mgr.bus_client);
+		mutex_unlock(&bandwidth_mgr_mutex);
 		return -EINVAL;
 	}
 
@@ -845,6 +846,9 @@ static void msm_isp_process_overflow_irq(
 		pr_err("%s: First frame irq_status0 0x%X irq_status1 0x%X\n",
 			__func__, *irq_status0, *irq_status1);
 	}
+
+	pr_err("%s: First frame irq_status0 0x%X irq_status1 0x%X\n",
+		__func__, *irq_status0, *irq_status1);
 
 	/*Mask out all other irqs if recovery is started*/
 	if (atomic_read(&vfe_dev->error_info.overflow_state) != NO_OVERFLOW) {

@@ -14,11 +14,7 @@
 
 #define pr_fmt(fmt) "AXI: %s(): " fmt, __func__
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_MILLETLTE_COMMON) || \
-	defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_SEC_KSPORTS_PROJECT) || \
-	defined(CONFIG_SEC_S_PROJECT)
 #define DEBUG_MSM_BUS_ARB_REQ
-#endif
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -315,7 +311,6 @@ static int getpath(int src, int dest)
 	return CREATE_PNODE_ID(src, pnode_num);
 }
 
-#ifdef CONFIG_BW_LIMITER_FIX
 static uint64_t get_node_maxib(struct msm_bus_inode_info *info)
 {
 	int i, ctx;
@@ -331,7 +326,7 @@ static uint64_t get_node_maxib(struct msm_bus_inode_info *info)
 
 	return maxib;
 }
-#endif
+
 /**
  * update_path() - Update the path with the bandwidth and clock values, as
  * requested by the client.
@@ -379,17 +374,6 @@ static int update_path(int curr, int pnode, uint64_t req_clk, uint64_t req_bw,
 		return -ENXIO;
 	}
 
-#ifndef CONFIG_BW_LIMITER_FIX
-	/**
-	 * If master supports dual configuration, check if
-	 * the configuration needs to be changed based on
-	 * incoming requests
-	 */
-	if (info->node_info->dual_conf)
-		fabdev->algo->config_master(fabdev, info,
-			req_clk, req_bw);
-#endif
-
 	info->link_info.sel_bw = &info->link_info.bw[ctx];
 	info->link_info.sel_clk = &info->link_info.clk[ctx];
 	*info->link_info.sel_bw += add_bw;
@@ -403,8 +387,6 @@ static int update_path(int curr, int pnode, uint64_t req_clk, uint64_t req_bw,
 	info->pnode[index].sel_clk = &info->pnode[index].clk[ctx &
 		cl_active_flag];
 	*info->pnode[index].sel_bw += add_bw;
-
-#ifdef CONFIG_BW_LIMITER_FIX
 	*info->pnode[index].sel_clk = req_clk;
 
 	/**
@@ -418,7 +400,7 @@ static int update_path(int curr, int pnode, uint64_t req_clk, uint64_t req_bw,
 		fabdev->algo->config_master(fabdev, info,
 			node_maxib, req_bw);
 	}
-#endif
+
 	info->link_info.num_tiers = info->node_info->num_tiers;
 	info->link_info.tier = info->node_info->tier;
 	master_tiers = info->node_info->tier;

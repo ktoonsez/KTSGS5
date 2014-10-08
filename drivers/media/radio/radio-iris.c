@@ -4153,7 +4153,7 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 		wrd.length = RDS_PS0_LEN;
 		memcpy(&wrd.data, &radio->default_data.data,
 				radio->default_data.ret_data_len);
-		wrd.data[RX_REPEATE_BYTE_OFFSET] = ctrl->value;
+		wrd.data[RX_REPEATE_BYTE_OFFSET] = 1;
 
 		retval = hci_def_data_write(&wrd, radio->fm_hdev);
 		if (retval < 0)
@@ -4702,6 +4702,7 @@ static int __init iris_probe(struct platform_device *pdev)
 			memcpy(priv_videodev, radio->videodev,
 				sizeof(struct video_device));
 		} else {
+			mutex_destroy(&radio->lock);
 			video_unregister_device(radio->videodev);
 			video_device_release(radio->videodev);
 			for (; i > -1; i--)

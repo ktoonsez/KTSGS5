@@ -357,8 +357,13 @@ struct sensor_value {
 		u8 step_det;
 		u8 sig_motion;
 		u32 step_diff;
+#if defined (CONFIG_SENSORS_SSP_MAX88921)
+		u16 prox[4];
+		s16 data[19];
+#else
 		u8 prox[4];
 		u8 data[20];
+#endif
 		s32 pressure[3];
 		struct meta_data_event meta_data;
 #ifdef SAVE_MAG_LOG
@@ -591,6 +596,10 @@ struct ssp_data {
 	int chg;
 	struct regulator *reg_hub;
 	struct regulator *reg_sns;
+	u8 regulator_is_enable;
+
+	const char *ges_vdd;
+	const char *ges_led;
 
 	struct list_head pending_list;
 	void (*ssp_big_task[BIG_TYPE_MAX])(struct work_struct *);

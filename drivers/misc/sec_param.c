@@ -20,7 +20,11 @@
 #define PARAM_WR	1
 
 #define SEC_PARAM_FILE_NAME	"/dev/block/platform/msm_sdcc.1/by-name/param"	/* parameter block */
+#if defined(CONFIG_PARAM_SIZE_983000)
+#define SEC_PARAM_FILE_SIZE	0x983000		/* 9.5MB */
+#else
 #define SEC_PARAM_FILE_SIZE	0xA00000		/* 10MB */
+#endif
 #define SEC_PARAM_FILE_OFFSET (SEC_PARAM_FILE_SIZE - 0x100000)
 
 /* single global instance */
@@ -148,6 +152,7 @@ bool sec_get_param(enum sec_param_index index, void *value)
 		memcpy(&(param_data->normal_poweroff), value, sizeof(unsigned int));
 		break;
 #endif
+
 	default:
 		return false;
 	}

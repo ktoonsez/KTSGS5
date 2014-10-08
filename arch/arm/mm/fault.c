@@ -371,7 +371,7 @@ int tima_is_pg_protected(unsigned long va)
 	"dsb\n"
 	"isb\n"
 	: : "r" (p));
-#endif        
+#endif
         rindex = index % 32;
 
         val = (*p) & (1 << rindex)?1:0;
@@ -405,7 +405,7 @@ int tima_is_pg_protected(unsigned long va)
 EXPORT_SYMBOL(tima_is_pg_protected);
 #endif
 
-#ifdef	CONFIG_TIMA_RKP_30
+#ifdef	CONFIG_TIMA_RKP
 #define INS_STR_R1	0xe5801000
 #define INS_STR_R3	0xe5a03800
 extern void* cpu_v7_set_pte_ext_proc_end;
@@ -471,28 +471,11 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 	if (fixup_exception(regs))
 		return;
 #ifdef	CONFIG_TIMA_RKP
-#ifdef  CONFIG_TIMA_RKP_30
 	if (addr >= 0xc0000000 && (fsr & FSR_WRITE)) {
 		if (rkp_fixup(addr, regs)) {
 			return;
 		}
 	}
-#else
-	printk(KERN_ERR"TIMA:====> %lx, [%lx]\n", addr, tima_switch_count);
-	if (addr >= 0xc0000000 && (fsr & FSR_WRITE)) {
-		printk(KERN_ERR"TIMA:==> Handling fault for %lx\n", addr);
-		tima_send_cmd(addr, 0x3f821221);
-		__asm__ ("mcr    p15, 0, %0, c8, c3, 0\n"
-			"isb"
-			::"r"(0));
-		if (tima_is_pg_protected(addr) == 1) {
-			/* Is the page still read-only even after we free it */
-			printk(KERN_ERR"TIMA ==> Err freeing page %lx\n", addr);
-		} else {
-			return;
-		}
-	}
-#endif	
 #endif
 
 	/*

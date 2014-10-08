@@ -679,18 +679,17 @@ static int ir_remocon_work(struct irda_ice40_data *ir_data, int count)
 
 	mutex_unlock(&data->mutex);
 
-	emission_time = \
-		(1000 * (data->ir_sum) / (data->ir_freq));
+	emission_time = data->ir_sum;
 
 	if (emission_time > 0)
-		msleep(emission_time);
+		usleep(emission_time);
 
 	pr_irda("%s: emission_time = %d\n",
 			__func__, emission_time);
 
 	retry = 0;
 	while (!gpio_get_value(g_pdata->irda_irq)) {
-		usleep_range(10000, 12000);
+		usleep_range(100000, 120000);
 		pr_irda("%s : try to check irda_irq %d, %d\n",
 				__func__, emission_time, retry);
 		if (retry++ > 5)
@@ -755,10 +754,11 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 				count += 3;
 			} else {
 				data->ir_sum += _data;
-				data->i2c_block_transfer.data[count++]
-						= (_data >> 8);
-				data->i2c_block_transfer.data[count++]
-						= _data & 0xFF;
+				data->i2c_block_transfer.data[count]   = _data >> 24;
+				data->i2c_block_transfer.data[count+1] = _data >> 16;
+				data->i2c_block_transfer.data[count+2] = _data >> 8;
+				data->i2c_block_transfer.data[count+3] = _data & 0xFF;
+				count += 4;
 			}
 
 			while (_data > 0) {

@@ -42,9 +42,29 @@ enum cable_type_t {
         CABLE_TYPE_DESK_DOCK,
         CABLE_TYPE_JIG_UART_OFF_VB,
         CABLE_TYPE_DESK_DOCK_NO_VB,
+	CABLE_TYPE_LANHUB,
+	CABLE_TYPE_219KUSB,
+	CABLE_TYPE_CHARGING_CABLE,
 };
 
-
+/* MUIC attached device type */
+enum muic_attached_dev {
+    ATTACHED_DEV_NONE_MUIC = 0,
+    ATTACHED_DEV_USB_MUIC,
+    ATTACHED_DEV_CDP_MUIC,
+    ATTACHED_DEV_OTG_MUIC,
+    ATTACHED_DEV_LANHUB_MUIC,
+    ATTACHED_DEV_TA_MUIC,
+    ATTACHED_DEV_DESKDOCK_MUIC,
+    ATTACHED_DEV_CARDOCK_MUIC,
+    ATTACHED_DEV_AUDIODOCK_MUIC,
+    ATTACHED_DEV_JIG_UART_OFF_MUIC,
+    ATTACHED_DEV_JIG_UART_OFF_VB_MUIC,  /* VBUS enabled */
+    ATTACHED_DEV_JIG_UART_ON_MUIC,
+    ATTACHED_DEV_JIG_USB_OFF_MUIC,
+    ATTACHED_DEV_JIG_USB_ON_MUIC,
+    ATTACHED_DEV_UNKNOWN_MUIC
+};
 
 enum {
 	TSU6721_DETACHED,
@@ -60,6 +80,8 @@ enum {
 	DOCK_UI_DESK = 1,
 	DOCK_UI_CAR
 };
+
+extern struct switch_dev switch_dock;
 
 struct tsu6721_platform_data {
 	void	(*callback)(enum cable_type_t cable_type, int attached);

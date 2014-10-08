@@ -361,7 +361,7 @@ static void msm_restart_prepare(const char *cmd)
 		} else if (!strncmp(cmd, "cpdebug", 7) /* set cp debug level */
 				&& !kstrtoul(cmd + 7, 0, &value)) {
 			__raw_writel(0xfedc0000 | value, restart_reason);
-#if defined(CONFIG_SWITCH_DUAL_MODEM)
+#if defined(CONFIG_SWITCH_DUAL_MODEM) || defined(CONFIG_MUIC_SUPPORT_RUSTPROOF)
 		} else if (!strncmp(cmd, "swsel", 5) /* set switch value */
 				&& !kstrtoul(cmd + 5, 0, &value)) {
 			__raw_writel(0xabce0000 | value, restart_reason);

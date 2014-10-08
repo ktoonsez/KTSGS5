@@ -159,7 +159,11 @@ static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_mixer *mixer,
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_SYNC_THRESH,
 		   (CONTINUE_THRESHOLD << 16) | (ctx->start_threshold));
 
-	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_TEAR_CHECK_EN, enable);
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQXGA_S6E3HA1_PT_PANEL)
+	if (board_rev)
+#endif
+		mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_TEAR_CHECK_EN, enable);
+
 	return 0;
 }
 
@@ -221,6 +225,12 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 {
 	unsigned long flags;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+	if (!ctx->panel_on) {
+		pr_info("%s: Ignore clock on because the unblank does not finished\n", __func__);
+		return;
+	}
+
 #if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
 	xlog(__func__, ctx->panel_ndx, ctx->koff_cnt, ctx->clk_enabled, ctx->rdptr_enabled, 0, 0);
 #endif
@@ -326,6 +336,7 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		if (te_set_done == TE_SET_START) {
 
 			pr_debug("%s : TE_SET_START...",__func__);
+
 			if (i % 2 == 0) {
 				vsync_time1 = ktime_get();
 				time1 = (int)ktime_to_us(vsync_time1);
@@ -344,7 +355,7 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 			spin_lock(&ctx->te_lock);
 			te_cnt++;
 			if (te_cnt >= 2) { // check TE using only two signal..
-				pr_debug(">>>> te_check_comp COMPLETE <<<< \n");
+				pr_debug(">>>> te_check_comp COMPLETE (%d) <<<< \n", te_cnt);
 				complete(&te_check_comp);
 			}
 			spin_unlock(&ctx->te_lock);
@@ -508,6 +519,7 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 {
 	struct mdss_mdp_cmd_ctx *ctx;
 	unsigned long flags;
+	bool enable_rdptr = false;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -523,12 +535,14 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 	if (!handle->enabled) {
 		handle->enabled = true;
 		list_add(&handle->list, &ctx->vsync_handlers);
-		if (!handle->cmd_post_flush)
-			ctx->vsync_enabled = 1;
+
+		enable_rdptr = !handle->cmd_post_flush;
+		if (enable_rdptr)
+			ctx->vsync_enabled++;
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	if (!handle->cmd_post_flush) {
+	if (enable_rdptr) {
 		mutex_lock(&ctx->clk_mtx);
 		mdss_mdp_cmd_clk_on(ctx);
 		mutex_unlock(&ctx->clk_mtx);
@@ -543,8 +557,6 @@ static int mdss_mdp_cmd_remove_vsync_handler(struct mdss_mdp_ctl *ctl,
 
 	struct mdss_mdp_cmd_ctx *ctx;
 	unsigned long flags;
-	struct mdss_mdp_vsync_handler *tmp;
-	int num_rdptr_vsync = 0;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -559,14 +571,12 @@ static int mdss_mdp_cmd_remove_vsync_handler(struct mdss_mdp_ctl *ctl,
 	if (handle->enabled) {
 		handle->enabled = false;
 		list_del_init(&handle->list);
-	}
-	list_for_each_entry(tmp, &ctx->vsync_handlers, list) {
-		if (!tmp->cmd_post_flush)
-			num_rdptr_vsync++;
-	}
-	if (!num_rdptr_vsync) {
-		ctx->vsync_enabled = 0;
-		ctx->rdptr_enabled = VSYNC_EXPIRE_TICK;
+		if (!handle->cmd_post_flush) {
+			if (ctx->vsync_enabled)
+				ctx->vsync_enabled--;
+			else
+				WARN(1, "Unbalanced vsync disable");
+		}
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 	return 0;
@@ -580,11 +590,11 @@ int mdss_mdp_cmd_reconfigure_splash_done(struct mdss_mdp_ctl *ctl, bool handoff)
 	pdata = ctl->panel_data;
 
 	pdata->panel_info.cont_splash_enabled = 0;
-
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQXGA_S6TNMR7_PT_PANEL)
 	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_CONT_SPLASH_FINISH,
 			NULL);
-
 	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
+#endif
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 
 	if (!sec_debug_is_enabled()) {
@@ -649,6 +659,12 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			__func__, need_wait, ctl->intf_num, ctx);
 
 	if (need_wait) {
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQXGA_S6E3HA1_PT_PANEL)
+		if (!board_rev)
+			rc = wait_for_completion_timeout(
+				&ctx->pp_comp, msecs_to_jiffies(20));
+		else
+#endif
 		rc = wait_for_completion_timeout(
 				&ctx->pp_comp, msecs_to_jiffies(1000));
 
@@ -815,7 +831,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 							msecs_to_jiffies(1000)); //STOP_TIMEOUT(16 * 4 frames) -> 1000
 		if (timeout_status <= 0) {
 			WARN(1, "stop cmd time out\n");
-
 			if (IS_ERR_OR_NULL(ctl->panel_data)) {
 				pr_err("no panel data\n");
 			} else {
@@ -830,7 +845,13 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 			}
 		}
 	}
-
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQXGA_S6E3HA1_PT_PANEL)
+	if (!board_rev) {
+		mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num);
+		if (ctx->rdptr_enabled)
+			ctx->rdptr_enabled = 0;
+	}
+#endif
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
 
@@ -929,7 +950,6 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 #if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
 	xlog(__func__, ctl->num, ctx->koff_cnt, ctx->clk_enabled, ctx->rdptr_enabled, 0, 0);
 #endif
-
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP, ctx->pp_num,
 				   mdss_mdp_cmd_pingpong_done, ctl);
 

@@ -3406,9 +3406,16 @@ static void sii8240_extcon_work(struct work_struct *work)
 static int sii8240_extcon_notifier(struct notifier_block *self,
 		unsigned long event, void *ptr)
 {
-	struct sii8240_data *sii8240 = dev_get_drvdata(sii8240_mhldev);
+	struct sii8240_data *sii8240;
 	struct sec_mhl_cable *cable =
 		container_of(self, struct sec_mhl_cable, nb);
+
+	if (sii8240_mhldev == NULL) {
+		pr_info("%s: sii8240_mhldev is NULL\n", __func__);
+		return NOTIFY_DONE;
+	}
+	sii8240 = dev_get_drvdata(sii8240_mhldev);
+
 	pr_info("%s: '%s' is %s\n", extcon_cable_name[cable->cable_type],
 			__func__, event ? "attached" : "detached");
 

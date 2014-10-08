@@ -63,6 +63,7 @@ struct vfsspi_devData {
 	unsigned int drdyPin;	/* DRDY GPIO pin number */
 	unsigned int sleepPin;	/* Sleep GPIO pin number */
 	unsigned int ldo_pin;	/* Ldo GPIO pin number */
+	unsigned int ldo_pin2;	/* Ldo2 GPIO pin number */
 	/* User process ID,
 	 * to which the kernel signal indicating DRDY event is to be sent */
 	int userPID;
@@ -81,6 +82,11 @@ struct vfsspi_devData {
 	unsigned int clkpin;
 	bool isGpio_cfgDone;
 	bool enabled_clk;
+	unsigned int set_altfunc;
+	unsigned int mosi_alt;
+	unsigned int miso_alt;
+	unsigned int cs_alt;
+	unsigned int clk_alt;
 #ifdef FEATURE_SPI_WAKELOCK
 	struct wake_lock fp_spi_lock;
 #endif
@@ -495,7 +501,15 @@ void vfsspi_regulator_onoff(struct vfsspi_devData *vfsSpiDev, bool onoff)
 					usleep_range(2950, 3000);
 				}
 				gpio_set_value(vfsSpiDev->ldo_pin, 1);
+				if (vfsSpiDev->ldo_pin2) {
+					mdelay(1);
+					gpio_set_value(vfsSpiDev->ldo_pin2, 1);
+				}
 			} else {
+				if (vfsSpiDev->ldo_pin2) {
+					gpio_set_value(vfsSpiDev->ldo_pin2, 0);
+					mdelay(1);
+				}
 				gpio_set_value(vfsSpiDev->ldo_pin, 0);
 				if (vfsSpiDev->ocp_en)
 					gpio_set_value(vfsSpiDev->ocp_en, 0);
@@ -543,33 +557,65 @@ void vfsspi_hardReset(struct vfsspi_devData *vfsSpiDev)
 static void vfsspi_gpio_config(struct vfsspi_devData *data, int onoff)
 {
 	if (onoff) {
-		if (data->mosipin)
-			gpio_tlmm_config(GPIO_CFG(data->mosipin, 2,
-				GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
-				GPIO_CFG_2MA), 1);
-		else
-			pr_err("%s: can't get mosipin\n", __func__);
+		if (data->set_altfunc) {
+			pr_info("%s: set_altfunc\n", __func__);
+			if (data->mosipin)
+				gpio_tlmm_config(GPIO_CFG(data->mosipin,
+					data->mosi_alt, GPIO_CFG_INPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get mosipin\n", __func__);
 
-		if (data->misopin)
-			gpio_tlmm_config(GPIO_CFG(data->misopin, 2,
-				GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
-				GPIO_CFG_2MA), 1);
-		else
-			pr_err("%s: can't get misopin\n", __func__);
+			if (data->misopin)
+				gpio_tlmm_config(GPIO_CFG(data->misopin,
+					data->miso_alt, GPIO_CFG_INPUT,
+					GPIO_CFG_PULL_UP, GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get misopin\n", __func__);
 
-		if (data->cspin)
-			gpio_tlmm_config(GPIO_CFG(data->cspin, 2,
-				GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
-				GPIO_CFG_2MA), 1);
-		else
-			pr_err("%s: can't get cspin\n", __func__);
+			if (data->cspin)
+				gpio_tlmm_config(GPIO_CFG(data->cspin,
+					data->cs_alt, GPIO_CFG_INPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get cspin\n", __func__);
 
-		if (data->clkpin)
-			gpio_tlmm_config(GPIO_CFG(data->clkpin, 3,
-				GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
-				GPIO_CFG_2MA), 1);
-		else
-			pr_err("%s: can't get clkpin\n", __func__);
+			if (data->clkpin)
+				gpio_tlmm_config(GPIO_CFG(data->clkpin,
+					data->clk_alt, GPIO_CFG_INPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get clkpin\n", __func__);
+
+		} else { /* initial code for K project*/
+			if (data->mosipin)
+				gpio_tlmm_config(GPIO_CFG(data->mosipin, 2,
+					GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get mosipin\n", __func__);
+
+			if (data->misopin)
+				gpio_tlmm_config(GPIO_CFG(data->misopin, 2,
+					GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+					GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get misopin\n", __func__);
+
+			if (data->cspin)
+				gpio_tlmm_config(GPIO_CFG(data->cspin, 2,
+					GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get cspin\n", __func__);
+
+			if (data->clkpin)
+				gpio_tlmm_config(GPIO_CFG(data->clkpin, 3,
+					GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
+					GPIO_CFG_2MA), 1);
+			else
+				pr_err("%s: can't get clkpin\n", __func__);
+		}
 	} else {
 		if (data->mosipin)
 			gpio_tlmm_config(GPIO_CFG(data->mosipin, 0,
@@ -1127,6 +1173,10 @@ static void vfsspi_ocp_work_func(struct work_struct *work)
 			struct vfsspi_devData, ocp_work);
 	if (!gpio_get_value(vfsSpiDev->ocp_pin)) {
 		pr_info("%s ldo off!!!\n", __func__);
+		if (vfsSpiDev->ldo_pin2) {
+			gpio_set_value(vfsSpiDev->ldo_pin2, 0);
+			mdelay(1);
+		}
 		gpio_set_value(vfsSpiDev->ldo_pin, 0);
 		vfsSpiDev->ocp_state = 1;
 		disable_irq_wake(vfsSpiDev->ocp_irq);
@@ -1163,10 +1213,26 @@ int vfsspi_platformInit(struct vfsspi_devData *vfsSpiDev)
 				__func__);
 			goto done;
 		}
+		if (vfsSpiDev->ldo_pin2) {
+			status = gpio_request(vfsSpiDev->ldo_pin2, "vfsspi_ldo_en2");
+			if (status < 0) {
+				pr_err("%s gpio_request vfsspi_ldo_en2 failed\n",
+					__func__);
+				goto done;
+			}
+		}
 		if (vfsSpiDev->ldocontrol) {
 			gpio_direction_output(vfsSpiDev->ldo_pin, 0);
+			if (vfsSpiDev->ldo_pin2) {
+				mdelay(1);
+				gpio_direction_output(vfsSpiDev->ldo_pin2, 0);
+			}
 			pr_info("%s ldo off\n", __func__);
 		} else {
+			if (vfsSpiDev->ldo_pin2) {
+				gpio_direction_output(vfsSpiDev->ldo_pin2, 1);
+				mdelay(1);
+			}
 			gpio_direction_output(vfsSpiDev->ldo_pin, 1);
 			pr_info("%s ldo on\n", __func__);
 		}
@@ -1272,6 +1338,10 @@ int vfsspi_platformInit(struct vfsspi_devData *vfsSpiDev)
 			__func__, gpio_get_value(vfsSpiDev->drdyPin),
 			 __func__, gpio_get_value(vfsSpiDev->sleepPin),
 			 __func__, gpio_get_value(vfsSpiDev->ldo_pin));
+		if (vfsSpiDev->ldo_pin2) {
+			pr_info("%s ldo en2 value =%d\n",
+				__func__, gpio_get_value(vfsSpiDev->ldo_pin2));
+		}
 #ifndef ENABLE_SENSORS_FPRINT_SECURE
 		vfsSpiDev->freqTable = freqTable;
 		vfsSpiDev->freqTableSize = sizeof(freqTable);
@@ -1303,6 +1373,8 @@ void vfsspi_platformUninit(struct vfsspi_devData *vfsSpiDev)
 		vfsSpiDev->drdy_irq_flag = DRDY_IRQ_DISABLE;
 		if (vfsSpiDev->ldo_pin)
 			gpio_free(vfsSpiDev->ldo_pin);
+		if (vfsSpiDev->ldo_pin2)
+			gpio_free(vfsSpiDev->ldo_pin2);
 		gpio_free(vfsSpiDev->sleepPin);
 		gpio_free(vfsSpiDev->drdyPin);
 		if (vfsSpiDev->ocp_en)
@@ -1376,6 +1448,19 @@ static int vfsspi_parse_dt(struct device *dev,
 		pr_info("%s: ldo_pin=%d\n",
 			__func__, data->ldo_pin);
 	}
+	if (!of_find_property(np, "vfsspi-ldoPin2", NULL)) {
+		pr_err("%s: not set ldo2 in dts\n", __func__);
+	} else {
+		gpio = of_get_named_gpio(np, "vfsspi-ldoPin2", 0);
+		if (gpio < 0) {
+			data->ldo_pin2 = 0;
+			pr_err("%s: fail to get ldo_pin2\n", __func__);
+		} else {
+			data->ldo_pin2 = gpio;
+			pr_info("%s: ldo_pin2=%d\n",
+				__func__, data->ldo_pin2);
+		}
+	}
 
 	if (of_property_read_u32(np, "vfsspi-ldocontrol",
 		&data->ldocontrol))
@@ -1392,6 +1477,18 @@ static int vfsspi_parse_dt(struct device *dev,
 		data->cspin = 0;
 	if (of_property_read_u32(np, "vfsspi-clkpin", &data->clkpin))
 		data->clkpin = 0;
+
+	if (of_property_read_u32(np, "vfsspi-set_altfunc", &data->set_altfunc))
+		data->set_altfunc = 0;
+	if (of_property_read_u32(np, "vfsspi-mosi_alt", &data->mosi_alt))
+		data->mosi_alt = 0;
+	if (of_property_read_u32(np, "vfsspi-miso_alt", &data->miso_alt))
+		data->miso_alt = 0;
+	if (of_property_read_u32(np, "vfsspi-cs_alt", &data->cs_alt))
+		data->cs_alt = 0;
+	if (of_property_read_u32(np, "vfsspi-clk_alt", &data->clk_alt))
+		data->clk_alt = 0;
+
 	data->tz_mode = true;
 #endif
 	if (of_property_read_u32(np, "vfsspi-orient",
@@ -1442,12 +1539,19 @@ static struct device_attribute *fp_attrs[] = {
 
 static void vfsspi_work_func_debug(struct work_struct *work)
 {
+	u8 ldo_value = 0;
+	if (g_data->ldo_pin2 == 0) {
+		ldo_value = gpio_get_value(g_data->ldo_pin);
+	} else {
+		ldo_value = (gpio_get_value(g_data->ldo_pin2) << 1 )
+					| gpio_get_value(g_data->ldo_pin);
+	}
+
 	if (g_data->ocp_pin)
 		pr_info("%s ocp state: %d, ocp pin: %d,"
 			" ldo pin: %d, sleep pin: %d, tz_mode: %d\n",
 			__func__, g_data->ocp_state,
-			gpio_get_value(g_data->ocp_pin),
-			gpio_get_value(g_data->ldo_pin),
+			gpio_get_value(g_data->ocp_pin), ldo_value,
 			gpio_get_value(g_data->sleepPin),
 			g_data->tz_mode);
 	else {
@@ -1455,16 +1559,14 @@ static void vfsspi_work_func_debug(struct work_struct *work)
 			pr_info("%s ocp state: %d, ocp en: %d"
 				" ldo pin: %d, sleep pin: %d, tz_mode: %d\n",
 				__func__, g_data->ocp_state,
-				gpio_get_value(g_data->ocp_en),
-				gpio_get_value(g_data->ldo_pin),
+				gpio_get_value(g_data->ocp_en), ldo_value,
 				gpio_get_value(g_data->sleepPin),
 				g_data->tz_mode);
 		else
 			pr_info("%s ocp state: %d,"
 				" ldo pin: %d, sleep pin: %d, tz_mode: %d\n",
 				__func__, g_data->ocp_state,
-				gpio_get_value(g_data->ldo_pin),
-				gpio_get_value(g_data->sleepPin),
+				ldo_value, gpio_get_value(g_data->sleepPin),
 				g_data->tz_mode);
 	}
 }
@@ -1507,7 +1609,7 @@ int vfsspi_probe(struct spi_device *spi)
 	vfsSpiDev = kzalloc(sizeof(*vfsSpiDev), GFP_KERNEL);
 
 	if (vfsSpiDev == NULL)
-		goto probe_failed;
+		return -ENOMEM;
 
 	if (spi->dev.of_node) {
 		status = vfsspi_parse_dt(&spi->dev, vfsSpiDev);
@@ -1623,7 +1725,6 @@ int vfsspi_probe(struct spi_device *spi)
 err_create_workqueue:
 parse_dt_failed:
 	kfree(vfsSpiDev);
-probe_failed:
 	return status;
 }
 

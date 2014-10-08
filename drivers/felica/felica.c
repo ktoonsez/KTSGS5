@@ -818,9 +818,7 @@ static void felica_nl_recv_msg(struct sk_buff *skb)
 
 	struct nlmsghdr *nlh;
 	struct sk_buff *wskb;
-#if defined(CONFIG_MACH_T0) || defined(CONFIG_MACH_M3)
-	int port_threshold = 0;
-#endif
+
 #ifdef FELICA_UICC_FUNCTION
 	int init_flag = 0;
 #endif
@@ -839,12 +837,6 @@ static void felica_nl_recv_msg(struct sk_buff *skb)
 		    && (gfa_connect_flag == 0)) {
 			/* pid of sending process */
 			gfa_pid = nlh->nlmsg_pid;
-
-#if defined(CONFIG_MACH_T0)
-			port_threshold = 0x0a;
-#elif defined(CONFIG_MACH_M3)
-			port_threshold = 0x02;
-#endif
 
 	if (felica_get_tamper_fuse_cmd() != 1)
 			{
@@ -921,9 +913,9 @@ static void felica_nl_recv_msg(struct sk_buff *skb)
 static void felica_set_felica_info(void)
 {
 	FELICA_PR_DBG(" %s START ", __func__);
-	memset(gdiag_name, 0x00, DIAG_NAME_MAXSIZE + 1);
+	memset(gdiag_name, '\0', DIAG_NAME_MAXSIZE + 1);
 #ifdef FELICA_UICC_FUNCTION
-	memset(gproc_name, 0x00, PROC_NAME_MAXSIZE + 1);
+	memset(gproc_name, '\0', PROC_NAME_MAXSIZE + 1);
 #endif
 	gread_msgs[0].flags = gfa_rcv_str[MSG_READ1_FLAGS_OFFSET];
 	gread_msgs[0].len = gfa_rcv_str[MSG_READ1_LEN_OFFSET];
@@ -2783,19 +2775,17 @@ static ssize_t felica_ant_write(struct file *file, const char __user *data,
 		return -EIO;
 	}
 
-	gwrite_msgs[0].buf = &write_buff[0];
-	gwrite_msgs[0].addr = gi2c_address;
-	write_buff[0] = gi2c_antaddress;
-
-
 	ret = copy_from_user(&ant, data, FELICA_ANT_DATA_LEN);
 	if (ret != 0) {
 		FELICA_PR_ERR(" %s ERROR(copy_from_user), ret=[%d]",
 			       __func__, ret);
 		return -EFAULT;
 	}
+	write_buff[0] = gi2c_antaddress;
 	write_buff[1] = ant;
-
+	gwrite_msgs[0].buf = &write_buff[0];
+	gwrite_msgs[0].addr = gi2c_address;
+	
 	ret = i2c_transfer(felica_i2c_client->adapter, gwrite_msgs, 1);
 	if (ret < 0) {
 		FELICA_PR_ERR(" %s ERROR(i2c_transfer), ret=[%d]",
@@ -3192,7 +3182,7 @@ static ssize_t hsel_read(struct file *file, char __user *buf, size_t len,
 					loff_t *ppos)
 {
 	char	hsel_val;
-	int		ret;
+	int		ret = -EINVAL;
 
 	FELICA_PR_DBG(" %s START", __func__);
 

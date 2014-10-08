@@ -292,11 +292,15 @@ static int synaptics_parse_dt(struct device *dev,
 
 	/* vdd, irq gpio info */
 	dt_data->external_ldo = of_get_named_gpio(np, "synaptics,external_ldo", 0);
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+	dt_data->external_ldo2 = of_get_named_gpio(np, "synaptics,external_ldo2", 0);
+#endif
 	dt_data->scl_gpio = of_get_named_gpio(np, "synaptics,scl-gpio", 0);
 	dt_data->sda_gpio = of_get_named_gpio(np, "synaptics,sda-gpio", 0);
 	dt_data->irq_gpio = of_get_named_gpio(np, "synaptics,irq-gpio", 0);
 	dt_data->reset_gpio = of_get_named_gpio(np, "synaptics,reset-gpio", 0);
 	dt_data->id_gpio = of_get_named_gpio(np, "synaptics,id-gpio", 0);
+	dt_data->tablet = of_property_read_bool(np, "synaptics,tablet");
 
 	rc = of_property_read_u32_array(np, "synaptics,tsp-coords", coords, 2);
 	if (rc < 0) {
@@ -376,11 +380,11 @@ static int synaptics_parse_dt(struct device *dev,
 	if (dt_data->extra_config[2] > 0)
 		pr_err("%s: OCTA ID = %d\n", __func__, gpio_get_value(dt_data->extra_config[2]));
 
-	pr_err("%s: power= %d, tsp_int= %d, X= %d, Y= %d, project= %s, config[%d][%d][%d][%d], reset= %d\n",
+	pr_err("%s: power= %d, tsp_int= %d, X= %d, Y= %d, project= %s, config[%d][%d][%d][%d], tablet = %d reset= %d\n",
 		__func__, dt_data->external_ldo, dt_data->irq_gpio,
 			dt_data->coords[0], dt_data->coords[1], dt_data->project,
 			dt_data->extra_config[0], dt_data->extra_config[1], dt_data->extra_config[2],
-			dt_data->extra_config[3], dt_data->reset_gpio);
+			dt_data->extra_config[3], dt_data->tablet, dt_data->reset_gpio);
 
 	return 0;
 }
@@ -411,7 +415,16 @@ static void synaptics_request_gpio(struct synaptics_rmi4_data *rmi4_data)
 			return;
 		}
 	}
-
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+	if (rmi4_data->dt_data->external_ldo2 > 0) {
+		ret = gpio_request(rmi4_data->dt_data->external_ldo2, "synaptics,external_ldo2");
+		if (ret) {
+			pr_err("%s: unable to request external_ldo [%d]\n",
+					__func__, rmi4_data->dt_data->external_ldo2);
+			return;
+		}
+	}
+#endif
 	if (rmi4_data->dt_data->tkey_led_en > 0) {
 		ret = gpio_request(rmi4_data->dt_data->tkey_led_en, "synaptics,tkey_led_vdd_on");
 		if (ret) {
@@ -637,6 +650,47 @@ static ssize_t synaptics_rmi4_global_store(struct device *dev,
 }
 
 #ifdef GLOVE_MODE
+#ifdef ENABLE_F12_OBJTYPE
+static int synaptics_rmi4_f12_obj_type_enable(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval = 0;
+
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+			rmi4_data->f12_ctrl23_addr,
+			&rmi4_data->obj_type_enable,
+			sizeof(rmi4_data->obj_type_enable));
+	if (retval < 0)
+		dev_err(&rmi4_data->i2c_client->dev, "%s: write fail[%d]\n",
+			__func__, retval);
+
+	return retval;
+}
+#endif
+
+int synaptics_rmi4_glove_mode_enables(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval = 0;
+
+	if (rmi4_data->touch_stopped)
+		goto out;
+
+	retval = synaptics_rmi4_f12_set_feature(rmi4_data);
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: f12 set_feature write fail[%d]\n", __func__, retval);
+	}
+	
+#ifdef ENABLE_F12_OBJTYPE
+	retval = synaptics_rmi4_f12_obj_type_enable(rmi4_data);
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: f12 obj_type write fail[%d]\n", __func__, retval);
+	}
+#endif
+out:
+	return retval;
+}
+
 static ssize_t synaptics_rmi4_glove_mode_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -672,7 +726,7 @@ static ssize_t synaptics_rmi4_glove_mode_enable_store(struct device *dev,
 	if (input)
 		rmi4_data->feature_enable |= GLOVE_MODE_EN;
 
-	retval = synaptics_rmi4_f12_set_feature(rmi4_data);
+	retval = synaptics_rmi4_glove_mode_enables(rmi4_data);
 	if (retval < 0) {
 		dev_err(dev,
 				"%s: Failed to set glove mode enable, error = %d\n",
@@ -1771,10 +1825,12 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			}
 #endif	/* EDGE_SWIPE */
 #endif	/* REPORT_2D_W */
-			if (rmi4_data->dt_data->x_flip)
+
+
+			if (rmi4_data->dt_data->tablet > 0) {
 				x = rmi4_data->sensor_max_x - x;
-			if (rmi4_data->dt_data->y_flip)
 				y = rmi4_data->sensor_max_y - y;
+			}
 
 			input_report_key(rmi4_data->input_dev,
 					BTN_TOUCH, 1);
@@ -2503,9 +2559,15 @@ int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 		}
 		
 		// | IRQF_NO_SUSPEND
+		if (rmi4_data->dt_data->extra_config[3])
 		retval = request_threaded_irq(rmi4_data->irq, NULL,
-				synaptics_rmi4_irq, IRQF_TRIGGER_FALLING,
+				synaptics_rmi4_irq, TSP_IRQ_TYPE_LEVEL,
 				DRIVER_NAME, rmi4_data);
+		else
+			retval = request_threaded_irq(rmi4_data->irq, NULL,
+				synaptics_rmi4_irq, TSP_IRQ_TYPE_EDGE, 
+				DRIVER_NAME, rmi4_data);
+				
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
 					"%s: Failed to create irq thread\n",
@@ -2887,6 +2949,11 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	rmi4_data->f12_ctrl26_addr = fhandler->full_addr.ctrl_base + ctrl_26_offset;
 	rmi4_data->f12_ctrl28_addr = fhandler->full_addr.ctrl_base + ctrl_28_offset;
 
+#ifdef ENABLE_F12_OBJTYPE
+	rmi4_data->f12_ctrl23_addr = fhandler->full_addr.ctrl_base + ctrl_23_offset;
+	rmi4_data->obj_type_enable = OBJ_TYPE_FINGER | OBJ_TYPE_UNCLASSIFIED;
+#endif
+
 	if (rmi4_data->has_glove_mode) {
 		retval = synaptics_rmi4_i2c_read(rmi4_data,
 				rmi4_data->f12_ctrl26_addr,
@@ -2897,7 +2964,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 					__func__, __LINE__, retval);
 			return retval;
 		}
-
+	
 		retval = synaptics_rmi4_f12_set_feature(rmi4_data);
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev, "%s: f12_set_feature fail[%d]\n",
@@ -2912,6 +2979,16 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 				__func__, retval);
 		return retval;
 	}
+
+#ifdef ENABLE_F12_OBJTYPE
+	retval = synaptics_rmi4_f12_obj_type_enable(rmi4_data);
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s, Failed to set object. [%d]\n",
+			__func__, retval);
+		return retval;
+	}
+#endif
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			fhandler->full_addr.ctrl_base + ctrl_8_offset,
@@ -3067,7 +3144,7 @@ static int synaptics_rmi4_f1a_alloc_mem(struct synaptics_rmi4_data *rmi4_data,
 
 	return 0;
 }
-
+#if !defined(CONFIG_SEC_RUBENS_PROJECT)
 static int synaptics_rmi4_f1a_button_map(struct synaptics_rmi4_data *rmi4_data,
 		struct synaptics_rmi4_fn *fhandler)
 {
@@ -3119,7 +3196,7 @@ static int synaptics_rmi4_f1a_button_map(struct synaptics_rmi4_data *rmi4_data,
 
 	return 0;
 }
-
+#endif
 static void synaptics_rmi4_f1a_kfree(struct synaptics_rmi4_fn *fhandler)
 {
 	struct synaptics_rmi4_f1a_handle *f1a = fhandler->data;
@@ -3163,13 +3240,13 @@ static int synaptics_rmi4_f1a_init(struct synaptics_rmi4_data *rmi4_data,
 	retval = synaptics_rmi4_f1a_alloc_mem(rmi4_data, fhandler);
 	if (retval < 0)
 		goto error_exit;
-
+#if !defined(CONFIG_SEC_RUBENS_PROJECT)
 	retval = synaptics_rmi4_f1a_button_map(rmi4_data, fhandler);
 	if (retval < 0)
 		goto error_exit;
 
 	rmi4_data->button_0d_enabled = 1;
-
+#endif
 	return 0;
 
 error_exit:
@@ -4024,13 +4101,17 @@ flash_prog_mode:
 		rmi4_data->ic_version = SYNAPTICS_PRODUCT_ID_S5708;
 	else if (strncmp(rmi->product_id_string + 1, "5707", 4) == 0)
 		rmi4_data->ic_version = SYNAPTICS_PRODUCT_ID_S5707;
+	else if (strncmp(rmi->product_id_string + 1, "5006", 4) == 0)
+		rmi4_data->ic_version = SYNAPTICS_PRODUCT_ID_S5006;
+	else if (strncmp(rmi->product_id_string + 1, "5710", 4) == 0)
+		rmi4_data->ic_version = SYNAPTICS_PRODUCT_ID_S5710;
 	else
 		rmi4_data->ic_version = SYNAPTICS_PRODUCT_ID_NONE;
 
 /* below code is only S5000 IC temporary code. will be removed..*/
 	if (rmi4_data->ic_version == SYNAPTICS_PRODUCT_ID_S5000)
 		rmi4_data->ic_revision_of_ic = 0xB0;
-
+#if !defined(CONFIG_SEC_HESTIA_PROJECT)
 	if (rmi4_data->ic_version == SYNAPTICS_PRODUCT_ID_S5100) {
 		if ((strncmp(rmi->product_id_string + 6, "A1", 2) == 0) ||
 			(strncmp(rmi->product_id_string + 6, "a1", 2) == 0)) {
@@ -4054,7 +4135,7 @@ flash_prog_mode:
 			rmi4_data->ic_revision_of_ic = SYNAPTICS_IC_REVISION_NONE;
 		}
 	}
-
+#endif
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			0x31, f01_package_id,
 			sizeof(f01_package_id));
@@ -4310,7 +4391,6 @@ static int synaptics_rmi4_set_input_device(struct synaptics_rmi4_data *rmi4_data
 #ifdef PROXIMITY
 	if (rmi4_data->has_edge_swipe) {
 		rmi4_data->max_touch_width *= EDGE_SWIPE_WIDTH_SCALING_FACTOR;
-		rmi4_data->num_of_fingers++; /* extra finger for edge swipe */
 	}
 #endif
 
@@ -4370,6 +4450,14 @@ int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data)
 	unsigned char ii;
 
 	dev_info(&rmi4_data->i2c_client->dev, "%s\n", __func__);
+
+/* if firmware is broken, occurs null pinter exception : cause is rmi4_data->f51_handle is NULL */
+#ifdef PROXIMITY
+	if (!rmi4_data->tsp_probe || !rmi4_data->f51_handle) {
+		dev_info(&rmi4_data->i2c_client->dev, "%s: probe is not done\n", __func__);
+		return 0;
+	}
+#endif
 	for (ii = 0; ii < rmi4_data->num_of_fingers; ii++) {
 		input_mt_slot(rmi4_data->input_dev, ii);
 		if (rmi4_data->finger[ii].state) {
@@ -4441,7 +4529,21 @@ static int synaptics_rmi4_reinit_device(struct synaptics_rmi4_data *rmi4_data)
 	if (!list_empty(&rmi->support_fn_list)) {
 		list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
 			if (fhandler->fn_number == SYNAPTICS_RMI4_F12) {
-				synaptics_rmi4_f12_set_feature(rmi4_data);
+#ifdef GLOVE_MODE
+				retval = synaptics_rmi4_glove_mode_enables(rmi4_data);				
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+							"%s: Failed to glove mode enable, error = %d\n",
+							__func__, retval);
+					goto exit;
+				}
+#else
+				retval = synaptics_rmi4_f12_set_feature(rmi4_data);
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+						"%s: f12 set_feature write fail[%d]\n", __func__, retval);
+				}
+#endif
 				retval = synaptics_rmi4_f12_set_report(rmi4_data);
 				if (retval < 0) {
 					dev_err(&rmi4_data->i2c_client->dev,
@@ -4868,7 +4970,14 @@ void synaptics_power_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable)
 				__func__, rmi4_data->dt_data->external_ldo,
 				enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
 	}
-
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+	if (rmi4_data->dt_data->external_ldo2 > 0) {
+		retval = gpio_direction_output(rmi4_data->dt_data->external_ldo2, enable);
+		dev_info(dev, "%s: sensor_en[3.3V][%d] is %s[%s]\n",
+				__func__, rmi4_data->dt_data->external_ldo2,
+				enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
+	}
+#endif
 	if (enable) {
 		/* Enable regulators according to the order */
 		for (i = 0; i < rmi4_data->dt_data->num_of_supply; i++) {
@@ -4887,10 +4996,12 @@ void synaptics_power_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable)
 			}
 		}
 
+#if !defined(CONFIG_SEC_GNOTE_PROJECT) && !defined(CONFIG_SEC_CHAGALL_PROJECT) && !defined(CONFIG_SEC_HESTIA_PROJECT) && !defined(CONFIG_SEC_RUBENS_PROJECT)
 		retval = qpnp_pin_config(rmi4_data->dt_data->irq_gpio,
 				&synaptics_int_set[SYNAPTICS_PM_GPIO_STATE_WAKE]);
 		if (retval < 0)
 			dev_info(dev, "%s: wakeup int config return: %d\n", __func__, retval);
+#endif
 
 	} else {
 		/* Disable regulator */
@@ -4910,10 +5021,12 @@ void synaptics_power_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable)
 			}
 		}
 
+#if !defined(CONFIG_SEC_GNOTE_PROJECT) && !defined(CONFIG_SEC_CHAGALL_PROJECT) && !defined(CONFIG_SEC_HESTIA_PROJECT) && !defined(CONFIG_SEC_RUBENS_PROJECT)
 		retval = qpnp_pin_config(rmi4_data->dt_data->irq_gpio,
 				&synaptics_int_set[SYNAPTICS_PM_GPIO_STATE_SLEEP]);
 		if (retval < 0)
 			dev_info(dev, "%s: sleep int config return: %d\n", __func__, retval);
+#endif
 	}
 
 	if (rmi4_data->dt_data->reset_gpio > 0) {
@@ -4948,6 +5061,14 @@ err:
 					__func__, rmi4_data->dt_data->external_ldo,
 					enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
 		}
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+		if (rmi4_data->dt_data->external_ldo2 > 0) {
+			retval = gpio_direction_output(rmi4_data->dt_data->external_ldo2, enable);
+			dev_err(dev, "%s: sensor_en[3.3V][%d] is %s[%s]\n",
+					__func__, rmi4_data->dt_data->external_ldo2,
+					enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
+		}
+#endif
 	} else {
 		enable = 1;
 		for (i = 0; i < rmi4_data->dt_data->num_of_supply; i++) {
@@ -4965,6 +5086,14 @@ err:
 					__func__, rmi4_data->dt_data->external_ldo,
 					enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
 		}
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+		if (rmi4_data->dt_data->external_ldo2 > 0) {
+			retval = gpio_direction_output(rmi4_data->dt_data->external_ldo2, enable);
+			dev_err(dev, "%s: sensor_en[3.3V][%d] is %s[%s]\n",
+					__func__, rmi4_data->dt_data->external_ldo2,
+					enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
+		}
+#endif
 	}
 }
 
@@ -5020,6 +5149,8 @@ static void synaptics_get_firmware_name(struct synaptics_rmi4_data *rmi4_data)
 			} else {
 				rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 			}
+		} else if (strncmp(rmi4_data->dt_data->project, "HESTIA", 6) == 0) {
+			rmi4_data->firmware_name = FW_IMAGE_NAME_S5100_HESTIA;
 		} else {
 			rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 		}
@@ -5027,9 +5158,18 @@ static void synaptics_get_firmware_name(struct synaptics_rmi4_data *rmi4_data)
 	} else if (rmi4_data->ic_version == SYNAPTICS_PRODUCT_ID_S5000) {
 		rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 	} else if (rmi4_data->ic_version == SYNAPTICS_PRODUCT_ID_S5707) {
-		rmi4_data->firmware_name = FW_IMAGE_NAME_S5707;
+		if (strncmp(rmi4_data->dt_data->project, "Klimt", 5) == 0)
+			rmi4_data->firmware_name = FW_IMAGE_NAME_S5707_KLIMT;
+		else if (strncmp(rmi4_data->dt_data->project, "RUBENS", 6) == 0)
+			rmi4_data->firmware_name = FW_IMAGE_NAME_S5707_RUBENS;
+		else 
+			rmi4_data->firmware_name = FW_IMAGE_NAME_S5707;
 	} else if (rmi4_data->ic_version == SYNAPTICS_PRODUCT_ID_S5708) {
 		rmi4_data->firmware_name = FW_IMAGE_NAME_S5708;
+	} else if (rmi4_data->ic_version == SYNAPTICS_PRODUCT_ID_S5006) {
+		rmi4_data->firmware_name = FW_IMAGE_NAME_S5006;		
+	} else if (rmi4_data->ic_version == SYNAPTICS_PRODUCT_ID_S5710) {
+			rmi4_data->firmware_name = FW_IMAGE_NAME_S5710; 	
 	} else {
 		rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 	}
@@ -5289,14 +5429,12 @@ err_tsp_reboot:
 	wake_funcs_init();
 	
 	synaptics_get_firmware_name(rmi4_data);
-
 	retval = synaptics_rmi4_fw_update_on_probe(rmi4_data);
 	if (retval < 0) {
 		dev_err(&client->dev, "%s: Failed to firmware update\n",
 				__func__);
 		goto err_fw_update;
 	}
-
 #if defined(CONFIG_LEDS_CLASS) && defined(TOUCHKEY_ENABLE)
 	rmi4_data->leds.name = TOUCHKEY_BACKLIGHT;
 	rmi4_data->leds.brightness = LED_FULL;
@@ -5332,7 +5470,16 @@ err_tsp_reboot:
 
 	/* for blocking to be excuted open function until probing */
 	rmi4_data->tsp_probe = true;
-
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+        retval = synaptics_rmi4_reset_device(rmi4_data);
+        if (retval < 0) {
+                dev_err(&client->dev,
+                                "%s: Failed to issue reset command, error = %d\n",
+                                __func__, retval);
+                return retval;
+        }
+	msleep(SYNAPTICS_HW_RESET_TIME);
+#endif
 #ifdef SIDE_TOUCH
 	/* default deepsleep mode */
 	rmi4_data->use_deepsleep = DEFAULT_DISABLE;
@@ -5746,6 +5893,10 @@ static void synaptics_rmi4_input_close(struct input_dev *dev)
 		synaptics_rmi4_sensor_sleep(rmi4_data);
 		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->scl_gpio, 3, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_KT), 1);
 		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->sda_gpio, 3, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_KT), 1);
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->reset_gpio, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 0);
+                gpio_set_value(rmi4_data->dt_data->reset_gpio,1);
+#endif
 
 	} else {
 		synaptics_rmi4_stop_device(rmi4_data);
@@ -5753,6 +5904,10 @@ static void synaptics_rmi4_input_close(struct input_dev *dev)
 		{
 			gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->scl_gpio, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_KT), 1);
 			gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->sda_gpio, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_KT), 1);
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+			gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->reset_gpio, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		        gpio_set_value(rmi4_data->dt_data->reset_gpio,1);
+#endif
 		}
 	}
 }

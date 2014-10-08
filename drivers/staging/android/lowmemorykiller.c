@@ -94,7 +94,7 @@ static void dump_tasks_info(void)
 	struct task_struct *p;
 	struct task_struct *task;
 
-	pr_info("[ pid ]   uid	tgid total_vm	   rss cpu oom_adj oom_score_adj name\n");
+	pr_info("[ pid ]   uid	tgid total_vm	   rss swap cpu oom_adj oom_score_adj name\n");
 	for_each_process(p) {
 		/* check unkillable tasks */
 		if (is_global_init(p))
@@ -112,9 +112,9 @@ static void dump_tasks_info(void)
 			continue;
 		}
 
-		pr_info("[%5d] %5d %5d %8lu %8lu %3u	 %3d	     %5d %s\n",
+		pr_info("[%5d] %5d %5d %8lu %8lu %8lu %3u	 %3d	     %5d %s\n",
 		task->pid, task_uid(task), task->tgid,
-		task->mm->total_vm, get_mm_rss(task->mm),
+		task->mm->total_vm, get_mm_rss(task->mm), get_mm_counter(task->mm, MM_SWAPENTS),
 		task_cpu(task), task->signal->oom_adj,
 		task->signal->oom_score_adj, task->comm);
 		task_unlock(task);
@@ -314,13 +314,13 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #endif
 
 #ifdef CONFIG_SEC_DEBUG_LMK_MEMINFO
-	if (__ratelimit(&lmk_rs)) {
-		lowmem_print(1, "lowmem_shrink %lu, %x, ofree %d %d, ma %d\n",
-				nr_to_scan, sc->gfp_mask, other_free,
-				other_file, min_score_adj);
-		show_mem(SHOW_MEM_FILTER_NODES);
-		dump_tasks_info();
-	}
+		if ((selected_oom_score_adj < lowmem_adj[5]) && __ratelimit(&lmk_rs)) {
+			lowmem_print(1, "lowmem_shrink %lu, %x, ofree %d %d, ma %d\n",
+					nr_to_scan, sc->gfp_mask, other_free,
+					other_file, min_score_adj);
+			show_mem(SHOW_MEM_FILTER_NODES);
+			dump_tasks_info();
+		}
 #endif
 		/* give the system time to free up the memory */
 		msleep_interruptible(20);
@@ -396,10 +396,11 @@ static int android_oom_handler(struct notifier_block *nb,
 		current->comm, current->signal->oom_adj,
 		current->signal->oom_score_adj);
 #ifdef CONFIG_SEC_DEBUG_LMK_MEMINFO
-	dump_stack();
-	show_mem(SHOW_MEM_FILTER_NODES);
-	if (__ratelimit(&oom_rs))
+	if (__ratelimit(&oom_rs)) {
+		dump_stack();
+		show_mem(SHOW_MEM_FILTER_NODES);
 		dump_tasks_info();
+	}
 #endif
 
 	min_score_adj = 0;

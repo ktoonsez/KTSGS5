@@ -806,9 +806,11 @@ struct oem_dha_parm_send_t {
 
 struct oem_dha_parm_send_cmd {
 	struct apr_hdr hdr;
+#ifndef CONFIG_MACH_S3VE3G_EUR
 	uint32_t mem_handle;
 	uint64_t mem_address;
 	uint32_t mem_size;
+#endif
 	struct oem_dha_parm_send_t dha_send;
 } __packed;
 #endif /* CONFIG_SEC_DHA_SOL_MAL*/
@@ -1515,8 +1517,13 @@ int voc_set_tx_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 int voc_set_rx_device_mute(uint32_t session_id, uint32_t mute,
 			   uint32_t ramp_duration);
 int voc_get_rx_device_mute(uint32_t session_id);
+#if !defined(CONFIG_MACH_KLTE_VZW)
 int voc_disable_cvp(uint32_t session_id);
 int voc_enable_cvp(uint32_t session_id);
+#else
+int voc_disable_device(uint32_t session_id);
+int voc_enable_device(uint32_t session_id);
+#endif
 int voc_set_route_flag(uint32_t session_id, uint8_t path_dir, uint8_t set);
 uint8_t voc_get_route_flag(uint32_t session_id, uint8_t path_dir);
 int voc_enable_dtmf_rx_detection(uint32_t session_id, uint32_t enable);

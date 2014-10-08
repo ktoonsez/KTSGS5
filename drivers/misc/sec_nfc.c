@@ -306,7 +306,7 @@ int sec_nfc_i2c_probe(struct i2c_client *client)
 	mutex_init(&info->i2c_info.read_mutex);
 	init_waitqueue_head(&info->i2c_info.read_wait);
 	i2c_set_clientdata(client, info);
-#if !defined(CONFIG_MACH_KSPORTSLTE_SPR)
+#if !defined(CONFIG_MACH_KSPORTSLTE_SPR)&& !defined(CONFIG_MACH_SLTE_SPR)
 	nfc_power_onoff(info,1);
 #endif
 	ret = request_threaded_irq(client->irq, NULL, sec_nfc_irq_thread_fn,
@@ -586,10 +586,11 @@ int nfc_power_onoff(struct sec_nfc_info *data, bool onoff)
 				__func__, ret);
 			return ret;
 		}
-*/		
+*/
 	}
 
 	if(onoff){
+#if !defined(CONFIG_MACH_ATLANTICLTE_VZW) && !defined(CONFIG_MACH_ATLANTICLTE_ATT) && !defined(CONFIG_MACH_ATLANTICLTE_USC)
 		ret = regulator_enable(data->L22);
 		regulator_set_mode(data->L22, REGULATOR_MODE_NORMAL);
 		if (ret) {
@@ -597,6 +598,7 @@ int nfc_power_onoff(struct sec_nfc_info *data, bool onoff)
 				__func__);
 			return ret;
 		}
+#endif
 
 		ret = regulator_enable(data->L6);
 		if (ret) {
@@ -607,14 +609,16 @@ int nfc_power_onoff(struct sec_nfc_info *data, bool onoff)
 
 	}
 	else {
+#if !defined(CONFIG_MACH_ATLANTICLTE_VZW) && !defined(CONFIG_MACH_ATLANTICLTE_ATT) && !defined(CONFIG_MACH_ATLANTICLTE_USC)
 		ret = regulator_disable(data->L22);
 		if (ret) {
 			pr_err("%s: Failed to disable regulatorL22.\n",
 				__func__);
 			return ret;
 		}
+#endif
 
-		ret = regulator_enable(data->L6);
+		ret = regulator_disable(data->L6);
 		if (ret) {
 			pr_err("%s: Failed to disable regulator L6.\n",
 				__func__);
@@ -638,7 +642,7 @@ static int sec_nfc_suspend(struct device *dev)
 
 	mutex_unlock(&info->mutex);
 
-#if !defined(CONFIG_MACH_KSPORTSLTE_SPR)
+#if !defined(CONFIG_MACH_KSPORTSLTE_SPR)&& !defined(CONFIG_MACH_SLTE_SPR)
 	nfc_power_onoff(info,0);
 #endif
 	return ret;
@@ -646,7 +650,7 @@ static int sec_nfc_suspend(struct device *dev)
 
 static int sec_nfc_resume(struct device *dev)
 {
-#if !defined(CONFIG_MACH_KSPORTSLTE_SPR)
+#if !defined(CONFIG_MACH_KSPORTSLTE_SPR)&& !defined(CONFIG_MACH_SLTE_SPR)
 	struct sec_nfc_info *info = SEC_NFC_GET_INFO(dev);
 	nfc_power_onoff(info,1);
 #endif

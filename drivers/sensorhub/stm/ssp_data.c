@@ -96,9 +96,12 @@ static void get_step_det_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_light_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
-#ifdef CONFIG_SENSORS_SSP_TMG399X
+#if defined(CONFIG_SENSORS_SSP_TMG399X)
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 10);
 	*iDataIdx += 10;
+#elif defined(CONFIG_SENSORS_SSP_MAX88921)
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 12);
+	*iDataIdx += 12;
 #else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 8);
 	*iDataIdx += 8;
@@ -118,24 +121,41 @@ static void get_pressure_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_gesture_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#if defined(CONFIG_SENSORS_SSP_MAX88921)
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 38);
+	*iDataIdx += 38;
+#else//CONFIG_SENSORS_SSP_TMG399X
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 20);
 	*iDataIdx += 20;
+#endif
 }
 
 static void get_proximity_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#if defined(CONFIG_SENSORS_SSP_MAX88921)
+	memset(&sensorsdata->prox[0], 0, 2);
+	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 1);
+	memcpy(&sensorsdata->prox[1], pchRcvDataFrame + *iDataIdx + 1, 2);
+	*iDataIdx += 3;
+#else
 	memset(&sensorsdata->prox[0], 0, 1);
 	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 2);
 	//memcpy(&sensorsdata->prox[1], pchRcvDataFrame + *iDataIdx + 1, 1);
 	*iDataIdx += 2;
+#endif
 }
 
 static void get_proximity_rawdata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#if defined(CONFIG_SENSORS_SSP_MAX88921)
+	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 2);
+	*iDataIdx += 2;
+#else
 	memcpy(&sensorsdata->prox[0], pchRcvDataFrame + *iDataIdx, 1);
 	*iDataIdx += 1;
+#endif
 }
 
 static void get_temp_humidity_sensordata(char *pchRcvDataFrame, int *iDataIdx,

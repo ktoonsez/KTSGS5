@@ -49,7 +49,7 @@
 #define MAX_LIMIT_COEFFS 6
 /* 3x3 transformation matrix coefficients in s4.9 fixed point format */
 static u32 vpe_csc_601_to_709_matrix_coeff[MAX_MATRIX_COEFFS] = {
-	0x1B8, 0x1FCC, 0x1FA2, 0, 0x1CC, 0x34, 0, 0x22, 0x1CF
+	0x1B9, 0x1FCC, 0x1FA2, 0, 0x1CC, 0x34, 0, 0x22, 0x1CF
 };
 /* offset coefficients in s9 fixed point format */
 static u32 vpe_csc_601_to_709_bias_coeff[MAX_BIAS_COEFFS] = {
@@ -2703,8 +2703,20 @@ static struct v4l2_ctrl **get_cluster(int type, int *size)
 	struct v4l2_ctrl **cluster = kmalloc(sizeof(struct v4l2_ctrl *) *
 			NUM_CTRLS, GFP_KERNEL);
 
-	if (type <= 0 || !size || !cluster)
-		return NULL;
+/* MMRND_AVRC. Start */
+// Avoid PREVENT
+#if 1
+        if (type <= 0 || !size || !cluster)
+        {
+                if(cluster)
+                    kfree(cluster); // PREVENT Resource leak fix
+                return NULL;
+        }
+#else
+        if (type <= 0 || !size || !cluster)
+                return NULL;
+#endif
+/* MMRND_AVRC. End */
 
 	for (c = 0; c < NUM_CTRLS; c++) {
 		if (msm_venc_ctrls[c].cluster & type) {

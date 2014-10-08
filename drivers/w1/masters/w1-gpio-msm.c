@@ -33,6 +33,9 @@
 #define gpio_get_value_msm(gpio) __msm_gpio_get_inout_no_log(gpio)
 
 static DEFINE_SPINLOCK(w1_gpio_msm_lock);
+#if defined(CONFIG_W1_FAST_CHECK)
+bool w1_is_resumed;
+#endif
 
 static int w1_delay_parm = 1;
 static void w1_delay(unsigned long tm)
@@ -554,6 +557,10 @@ static int w1_gpio_msm_resume(struct platform_device *pdev)
 
 	gpio_tlmm_config(GPIO_CFG(pdata->pin, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_direction_output(pdata->pin, 1);
+
+#if defined(CONFIG_W1_FAST_CHECK)
+	w1_is_resumed = true;
+#endif
 #ifdef CONFIG_W1_WORKQUEUE
 	schedule_delayed_work(&w1_gdev->w1_dwork, HZ * 2);
 #endif

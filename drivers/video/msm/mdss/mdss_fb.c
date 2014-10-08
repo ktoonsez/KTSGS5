@@ -71,10 +71,13 @@ static u32 mdss_fb_pseudo_palette[16] = {
 };
 
 #ifdef CONFIG_FB_MSM_CAMERA_CSC
+#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01EUR) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT) || defined(CONFIG_SEC_ATLANTIC_PROJECT)
+u8 prev_csc_update = 1;
+#endif
 u8 csc_update = 1;
 #endif
 
-#if defined(CONFIG_MACH_S3VE3G_EUR) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
+#if (defined(CONFIG_MACH_S3VE3G_EUR) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN)) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
 struct mutex esd_lock;
 #endif
 
@@ -434,7 +437,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	mutex_init(&mfd->lock);
 	mutex_init(&mfd->bl_lock);
-#if defined(CONFIG_MACH_S3VE3G_EUR) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
+#if (defined(CONFIG_MACH_S3VE3G_EUR) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN)) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
 	mutex_init(&esd_lock);
 #endif
 	mutex_init(&mfd->power_state);
@@ -766,7 +769,8 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			mfd->bl_level = bkl_lvl;
 			return;
 		}
-		pdata->set_backlight(pdata, temp);
+		if(mfd->panel_power_on == true)
+		   pdata->set_backlight(pdata, temp);
 		mfd->bl_level = bkl_lvl;
 		mfd->bl_level_old = temp;
 
@@ -789,6 +793,10 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	if (mfd->unset_bl_level && !mfd->bl_updated) {
 		pdata = dev_get_platdata(&mfd->pdev->dev);
 		if ((pdata) && (pdata->set_backlight)) {
+#if defined(CONFIG_MACH_KANAS3G_CTC)
+			pr_info("[TSP]extend 200ms delay from LCD backlight\n");
+			msleep(100);
+#endif
 			mutex_lock(&mfd->bl_lock);
 			mfd->bl_level = mfd->unset_bl_level;
 			pr_info("mfd->bl_level (%d), bl_updated (%d)\n", 
@@ -884,7 +892,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-#if defined(CONFIG_MACH_S3VE3G_EUR) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
+#if (defined(CONFIG_MACH_S3VE3G_EUR) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN)) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
 	static int nblank_mode = FB_BLANK_UNBLANK;
 	static int final_state = -1;
 	int ret;
@@ -932,12 +940,12 @@ NEXT_STEP2:
 		else
 			mfd->suspend.panel_power_on = false;
 
-#if defined(CONFIG_MACH_S3VE3G_EUR) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
+#if (defined(CONFIG_MACH_S3VE3G_EUR) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN)) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
 		mutex_unlock(&esd_lock);
 #endif
 		return 0;
 	}
-#if defined(CONFIG_MACH_S3VE3G_EUR) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
+#if (defined(CONFIG_MACH_S3VE3G_EUR) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN)) && defined(CONFIG_ESD_ERR_FG_RECOVERY)
 	ret = mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
 	mutex_unlock(&esd_lock);
 	return ret;
@@ -1295,6 +1303,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	mutex_init(&mfd->mdp_sync_pt_data.sync_mutex);
 	atomic_set(&mfd->mdp_sync_pt_data.commit_cnt, 0);
 	atomic_set(&mfd->commits_pending, 0);
+	atomic_set(&mfd->kickoff_pending, 0);
 
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
@@ -1305,6 +1314,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	init_completion(&mfd->power_set_comp);
 	init_waitqueue_head(&mfd->commit_wait_q);
 	init_waitqueue_head(&mfd->idle_wait_q);
+	init_waitqueue_head(&mfd->kickoff_wait_q);
 
 	ret = fb_alloc_cmap(&fbi->cmap, 256, 0);
 	if (ret)
@@ -1479,9 +1489,6 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 	}
 
 	if (!mfd->ref_cnt) {
-#if defined(CONFIG_WHITE_PANEL)
-		mdss_fb_set_backlight(mfd, 0);
-#endif
 		if (mfd->disp_thread) {
 			kthread_stop(mfd->disp_thread);
 			mfd->disp_thread = NULL;
@@ -1690,7 +1697,26 @@ static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd)
 	return 0;
 }
 
+static int mdss_fb_wait_for_kickoff(struct msm_fb_data_type *mfd)
+{
+	int ret = 0;
 
+	ret = wait_event_timeout(mfd->kickoff_wait_q,
+			(!atomic_read(&mfd->kickoff_pending) ||
+			mfd->shutdown_pending),
+			msecs_to_jiffies(WAIT_DISP_OP_TIMEOUT / 2));
+	if (!ret) {
+		pr_err("wait for kickoff timeout %d pending=%d\n",
+			ret, atomic_read(&mfd->kickoff_pending));
+
+	}else if (mfd->shutdown_pending) {
+		pr_debug("Shutdown signalled\n");
+		return -EPERM;
+	}
+
+	return 0;
+
+}
 static int mdss_fb_pan_display_ex(struct fb_info *info,
 		struct mdp_display_commit *disp_commit)
 {
@@ -1728,6 +1754,7 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 
 	atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
 	atomic_inc(&mfd->commits_pending);
+	atomic_inc(&mfd->kickoff_pending);
 	wake_up_all(&mfd->commit_wait_q);
 	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
 	if (wait_for_finish)
@@ -1824,6 +1851,8 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 		if (ret)
 			pr_err("pan display failed %x on fb%d\n", ret,
 					mfd->index);
+		atomic_set(&mfd->kickoff_pending, 0);
+		wake_up_all(&mfd->kickoff_wait_q);
 	}
 	if (!ret)
 		mdss_fb_update_backlight(mfd);
@@ -1864,6 +1893,8 @@ static int __mdss_fb_display_thread(void *data)
 	}
 
 	atomic_set(&mfd->commits_pending, 0);
+	atomic_set(&mfd->kickoff_pending, 0);
+	wake_up_all(&mfd->kickoff_wait_q);
 	wake_up_all(&mfd->idle_wait_q);
 
 	return ret;
@@ -2284,7 +2315,26 @@ static int mdss_fb_display_commit(struct fb_info *info,
 	ret = mdss_fb_pan_display_ex(info, &disp_commit);
 	return ret;
 }
+static int __ioctl_wait_idle(struct msm_fb_data_type *mfd, u32 cmd)
+{
+	int ret = 0;
 
+	if (mfd->wait_for_kickoff &&
+		((cmd == MSMFB_BUFFER_SYNC) ||
+		(cmd == MSMFB_OVERLAY_SET))) {
+		ret = mdss_fb_wait_for_kickoff(mfd);
+		} else if ((cmd != MSMFB_VSYNC_CTRL) &&
+		(cmd != MSMFB_OVERLAY_VSYNC_CTRL) &&
+		(cmd != MSMFB_ASYNC_BLIT) &&
+		(cmd != MSMFB_BLIT) &&
+		(cmd != MSMFB_NOTIFY_UPDATE)) {
+		ret = mdss_fb_pan_idle(mfd);
+	}
+	if (ret)
+		pr_debug("Shutdown pending. Aborting operation %x\n", cmd);
+
+	return ret;
+}
 static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg)
 {
@@ -2298,16 +2348,10 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		return -EINVAL;
 	mfd = (struct msm_fb_data_type *)info->par;
 	mdss_fb_power_setting_idle(mfd);
-	if ((cmd != MSMFB_VSYNC_CTRL) && (cmd != MSMFB_OVERLAY_VSYNC_CTRL) &&
-			(cmd != MSMFB_ASYNC_BLIT) && (cmd != MSMFB_BLIT) &&
-			(cmd != MSMFB_NOTIFY_UPDATE)) {
-		ret = mdss_fb_pan_idle(mfd);
-		if (ret) {
-			pr_debug("Shutdown pending. Aborting operation %x\n",
-				cmd);
-			return ret;
-		}
-	}
+
+	ret = __ioctl_wait_idle(mfd, cmd);
+	if (ret)
+		return ret;
 
 	switch (cmd) {
 	case MSMFB_CURSOR:

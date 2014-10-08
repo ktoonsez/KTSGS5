@@ -1078,13 +1078,13 @@ static int __devinit wcd9xxx_i2c_probe(struct i2c_client *client,
 		if (!pdata) {
 			dev_dbg(&client->dev, "no platform data?\n");
 			ret = -EINVAL;
-			goto fail;
+			goto err_codec;
 		}
 		if (i2c_check_functionality(client->adapter,
 					    I2C_FUNC_I2C) == 0) {
 			dev_dbg(&client->dev, "can't talk I2C?\n");
 			ret = -EIO;
-			goto fail;
+			goto err_codec;
 		}
 		dev_set_drvdata(&client->dev, wcd9xxx);
 		wcd9xxx->dev = &client->dev;

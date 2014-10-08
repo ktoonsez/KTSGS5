@@ -252,6 +252,7 @@ struct kgsl_device {
 	int open_count;
 
 	struct mutex mutex;
+	atomic64_t mutex_owner;
 	uint32_t state;
 	uint32_t requested_state;
 
@@ -723,4 +724,54 @@ static inline int kgsl_cmdbatch_sync_pending(struct kgsl_cmdbatch *cmdbatch)
 	return ret;
 }
 
+/**
+ * kgsl_sysfs_store() - parse a string from a sysfs store function
+ * @buf: Incoming string to parse
+ * @ptr: Pointer to an unsigned int to store the value
+ */
+static inline int kgsl_sysfs_store(const char *buf, unsigned int *ptr)
+{
+	unsigned int val;
+	int rc;
+
+	rc = kstrtou32(buf, 0, &val);
+	if (rc)
+		return rc;
+
+	if (ptr)
+		*ptr = val;
+
+	return 0;
+}
+
+/**
+ * kgsl_mutex_lock() -- try to acquire the mutex if current thread does not
+ *                      already own it
+ * @mutex: mutex to lock
+ * @owner: current mutex owner
+ */
+
+static inline int kgsl_mutex_lock(struct mutex *mutex, atomic64_t *owner)
+{
+
+	if (atomic64_read(owner) != (long)current) {
+		mutex_lock(mutex);
+		atomic64_set(owner, (long)current);
+		/* Barrier to make sure owner is updated */
+		smp_wmb();
+		return 0;
+	}
+	return 1;
+}
+
+/**
+ * kgsl_mutex_unlock() -- Clear the owner and unlock the mutex
+ * @mutex: mutex to unlock
+ * @owner: current mutex owner
+ */
+static inline void kgsl_mutex_unlock(struct mutex *mutex, atomic64_t *owner)
+{
+	atomic64_set(owner, 0);
+	mutex_unlock(mutex);
+}
 #endif  /* __KGSL_DEVICE_H */

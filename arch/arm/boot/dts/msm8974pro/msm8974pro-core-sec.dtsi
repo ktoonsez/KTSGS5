@@ -1572,7 +1572,8 @@
 			< 2265600000  925000 691 >;
 	};
 
-	qcom,cpubw {
+	qcom,cpubw@0 {
+		reg = <0 4>;
 		compatible = "qcom,cpubw";
 		qcom,cpu-mem-ports = <1 512>, <2 512>;
 		qcom,bw-tbl =
@@ -1903,6 +1904,10 @@
 		qcom,msm-dai-q6-incall-music-rx {
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <32773>;
+		};
+		qcom,msm-dai-q6-incall-music-2-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32770>;
 		};
 	};
 

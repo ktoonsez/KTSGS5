@@ -78,6 +78,7 @@ enum sec_battery_adc_channel {
 	SEC_BAT_ADC_CHANNEL_TEMP_AMBIENT,
 	SEC_BAT_ADC_CHANNEL_FULL_CHECK,
 	SEC_BAT_ADC_CHANNEL_VOLTAGE_NOW,
+	SEC_BAT_ADC_CHANNEL_INBAT_VOLTAGE,
 	SEC_BAT_ADC_CHANNEL_NUM
 };
 
@@ -554,6 +555,9 @@ struct sec_battery_platform_data {
 	/* float voltage (mV) */
 	int chg_float_voltage;
 	sec_charger_functions_t chg_functions_setting;
+
+	int siop_level;
+	bool siop_activated;
 
 	/* ADC setting */
 	unsigned int adc_check_count;

@@ -11346,7 +11346,14 @@ s32 wl_cfg80211_up(void *para)
 	s32 err = 0;
 	int val = 1;
 	dhd_pub_t *dhd;
-
+#ifdef CUSTOMER_HW4
+	int ret = -1;
+	struct file *fp = NULL;
+	char *filepath = "/data/.cid.info";
+	s8 iovbuf[WL_EVENTING_MASK_LEN + 12];
+	char vender[10]={0,};
+	uint param = 0;
+#endif /* CUSTOMER_HW4 */
 	(void)para;
 	WL_DBG(("In\n"));
 	cfg = g_bcm_cfg;
@@ -11382,6 +11389,30 @@ s32 wl_cfg80211_up(void *para)
 #ifdef ROAM_CHANNEL_CACHE
 	init_roam(ioctl_version);
 #endif
+
+#ifdef CUSTOMER_HW4
+	fp = filp_open(filepath, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		WL_ERR(("/data/.cid.info file open error\n"));
+
+	} else {
+		ret = kernel_read(fp, 0, (char *)vender, 5);
+
+		if(ret != -1 && NULL != strstr(vender,"wisol")) {
+			printk("wisol module detected: set pm_bcnrx=0, set scan_ps=0\n");
+			bcm_mkiovar("pm_bcnrx", (char *)&param, 4, iovbuf, sizeof(iovbuf));
+			err = wldev_ioctl(bcmcfg_to_prmry_ndev(cfg), WLC_SET_VAR, iovbuf, sizeof(iovbuf), true);
+			if (unlikely(err))
+				WL_ERR(("Set pm_bcnrx error (%d)\n", err));
+
+			bcm_mkiovar("scan_ps", (char *)&param, 4, iovbuf, sizeof(iovbuf));
+			err = wldev_ioctl(bcmcfg_to_prmry_ndev(cfg), WLC_SET_VAR, iovbuf, sizeof(iovbuf), true);
+			if (unlikely(err))
+				WL_ERR(("Set scan_ps error (%d)\n", err));
+		}
+		filp_close(fp, NULL);
+	}
+#endif /* CUSTOMER_HW4 */
 	mutex_unlock(&cfg->usr_sync);
 	return err;
 }

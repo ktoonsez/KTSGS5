@@ -2591,7 +2591,8 @@ static int cypress_touchkey_suspend(struct device *dev)
 	info->is_powering_on = true;
 	disable_irq(info->irq);
 	info->enabled = false;
-	cypress_power_onoff(info, 0);	
+	cypress_power_onoff(info, 0);
+
 	return ret;
 }
 

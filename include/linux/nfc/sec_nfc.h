@@ -12,6 +12,64 @@
  */
 
 #include <linux/platform_device.h>
+
+#ifdef CONFIG_SEC_NFC_SENN3AB
+
+#define SEC_NFC_DRIVER_NAME		"sec-nfc"
+#define SEC_NFC_FN_DRIVER_NAME		"sec-nfc-fn"
+
+#define SEC_NFC_MAX_BUFFER_SIZE	512
+
+/* ioctl */
+#define SEC_NFC_MAGIC	'S'
+#define SEC_NFC_GET_MODE		_IOW(SEC_NFC_MAGIC, 0, unsigned int)
+#define SEC_NFC_SET_MODE		_IOW(SEC_NFC_MAGIC, 1, unsigned int)
+#define SEC_NFC_GET_PUSH		_IOW(SEC_NFC_MAGIC, 2, unsigned int)
+#define SEC_NFC_SET_READTIMES	_IOW(SEC_NFC_MAGIC, 3, unsigned int)
+#define SEC_NFC_READABLE	_IOW(SEC_NFC_MAGIC, 4, unsigned int)
+
+/* size */
+#define SEC_NFC_MSG_MIN_SIZE	1
+#define SEC_NFC_MSG_MAX_SIZE	(256 + 4)
+
+/* wait for device stable */
+#define SEC_NFC_VEN_WAIT_TIME	(100)
+
+/* gpio pin configuration */
+struct sec_nfc_platform_data {
+//	unsigned int irq;
+	unsigned int ven;
+	unsigned int firm;
+	void	(*cfg_gpio)(void);
+	u32 pon_gpio_flags;
+	u32 rfs_gpio_flags;
+};
+
+enum sec_nfc_state {
+	SEC_NFC_ST_OFF = 0,
+	SEC_NFC_ST_NORM,
+	SEC_NFC_ST_FIRM,
+	SEC_NFC_ST_COUNT,
+};
+
+
+#ifdef CONFIG_SEC_NFC_SENN3AB_FN
+struct sec_nfc_fn_platform_data {
+	unsigned int push;
+	void    (*cfg_gpio)(void);
+	u32 int_gpio_flags; 
+};
+
+enum readable_state {
+    RDABLE_NULL = 0,
+    RDABLE_NO,
+    RDABLE_PENDING,
+    RDABLE_YES,
+};
+#endif
+
+#else /* CONFIG_SEC_NFC_SENN3AB */ 
+
 #ifdef CONFIG_SEC_NFC_CLK_REQ
 #include <linux/clk.h>
 #endif
@@ -53,13 +111,8 @@
 struct sec_nfc_platform_data {
 	unsigned int irq;
 	unsigned int ven;
-#ifdef CONFIG_NFC_N5_PMC8974_CLK_REQ
 	int firm;
 	int wake;
-#else
-	unsigned int firm;
-	unsigned int wake;
-#endif
 	unsigned int tvdd;
 	unsigned int avdd;
 #ifdef CONFIG_SEC_NFC_CLK_REQ
@@ -108,3 +161,6 @@ enum sec_nfc_wake {
 	SEC_NFC_WAKE_SLEEP = 0,
 	SEC_NFC_WAKE_UP,
 };
+
+
+#endif /* CONFIG_SEC_NFC_SENN3AB */

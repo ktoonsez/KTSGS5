@@ -183,8 +183,11 @@ static int tsp_power_enabled;
 
 /* EELY panel */
 #define BOOT_VERSION_EL 0x1
-#define CORE_VERSION_EL 0x76
-#define FW_VERSION_EL 0x11
+#define CORE_VERSION_EL 0x78
+#if defined(CONFIG_MACH_MILLET3G_CHN_OPEN)
+#define FW_VERSION_DATE "140415"
+#endif
+#define FW_VERSION_EL 0x16
 
 #define MAX_FW_PATH 255
 #define TSP_FW_FILENAME "melfas_fw.bin"
@@ -987,8 +990,13 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			ABS_MT_POSITION_X, x);
 		input_report_abs(info->input_dev,
 			ABS_MT_POSITION_Y, y);
+#if defined(CONFIG_MACH_MILLETLTE_VZW)
+		input_report_abs(info->input_dev,
+			ABS_MT_WIDTH_MAJOR, (1229*tmp[4]) >>10); //ABS_MT_WIDTH_MAJOR * 1.2 (only for VZW)
+#else
 		input_report_abs(info->input_dev,
 			ABS_MT_WIDTH_MAJOR, tmp[4]);
+#endif
 		input_report_abs(info->input_dev,
 			ABS_MT_TOUCH_MAJOR, tmp[6]);
 		input_report_abs(info->input_dev,
@@ -1008,10 +1016,17 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		if (info->finger_state[id] == 0) {
 			info->finger_state[id] = 1;
 			touch_is_pressed++;
+#if defined(CONFIG_MACH_MILLETLTE_VZW)
+			dev_notice(&client->dev,
+				"P [%2d],([%3d],[%4d]) w=%d, major=%d, minor=%d, angle=%d, palm=%d(%d)",
+				id, x, y,((1229*tmp[4]) >>10), tmp[6], tmp[7],
+				angle, palm, info->panel);
+#else
 			dev_notice(&client->dev,
 				"P [%2d],([%3d],[%4d]) w=%d, major=%d, minor=%d, angle=%d, palm=%d(%d)",
 				id, x, y, tmp[4], tmp[6], tmp[7],
 				angle, palm, info->panel);
+#endif
 		}
 #endif /* CONFIG_SAMSUNG_PRODUCT_SHIP */
 	}
@@ -2101,7 +2116,11 @@ static void get_config_ver(void *device_data)
 	if (info->panel == ILJIN)
 		snprintf(buff, sizeof(buff), "T311_Me_0608_IJ");
 	else if (info->panel == EELY)
+		#if defined(CONFIG_MACH_MILLET3G_CHN_OPEN)
+		snprintf(buff, sizeof(buff), "SM-T331C_ME_%s", FW_VERSION_DATE);
+		#else
 		snprintf(buff, sizeof(buff), "T335_ME_0x%02x", FW_VERSION_EL);
+		#endif
 	else
 		snprintf(buff, sizeof(buff), "T311_Me_0608_UN");
 
@@ -2153,7 +2172,7 @@ static void module_off_master(void *device_data)
 
 	mutex_lock(&info->lock);
 	if (info->enabled) {
-		disable_irq(info->irq);
+		disable_irq_nosync(info->irq);
 		info->enabled = false;
 		touch_is_pressed = 0;
 	}
@@ -3184,8 +3203,27 @@ static int mms_ts_fw_check(struct mms_ts_info *info)
 	if (ret < 0) {		/* tsp connect check */
 		pr_err("%s: i2c fail...[%d], addr[%d]\n",
 			   __func__, ret, info->client->addr);
+#if defined(CONFIG_MACH_MILLET3G_CHN_OPEN)
+		retry = 4;
+		while (retry)
+		{
+		    ret = i2c_master_recv(client, buf, 1);
+		    if(ret > 0 && ret == 0)
+		    {
+		       break;
+		    }
+		    msleep(10);
+		    retry--;		  
+		}
+		if (retry == 0 && ret < 0)
+		{
+		    pr_info("[TSP] force update firmware \n");
+		    update = true;
+		}
+#else
 		pr_err("%s: tsp driver unload\n", __func__);
 		return ret;
+#endif	
 	}
 	if (info->panel == EELY)
 		dev_info(&client->dev,
@@ -3199,7 +3237,17 @@ static int mms_ts_fw_check(struct mms_ts_info *info)
 
 	if (info->panel == ILJIN)
 	{
+#if defined(CONFIG_MACH_MILLET3G_CHN_OPEN)	
+		if (!update)	{
+		    ret = get_fw_version(info);
+		}
+		else {
+		    ret = 0;
+		}
+		
+#else
 		ret = get_fw_version(info);
+#endif
 		if (ret != 0) {
 			dev_err(&client->dev, "fw_version read fail\n");
 			update = true;
@@ -3233,7 +3281,16 @@ static int mms_ts_fw_check(struct mms_ts_info *info)
 	}
 	else if (info->panel == EELY)
 	{
+#if defined(CONFIG_MACH_MILLET3G_CHN_OPEN)
+		if (!update){
+		    ret = get_fw_version(info);
+		}
+		else {
+		    ret = 0;
+		}
+#else
 		ret = get_fw_version(info);
+#endif
 		if (ret != 0) {
 			dev_err(&client->dev, "fw_version read fail\n");
 			update = true;
@@ -3832,6 +3889,9 @@ static void mms_ts_input_close(struct input_dev *dev)
 
 void melfas_register_callback(void *);
 
+#if defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
+extern int get_lcd_attached(void);
+#endif
 static int __devinit mms_ts_probe(struct i2c_client *client,
 				  const struct i2c_device_id *id)
 {
@@ -3850,6 +3910,12 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 	struct device *touchkey_dev;
 #endif
 	touch_is_pressed = 0;
+#if defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
+	if (get_lcd_attached() == 0) {
+		dev_err(&client->dev, "%s : get_lcd_attached()=0 \n", __func__);
+		return -EIO;
+	}
+#endif
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C))
 		return -EIO;
@@ -3895,10 +3961,6 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 	ret = get_panel_version(info);
 	if(ret < 0)
 		printk(KERN_INFO "get_panel_version error" );
-	if (NULL == info->pdata) {
-		pr_err("failed to get platform data\n");
-		goto err_config;
-	}
 	info->irq = -1;
 	mutex_init(&info->lock);
 
@@ -4056,10 +4118,10 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed to create sysfs group, debug2 \n");
 		return -EAGAIN;
 	}
-	if (sysfs_create_link(NULL, &sec_touchscreen->kobj, "sec_touchscreen")) {
+/*	if (sysfs_create_link(NULL, &sec_touchscreen->kobj, "sec_touchscreen")) {
 		dev_err(&client->dev, "failed to create sysfs symlink, debug2 \n");
 		return -EAGAIN;
-	}
+	}*/
 
 #endif
 
@@ -4183,7 +4245,7 @@ static int mms_ts_suspend(struct device *dev)
 	if (!info->enabled)
 		goto out;
 	info->enabled = false;
-	disable_irq(info->irq);
+	disable_irq_nosync(info->irq);
 
 	dev_notice(&info->client->dev, "%s: users=%d\n", __func__,
 		   info->input_dev->users);

@@ -148,11 +148,19 @@ static int32_t ImmVibeSPI_ForceOut_AmpDisable(u_int8_t nActuatorIndex)
 				if(vibrator_drvdata.pwm_dev != NULL) //Disable the PWM device.
 					pwm_disable(vibrator_drvdata.pwm_dev);
 			} else{	//AP PWM
+#if defined(CONFIG_MACH_S3VE3G_EUR) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN)
+				gpio_tlmm_config(GPIO_CFG(vibrator_drvdata.vib_pwm_gpio,\
+				0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, \
+				GPIO_CFG_2MA),GPIO_CFG_ENABLE);
+				gpio_set_value(vibrator_drvdata.vib_pwm_gpio, \
+				    VIBRATION_OFF);
+#else
 				gpio_tlmm_config(GPIO_CFG(vibrator_drvdata.vib_pwm_gpio,\
 				0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, \
 				GPIO_CFG_2MA),GPIO_CFG_ENABLE);
 				gpio_set_value(vibrator_drvdata.vib_pwm_gpio, \
 				    VIBRATION_OFF);
+#endif
 			}
 		}
 		//printk(KERN_DEBUG "tspdrv: %s\n", __func__);
@@ -162,6 +170,9 @@ static int32_t ImmVibeSPI_ForceOut_AmpDisable(u_int8_t nActuatorIndex)
 		max77804k_vibtonz_en(0);
 #elif defined(CONFIG_MOTOR_DRV_MAX77828)
 		max77828_vibtonz_en(0);
+#elif defined(CONFIG_MOTOR_DRV_MAX77888)
+		max77888_gpio_en(0);
+		max77888_vibtonz_en(0);
 #elif defined(CONFIG_MOTOR_DRV_DRV2603)
 		drv2603_gpio_en(0);
 #endif
@@ -191,7 +202,7 @@ static int32_t ImmVibeSPI_ForceOut_AmpEnable(u_int8_t nActuatorIndex)
 					GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 					gpio_set_value(vibrator_drvdata.vib_pwm_gpio, \
 						VIBRATION_ON);
-#elif defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_S3VE3G_EUR)
+#elif defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_S3VE3G_EUR) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN)
 				gpio_tlmm_config(GPIO_CFG(vibrator_drvdata.vib_pwm_gpio,\
 					3, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, \
 					GPIO_CFG_2MA), GPIO_CFG_ENABLE);
@@ -213,6 +224,9 @@ static int32_t ImmVibeSPI_ForceOut_AmpEnable(u_int8_t nActuatorIndex)
 		max77804k_vibtonz_en(1);
 #elif defined(CONFIG_MOTOR_DRV_MAX77828)
                 max77828_vibtonz_en(1);
+#elif defined(CONFIG_MOTOR_DRV_MAX77888)
+		max77888_gpio_en(1);
+		max77888_vibtonz_en(1);
 #elif defined(CONFIG_MOTOR_DRV_DRV2603)
 		drv2603_gpio_en(1);
 #endif
@@ -268,6 +282,9 @@ static int32_t ImmVibeSPI_ForceOut_Initialize(void)
 		}
 #if defined(CONFIG_MOTOR_DRV_DRV2603)
 		if (drv2603_gpio_init())
+			goto err2;
+#elif defined(CONFIG_MOTOR_DRV_MAX77888)
+		if(max77888_gpio_init())
 			goto err2;
 #endif
 	}

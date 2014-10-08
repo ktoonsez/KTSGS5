@@ -1410,6 +1410,47 @@ void tcon_interanl_clock(void)
 	data[0] = 0x05; data[1] = 0x33; data[2] = 0x6D;
 	aux_tx(0x491, data, 3);
 }
+#elif defined(CONFIG_MACH_PICASSO_SPR)
+void tcon_interanl_clock(void)
+{
+	/* SPR needs 900Mbps internal clock */
+	char data[3];
+
+	//900Mbps
+	data[0] = 0x03; data[1] = 0xBB; data[2] = 0x26;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x2A; data[2] = 0x28;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x2B; data[2] = 0x43;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x2E; data[2] = 0x28;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x2F; data[2] = 0x43;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x32; data[2] = 0x28;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x33; data[2] = 0x43;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x36; data[2] = 0x28;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x37; data[2] = 0x43;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x46; data[2] = 0x28;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x47; data[2] = 0x43;
+	aux_tx(0x491, data, 3);
+
+}
 #else
 void tcon_interanl_clock(void)
 {

@@ -314,7 +314,7 @@ struct sdhci_msm_pltfm_data {
 	struct sdhci_msm_pin_data *pin_data;
 	u32 cpu_dma_latency_us;
 	int status_gpio; /* card detection GPIO that is configured as IRQ */
-#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT)
+#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT) || defined(CONFIG_MACH_JACTIVESKT)
 	int ls_gpio; /* level shifter gpio */
 #endif
 	struct sdhci_msm_bus_voting_data *voting_data;
@@ -1094,10 +1094,12 @@ static int sdhci_msm_dt_parse_vreg_info(struct device *dev,
 	struct device_node *np = dev->of_node;
 
 	snprintf(prop_name, MAX_PROP_SIZE, "%s-supply", vreg_name);
+#if !defined(CONFIG_SEC_PATEK_PROJECT)
 	if (!of_parse_phandle(np, prop_name, 0)) {
 		dev_info(dev, "No vreg data found for %s\n", vreg_name);
 		return ret;
 	}
+#endif
 
 	vreg = devm_kzalloc(dev, sizeof(*vreg), GFP_KERNEL);
 	if (!vreg) {
@@ -1105,6 +1107,21 @@ static int sdhci_msm_dt_parse_vreg_info(struct device *dev,
 		ret = -ENOMEM;
 		return ret;
 	}
+#if defined(CONFIG_SEC_PATEK_PROJECT)
+	if (strcmp(dev_name(dev), "msm_sdcc.3") == 0) {
+		if (strcmp(vreg_name, "vdd") == 0) {
+			vreg->reg = regulator_get(dev, "max77826_ldo10");
+			dev_info(dev, "max77826_ldo10 is for %s\n", vreg_name);
+		}
+		else if (strcmp(vreg_name, "vdd-io") == 0) {
+			vreg->reg = regulator_get(dev, "max77826_ldo4");
+			dev_info(dev, "max77826_ldo4 is for %s\n", vreg_name);
+		}
+
+		if(!vreg->reg)
+			dev_info(dev, "Settng Regulator for %s is failed\n", vreg_name);
+	}
+#endif
 
 	vreg->name = vreg_name;
 
@@ -1412,7 +1429,7 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 	pdata->status_gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
 	if (gpio_is_valid(pdata->status_gpio) & !(flags & OF_GPIO_ACTIVE_LOW))
 		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
-#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT)
+#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT) || defined(CONFIG_MACH_JACTIVESKT)
 	pdata->ls_gpio = of_get_named_gpio_flags(np, "ls-gpios", 0, 0);
 #endif
 
@@ -1910,7 +1927,7 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 		goto out;
 	}
 
-#if defined(CONFIG_SEC_K_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_PATEK_PROJECT)
 	/* 
 	 * In SD Card Case using FPGA, 
 	 * Turn on : vdd_io on -> vdd on
@@ -1934,7 +1951,7 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 		if (vreg_table[i]) {
 			if (enable)
 				ret = sdhci_msm_vreg_enable(vreg_table[i]);
-#if defined(CONFIG_SEC_K_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_PATEK_PROJECT)
 			else {
 				ret = sdhci_msm_vreg_disable(vreg_table[i]);
 				if (pdata->status_gpio && i == 0)
@@ -1949,7 +1966,7 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 		}
 	}
 
-#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT)
+#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT) || defined(CONFIG_MACH_JACTIVESKT)
 	if(pdata->ls_gpio > 0 && gpio_is_valid(pdata->ls_gpio)) {
 		if(enable) {
 			gpio_set_value(pdata->ls_gpio, 1);
@@ -2330,8 +2347,28 @@ static void sdhci_msm_check_power_status(struct sdhci_host *host, u32 req_type)
 	 * Handle I/O voltage switch here if this request is for SDC3. 
 	 * SDC3 Don't use PWR_IRQ.
 	 */
-#ifdef CONFIG_SEC_K_PROJECT
+#if defined(CONFIG_SEC_K_PROJECT)
 	if (strcmp(host->hw_name, "msm_sdcc.3") == 0 && !done && system_rev >= 6) { 
+		if (req_type == REQ_IO_HIGH) {
+			/* Switch voltage High */
+			if (sdhci_msm_set_vdd_io_vol(msm_host->pdata, VDD_IO_HIGH, 0)) {
+				pr_err("%s: %s: Voltage Switch to High is Fail\n", mmc_hostname(host->mmc), __func__);
+				return;
+			}
+			msm_host->curr_io_level = REQ_IO_HIGH;
+			done = true;
+		} else if (req_type == REQ_IO_LOW) { 
+			/* Switch voltage Low */
+			if (sdhci_msm_set_vdd_io_vol(msm_host->pdata, VDD_IO_LOW, 0)) {
+				pr_err("%s: %s: Voltage Switch to Low is Fail\n", mmc_hostname(host->mmc), __func__);
+				return;
+			}
+			msm_host->curr_io_level = REQ_IO_LOW;
+			done = true;
+		}
+	} 
+#elif defined(CONFIG_SEC_PATEK_PROJECT)
+	if (strcmp(host->hw_name, "msm_sdcc.3") == 0 && !done) { 
 		if (req_type == REQ_IO_HIGH) {
 			/* Switch voltage High */
 			if (sdhci_msm_set_vdd_io_vol(msm_host->pdata, VDD_IO_HIGH, 0)) {
@@ -2853,7 +2890,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.enable_controller_clock = sdhci_msm_enable_controller_clock,
 };
 
-#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT)
+#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT) || defined(CONFIG_MACH_JACTIVESKT)
 static void mmc_enable_ls_gpio(struct sdhci_host *host, unsigned int gpio_no)
 {
 	int status;
@@ -2937,12 +2974,12 @@ static ssize_t t_flash_detect_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct sdhci_msm_host *msm_host = dev_get_drvdata(dev);
-#if defined(CONFIG_MACH_SERRANO)
+#if defined(CONFIG_MACH_SERRANO) || defined(CONFIG_SEC_ATLANTIC_PROJECT)
 	if (msm_host->mmc->card) {
-		printk(KERN_DEBUG "sdcc3: card inserted.\n");
+		printk(KERN_DEBUG "External sd: card inserted.\n");
 		return sprintf(buf, "Insert\n");
 	} else {
-		printk(KERN_DEBUG "sdcc3: card removed.\n");
+		printk(KERN_DEBUG "External sd: card removed.\n");
 		return sprintf(buf, "Remove\n");
 	}
 #else
@@ -2958,10 +2995,10 @@ static ssize_t t_flash_detect_show(struct device *dev,
 
 	pr_info("%s : detect = %d.\n", __func__, detect);
 	if (!detect) {
-		printk(KERN_DEBUG "sdcc3: card inserted.\n");
+		printk(KERN_DEBUG "External sd: card inserted.\n");
 		return sprintf(buf, "Insert\n");
 	} else {
-		printk(KERN_DEBUG "sdcc3: card removed.\n");
+		printk(KERN_DEBUG "External sd: card removed.\n");
 		return sprintf(buf, "Remove\n");
 	}
 #endif
@@ -3266,7 +3303,7 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 
 	init_completion(&msm_host->pwr_irq_completion);
 
-#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT)
+#if defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || defined(CONFIG_MACH_KS01LGT) || defined(CONFIG_MACH_JACTIVESKT)
 	if (msm_host->pdata->ls_gpio || gpio_is_valid(msm_host->pdata->ls_gpio))
 		mmc_enable_ls_gpio(host, msm_host->pdata->ls_gpio);
 #endif
@@ -3302,8 +3339,10 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 #endif
 
 	/* SYSFS about SD Card Detection by soonil.lim */
-#if defined(CONFIG_MACH_SERANNO)
+#if defined(CONFIG_MACH_SERRANO)
 	if (t_flash_detect_dev == NULL && !strcmp(host->hw_name, "msm_sdcc.3")) {
+#elif defined(CONFIG_SEC_ATLANTIC_PROJECT)
+	if (t_flash_detect_dev == NULL && !strcmp(host->hw_name, "msm_sdcc.2")) {
 #else
 	if (t_flash_detect_dev == NULL && gpio_is_valid(msm_host->pdata->status_gpio)) {
 #endif

@@ -191,6 +191,10 @@ static int host_notifier_probe(struct platform_device *pdev)
 
 	ninfo.ndev.set_booster = host_notifier_booster;
 	ninfo.phy = usb_get_transceiver();
+
+	if(!ninfo.phy){
+		return -ENODEV;
+	}
 	ATOMIC_INIT_NOTIFIER_HEAD(&ninfo.phy->notifier);
 
 	ret = host_notify_dev_register(&ninfo.ndev);

@@ -36,6 +36,8 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
 #include <linux/mmc/sdhci.h>
+#include <linux/stlog.h>
+
 #include "core.h"
 #include "bus.h"
 #include "host.h"
@@ -526,12 +528,8 @@ EXPORT_SYMBOL(mmc_start_idle_time_bkops);
  */
 static void mmc_wait_data_done(struct mmc_request *mrq)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&mrq->host->context_info.lock, flags);
 	mrq->host->context_info.is_done_rcv = true;
 	wake_up_interruptible(&mrq->host->context_info.wait);
-	spin_unlock_irqrestore(&mrq->host->context_info.lock, flags);
 }
 
 static void mmc_wait_done(struct mmc_request *mrq)
@@ -673,22 +671,21 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 	struct mmc_context_info *context_info = &host->context_info;
 	bool pending_is_urgent = false;
 	bool is_urgent = false;
-	int err;
+	int err, ret;
 	unsigned long flags;
 
 	while (1) {
-		wait_io_event_interruptible(context_info->wait,
+		ret = wait_io_event_interruptible(context_info->wait,
 				(context_info->is_done_rcv ||
 				 context_info->is_new_req  ||
 				 context_info->is_urgent));
 		spin_lock_irqsave(&context_info->lock, flags);
 		is_urgent = context_info->is_urgent;
 		context_info->is_waiting_last_req = false;
-//		spin_unlock_irqrestore(&context_info->lock, flags);
+		spin_unlock_irqrestore(&context_info->lock, flags);
 		if (context_info->is_done_rcv) {
 			context_info->is_done_rcv = false;
 			context_info->is_new_req = false;
-			spin_unlock_irqrestore(&mrq->host->context_info.lock, flags);
 			cmd = mrq->cmd;
 			if (!cmd->error || !cmd->retries ||
 					mmc_card_removed(host->card)) {
@@ -728,12 +725,10 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 		} else if (context_info->is_new_req && !is_urgent) {
 			context_info->is_new_req = false;
 			if (!next_req) {
-				spin_unlock_irqrestore(&context_info->lock,
-							flags);
 				err = MMC_BLK_NEW_REQUEST;
 				break; /* return err */
 			}
-		} else {
+		} else if (context_info->is_urgent) {
 			/*
 			 * The case when block layer sent next urgent
 			 * notification before it receives end_io on
@@ -785,8 +780,12 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 				pending_is_urgent = true;
 				continue; /* wait for done/new/urgent event */
 			}
+		} else {
+			pr_warn("%s: mmc thread unblocked from waiting by signal, ret=%d\n",
+				mmc_hostname(host),
+				ret);
+			continue;
 		}
-		spin_unlock_irqrestore(&context_info->lock, flags);
 	} /* while */
 	return err;
 }
@@ -903,7 +902,8 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 			mmc_post_req(host, host->areq->mrq, 0);
 			host->areq = NULL;
 			if (areq) {
-				if (!(areq->cmd_flags & REQ_URGENT)) {
+				if (!(areq->cmd_flags &
+						MMC_REQ_NOREINSERT_MASK)) {
 					areq->reinsert_req(areq);
 					mmc_post_req(host, areq->mrq, 0);
 				} else {
@@ -2458,6 +2458,15 @@ int mmc_erase(struct mmc_card *card, unsigned int from, unsigned int nr,
 
 	if (to <= from)
 		return -EINVAL;
+		
+		/* to set the address in 16k (32sectors) */
+	if(arg == MMC_TRIM_ARG) {
+		if ((from % 32) != 0)
+		        from = ((from >> 5) + 1) << 5;
+	        to = (to >> 5) << 5;
+	        if (from >= to)
+		        return 0;
+	}
 
 	/* 'from' and 'to' are inclusive */
 	to -= 1;
@@ -3089,7 +3098,7 @@ EXPORT_SYMBOL_GPL(mmc_exit_clk_scaling);
 
 static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 {
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_VIENNAATT) || defined(CONFIG_SEC_KSPORTS_PROJECT)
+#if defined(CONFIG_BCM4354)
 	struct sdhci_host *sd_host = NULL;
 #endif
 	host->f_init = freq;
@@ -3098,7 +3107,9 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 	pr_info("%s: %s: trying to init card at %u Hz\n",
 		mmc_hostname(host), __func__, host->f_init);
 #endif
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_VIENNAATT) || defined(CONFIG_SEC_KSPORTS_PROJECT)
+
+#if defined(CONFIG_BCM4354)
+	/* To detect absence of wifi chipset */
 	sd_host = (struct sdhci_host *)mmc_priv(host);
 	if (sd_host != NULL) {
 		if (sd_host->flags & SDHCI_DEVICE_DEAD) {
@@ -3154,6 +3165,7 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 	if (ret) {
 		mmc_card_set_removed(host->card);
 		pr_debug("%s: card remove detected\n", mmc_hostname(host));
+		ST_LOG("<%s> %s: card remove detected\n", __func__,mmc_hostname(host));
 	}
 
 	return ret;
@@ -3249,6 +3261,8 @@ void mmc_rescan(struct work_struct *work)
 
 	if (host->ops->get_cd && host->ops->get_cd(host) == 0)
 		goto out;
+
+	ST_LOG("<%s> %s insertion detected",__func__,host->class_dev.kobj.name);
 
 	mmc_rpm_hold(host, &host->class_dev);
 	mmc_claim_host(host);

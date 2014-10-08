@@ -2213,7 +2213,7 @@ static void get_raw_data_all(struct mms_ts_info *info, u8 cmd)
 
 		/* wating for the interrupt */
 		while (gpio_get_value(gpio))
-			udelay(100);
+			udelay(30);
 	}
 
 	max_value = 0;
@@ -2249,21 +2249,21 @@ static void get_raw_data_all(struct mms_ts_info *info, u8 cmd)
 
 			if (cmd == MMS_VSC_CMD_INTENSITY) {
 				info->intensity[j * RX_NUM + i] = raw_data;
-				dev_dbg(&info->client->dev, "[TSP] intensity[%d][%d] = %d\n",
-					i, j, info->intensity[j * RX_NUM + i]);
+				/*dev_dbg(&info->client->dev, "[TSP] intensity[%d][%d] = %d\n",
+					i, j, info->intensity[j * RX_NUM + i]);*/
 			} else if (cmd == MMS_VSC_CMD_CM_DELTA) {
 				info->inspection[j * RX_NUM + i] = raw_data;
-				dev_dbg(&info->client->dev, "[TSP] delta[%d][%d] = %d\n",
-					i, j, info->inspection[j * RX_NUM + i]);
+				/*dev_dbg(&info->client->dev, "[TSP] delta[%d][%d] = %d\n",
+					i, j, info->inspection[j * RX_NUM + i]);*/
 			} else if (cmd == MMS_VSC_CMD_CM_ABS) {
 				info->raw[j * RX_NUM + i] = raw_data;
-				dev_dbg(&info->client->dev, "[TSP] raw[%d][%d] = %d\n",
-					i, j, info->raw[j * RX_NUM + i]);
+				/*dev_dbg(&info->client->dev, "[TSP] raw[%d][%d] = %d\n",
+					i, j, info->raw[j * RX_NUM + i]);*/
 			} else if (cmd == MMS_VSC_CMD_REFER) {
 				info->reference[j * RX_NUM + i] =
 						raw_data >> 3;
-				dev_dbg(&info->client->dev, "[TSP] reference[%d][%d] = %d\n",
-					i, j, info->reference[j * RX_NUM + i]);
+				/*dev_dbg(&info->client->dev, "[TSP] reference[%d][%d] = %d\n",
+					i, j, info->reference[j * RX_NUM + i]);*/
 			}
 		}
 	}
@@ -2450,6 +2450,8 @@ static void fw_update(void *device_data)
 			&& fw_ver >= fw_bin_ver) {
 		dev_info(&client->dev,
 			"fw version update does not need\n");
+		snprintf(result_buff, sizeof(result_buff), "OK");
+		set_cmd_result(info, result_buff, strnlen(result_buff, sizeof(result_buff)));
 		goto do_not_need_update;
 	}
 
@@ -2616,8 +2618,7 @@ static void get_config_ver(void *device_data)
 
 	set_default_result(info);
 
-//	snprintf(buff, sizeof(buff), "%s", info->config_fw_version);
-	snprintf(buff, sizeof(buff), "N/A");
+	snprintf(buff, sizeof(buff), "I9301I_Me_0114");
 	set_cmd_result(info, buff, strnlen(buff, sizeof(buff)));
 	info->cmd_state = 2;
 	dev_info(&info->client->dev, "%s: %s(%d)\n", __func__,

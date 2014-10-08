@@ -2093,7 +2093,11 @@ static struct rcg_clk byte0_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_mdss_esc0_clk[] = {
+#if defined(CONFIG_SEC_ATLANTIC_PROJECT)
+	F_MDSS(12000000, dsipll0_byte, 5, 0,0),
+#else
 	F_MDSS(  19200000,         xo,   1,    0,    0),
+#endif
 	F_END
 };
 
@@ -3305,8 +3309,13 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("dma_bam_pclk", gcc_bam_dma_ahb_clk.c, "msm_sps"),
 
 	/* I2C Clocks */
+#if defined(CONFIG_SEC_HESTIA_PROJECT) && defined(CONFIG_SENSORS_SSP)
+	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9924000.spi"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_spi_apps_clk.c, "f9924000.spi"), /* BLSP#2 */
+#else
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9924000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_i2c_apps_clk.c, "f9924000.i2c"),
+#endif
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9926000.i2c"),
@@ -3314,9 +3323,15 @@ static struct clk_lookup msm_clocks_8226[] = {
 
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9927000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup5_i2c_apps_clk.c, "f9927000.i2c"),
-	
+
+#if defined(CONFIG_SEC_ATLANTIC_PROJECT) || defined(CONFIG_MACH_VICTOR3GDSDTV_LTN) \
+	|| defined(CONFIG_MACH_MEGA2LTE_KTT)
+	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9928000.spi"), /* BLSP#6 */
+	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_spi_apps_clk.c, "f9928000.spi"), /* BLSP#6 */
+#else
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9928000.i2c"), /* BLSP#6 */
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_i2c_apps_clk.c, "f9928000.i2c"), /* BLSP#6 */
+#endif
 
 	/* I2C Clocks nfc */
 	/*CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9925000.i2c"),*/
@@ -3324,13 +3339,21 @@ static struct clk_lookup msm_clocks_8226[] = {
 	/* lsuart-v14 Clocks */
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991f000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart3_apps_clk.c, "f991f000.serial"),
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9920000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart4_apps_clk.c, "f9920000.serial"),
 
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9921000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart5_apps_clk.c, "f9921000.serial"),
+#endif
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f995e000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart2_apps_clk.c, "f995e000.serial"),
 
 #if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) || defined(CONFIG_SEC_AFYON_PROJECT) \
 	|| defined(CONFIG_SEC_FRESCONEO_PROJECT) || defined(CONFIG_SEC_ATLANTIC_PROJECT) || defined(CONFIG_SEC_VICTOR_PROJECT) \
-	|| defined(CONFIG_SEC_DEGAS_PROJECT)
+	|| defined(CONFIG_SEC_DEGAS_PROJECT) || defined(CONFIG_SEC_HESTIA_PROJECT) || defined(CONFIG_SEC_MEGA2_PROJECT) \
+	|| defined(CONFIG_SEC_T10_PROJECT) || defined(CONFIG_SEC_T8_PROJECT) || defined(CONFIG_SEC_VASTA_PROJECT) \
+	|| defined(CONFIG_MACH_RUBENSLTE_OPEN)
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9923000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, "f9923000.i2c"),
 #else
@@ -3455,11 +3478,13 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "21.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "22.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "0.qcom,camera"),
-#if	defined(CONFIG_SEC_MATISSE_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) 
+#if	defined(CONFIG_SEC_MATISSE_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined (CONFIG_SEC_ATLANTIC_PROJECT) ||\
+	defined (CONFIG_SEC_MEGA2_PROJECT) || defined(CONFIG_SEC_VASTA_PROJECT) || defined(CONFIG_SEC_HESTIA_PROJECT) ||\
+	defined(CONFIG_MACH_RUBENSLTE_OPEN)
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "2.qcom,camera"),
 #else
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "2.qcom,camera"),
-#endif	
+#endif
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "spi0.0"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "5a.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "90.qcom,camera"),
@@ -3470,11 +3495,13 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "21.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "22.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "0.qcom,camera"),
-#if	defined(CONFIG_SEC_MATISSE_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) 
+#if	defined(CONFIG_SEC_MATISSE_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined (CONFIG_SEC_ATLANTIC_PROJECT) ||\
+	defined (CONFIG_SEC_MEGA2_PROJECT) || defined(CONFIG_SEC_VASTA_PROJECT) || defined(CONFIG_SEC_HESTIA_PROJECT) ||\
+	defined(CONFIG_MACH_RUBENSLTE_OPEN)
 	CLK_LOOKUP("cam_clk", camss_mclk1_clk.c, "2.qcom,camera"),
 #else
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "2.qcom,camera"),
-#endif	
+#endif
 	/* eeprom clocks */
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6c.qcom,eeprom"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "6c.qcom,eeprom"),
@@ -3636,7 +3663,7 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("osr_clk", div_clk1.c, "msm-dai-q6-dev.16390"),
 	CLK_LOOKUP("osr_clk", div_clk1.c, "msm-dai-q6-dev.16391"),
 
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 	CLK_LOOKUP("osr_clk", div_clk1.c, "es325_mclk_dev"),
 #endif
 

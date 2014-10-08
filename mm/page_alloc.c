@@ -174,7 +174,7 @@ int sysctl_lowmem_reserve_ratio[MAX_NR_ZONES-1] = {
 #ifdef CONFIG_ZONE_DMA32
 	 256,
 #endif
-#ifdef CONFIG_ARCH_MSM8974PRO
+#if defined(CONFIG_ARCH_MSM8974PRO) || defined(CONFIG_SEC_ATLANTIC_PROJECT)
 #ifdef CONFIG_HIGHMEM
 	 96,
 #endif
@@ -1384,6 +1384,16 @@ void free_hot_cold_page(struct page *page, int cold)
 	unsigned long flags;
 	int migratetype;
 	int wasMlocked = __TestClearPageMlocked(page);
+
+#ifdef CONFIG_SCFS_LOWER_PAGECACHE_INVALIDATION
+#if 1
+	{
+		extern u64 scfs_lowerpage_reclaim_count;
+		if (PageScfslower(page) || PageNocache(page))
+			scfs_lowerpage_reclaim_count++;
+	}
+#endif
+#endif
 
 	if (!free_pages_prepare(page, 0))
 		return;

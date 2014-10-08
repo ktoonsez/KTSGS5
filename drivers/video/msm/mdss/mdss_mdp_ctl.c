@@ -139,7 +139,7 @@ static void __mdss_mdp_ctrl_perf_ovrd(struct mdss_data_type *mdata,
 	}
 
 #if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) && !defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)\
-	&& !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL)
+	&& !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL) &&!defined (CONFIG_FB_MSM_MIPI_MAGNA_OCTA_CMD_HD_PT_PANEL)
 	*ab_quota = MDSS_MDP_BUS_FUDGE_FACTOR_AB(*ab_quota);
 	if (npipe > 1)
 		*ib_quota = MDSS_MDP_BUS_FUDGE_FACTOR_HIGH_IB(*ib_quota);
@@ -169,7 +169,7 @@ static int mdss_mdp_ctl_perf_commit(struct mdss_data_type *mdata, u32 flags)
 	int cnum;
 	unsigned long clk_rate = 0;
 	u64 bus_ab_quota = 0, bus_ib_quota = 0;
-#ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
 	u64 min_bus_ab_quota = 1103984640 , min_bus_ib_quota = 827988480;
 #endif
 
@@ -194,7 +194,7 @@ static int mdss_mdp_ctl_perf_commit(struct mdss_data_type *mdata, u32 flags)
 		__mdss_mdp_ctrl_perf_ovrd(mdata, &bus_ab_quota, &bus_ib_quota);
 		bus_ib_quota <<= MDSS_MDP_BUS_FACTOR_SHIFT;
 		bus_ab_quota <<= MDSS_MDP_BUS_FACTOR_SHIFT;
-#ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
 		if (bus_ab_quota < min_bus_ab_quota)
 			bus_ab_quota = min_bus_ab_quota;
 		if (bus_ib_quota < min_bus_ib_quota)
@@ -295,7 +295,6 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 			pr_debug("*** Exceptional case : more than 10x Upscale!!!\n");
 			perf->ib_quota = perf->ib_quota * 10;
 			perf->ab_quota = perf->ab_quota * 10;
-			perf->mdp_clk_rate = perf->mdp_clk_rate * 2;
 	}
 
 	pr_debug("mixer=%d pnum=%d clk_rate=%u bus ab=%u ib=%u\n",
@@ -315,6 +314,7 @@ static void mdss_mdp_perf_mixer_update(struct mdss_mdp_mixer *mixer,
 	int i;
 	u32 max_clk_rate = 0, ab_total = 0, ib_total = 0;
 	u32 min_bw;
+	int layerCnt = 0;
 
 	*bus_ab_quota = 0;
 	*bus_ib_quota = 0;
@@ -361,6 +361,7 @@ static void mdss_mdp_perf_mixer_update(struct mdss_mdp_mixer *mixer,
 		if (mdss_mdp_perf_calc_pipe(pipe, &perf))
 			continue;
 
+		layerCnt++;
 		ab_total += perf.ab_quota >> MDSS_MDP_BUS_FACTOR_SHIFT;
 		ib_total += perf.ib_quota >> MDSS_MDP_BUS_FACTOR_SHIFT;
 		if (perf.mdp_clk_rate > max_clk_rate)
@@ -370,7 +371,11 @@ static void mdss_mdp_perf_mixer_update(struct mdss_mdp_mixer *mixer,
 	*bus_ab_quota += ab_total;
 	*bus_ib_quota += ib_total;
 
-#if defined(CONFIG_ARCH_MSM8226)
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG_OCTA_VIDEO_720P_PT_PANEL)
+	if(layerCnt >= 2) min_bw = min_bw*5/3; // ADJUST point
+#endif
+
+#if defined(CONFIG_ARCH_MSM8226) || defined(CONFIG_FB_MSM_MDSS_SAMSUNG_OCTA_VIDEO_720P_PT_PANEL)
 	/*override in case we fall short of min BW*/
 	if (!mixer->rotator_mode) {
 			if (mixer->type == MDSS_MDP_MIXER_TYPE_INTF) {
@@ -399,7 +404,7 @@ static int mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl)
 	u32 max_clk_rate = 0, total_ab_quota = 0, total_ib_quota = 0;
 
 	struct mdss_mdp_pipe *pipe;
-	int i, need_more_bw = 0, rotate_mode = 0, display_width = 0, display_height = 0;
+	int i, need_more_bw = 0, rotate_mode = 0, display_width = 0, display_height = 0, upscale_ratio = 0;
 
 	if (ctl->mixer_left) {
 		mdss_mdp_perf_mixer_update(ctl->mixer_left, &ab_quota,
@@ -464,6 +469,12 @@ static int mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl)
 						if (pipe->flags & MDP_ROT_90)
 							rotate_mode = 1;
 					}
+				if((pipe->dst.h == 2133) &&
+					(((pipe->dst.h * 10) / pipe->src.h) >= 33) &&
+					((pipe->dst.w * 10 / pipe->src.w) >= 33)) {
+					upscale_ratio = pipe->dst.w * 10 / pipe->src.w;
+					need_more_bw = 1;
+				}
 			}
 		}
 
@@ -489,7 +500,7 @@ static int mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl)
 		if (need_more_bw) {
 			if ((display_width % 10) || (display_height % 10)) {
 				if (rotate_mode) {
-					if ((display_width < 360) || (display_height < 360)) {
+					if ((display_width < 500) || (display_height < 500)) {
 						/* add 390% more bw*/
 						total_ab_quota *= (ADDING_BW_ROTATE_MODE * 3);
 						total_ib_quota *= (ADDING_BW_ROTATE_MODE * 3);
@@ -515,6 +526,12 @@ static int mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl)
 
 				total_ab_quota /= 100;
 				total_ib_quota /= 100;
+			}
+			else {
+				if(upscale_ratio) {
+					total_ab_quota = total_ab_quota * upscale_ratio / 10;
+					total_ib_quota = total_ab_quota * upscale_ratio / 10;
+				}
 			}
 		}
 
@@ -2016,6 +2033,7 @@ int mdss_mdp_display_wait4comp(struct mdss_mdp_ctl *ctl)
 		ret = ctl->wait_fnc(ctl, NULL);
 
 	if (ctl->perf_changed) {
+		if (ctl->mixer_left && !ctl->mixer_left->rotator_mode)
 		mdss_mdp_ctl_perf_commit(ctl->mdata, ctl->perf_changed);
 		ctl->perf_changed = 0;
 	}

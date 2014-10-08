@@ -576,7 +576,7 @@ static void krait_update_uv(int *uv, int num, int boost_uv)
 {
 	int i;
 
-#if defined(CONFIG_MACH_VIENNAEUR) || defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_KLTE_CHN)
+#if defined(CONFIG_MACH_VIENNAEUR) || defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_SEC_LOCALE_KOR_H) || defined(CONFIG_MACH_VIENNAKOR) || defined(CONFIG_MACH_KLTE_CHN)
 	boost_uv=25000;
 	enable_boost=1;
 #endif

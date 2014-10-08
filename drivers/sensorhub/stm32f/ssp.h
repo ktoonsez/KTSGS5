@@ -350,7 +350,11 @@ struct sensor_value {
 		u8 step_det;
 		u8 sig_motion;
 		u32 step_diff;
+#if defined (CONFIG_SENSORS_SSP_MAX88920)
+		u8 prox[2];
+#else
 		u16 prox[4];
+#endif
 		s16 data[19];
 		s32 pressure[3];
 		struct meta_data_event meta_data;

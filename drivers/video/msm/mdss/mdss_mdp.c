@@ -397,6 +397,9 @@ static void mdss_mdp_bus_scale_unregister(struct mdss_data_type *mdata)
 
 unsigned long clk_rate_dbg;
 u64 bus_ab_quota_dbg, bus_ib_quota_dbg;
+#if defined(CONFIG_MACH_MILLET3G_CHN_OPEN)
+#define MDSS_MDP_BUS_FUDGE_FACTOR_IB(val) (((val) * 5) / 4)
+#endif
 
 int mdss_mdp_bus_scale_set_quota(u64 ab_quota, u64 ib_quota)
 {
@@ -426,12 +429,20 @@ int mdss_mdp_bus_scale_set_quota(u64 ab_quota, u64 ib_quota)
 		}
 
 		vect = mdp_bus_scale_table.usecase[bus_idx].vectors;
+#if defined(CONFIG_MACH_MILLET3G_CHN_OPEN)
+		vect->ab = ab_quota;
+		vect->ib = MDSS_MDP_BUS_FUDGE_FACTOR_IB(ib_quota);
+		
+		bus_ab_quota_dbg = ab_quota;
+		bus_ib_quota_dbg = MDSS_MDP_BUS_FUDGE_FACTOR_IB(ib_quota);
+		
+#else
 		vect->ab = ab_quota;
 		vect->ib = ib_quota;
 
 		bus_ab_quota_dbg = ab_quota;
 		bus_ib_quota_dbg = ib_quota;
-
+#endif
 		pr_debug("bus scale idx=%d ab=%llu ib=%llu\n", bus_idx,
 				vect->ab, vect->ib);
 	}
@@ -1438,7 +1449,8 @@ static int mdss_mdp_get_pan_cfg(struct mdss_panel_cfg *pan_cfg)
 		return -EINVAL;
 
 	strlcpy(pan_name, &pan_cfg->arg_cfg[0], sizeof(pan_cfg->arg_cfg));
-#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || defined (CONFIG_FB_MSM_MDSS_S6E8AA0A_HD_PANEL)	
+#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || defined (CONFIG_FB_MSM_MDSS_S6E8AA0A_HD_PANEL)\
+		|| defined(CONFIG_FB_MSM_MDSS_SHARP_HD_PANEL)
 	if (pan_name[0] == '0') {
 		pan_cfg->lk_cfg = false;
 	} else if (pan_name[0] == '1') {

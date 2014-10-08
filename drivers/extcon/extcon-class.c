@@ -50,6 +50,9 @@ const char *extcon_cable_name[] = {
 	[EXTCON_FAST_CHARGER]	= "Fast-charger",
 	[EXTCON_SLOW_CHARGER]	= "Slow-charger",
 	[EXTCON_CHARGE_DOWNSTREAM]	= "Charge-downstream",
+#if defined(CONFIG_MUIC_DET_JACK)
+	[EXTCON_EARJACK]	= "Earjack",
+#endif
 	[EXTCON_MHL]		= "MHL",
 	[EXTCON_MHL_VB]		= "MHL-VB",
 	[EXTCON_LINE_OUT]	= "Line-out",

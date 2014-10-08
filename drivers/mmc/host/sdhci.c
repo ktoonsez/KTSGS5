@@ -1180,7 +1180,7 @@ static void sdhci_finish_data(struct sdhci_host *host)
 		tasklet_schedule(&host->finish_tasklet);
 }
 
-#define SDHCI_REQUEST_TIMEOUT	10 /* Default request timeout in seconds */
+#define SDHCI_REQUEST_TIMEOUT	20 /* Default request timeout in seconds */
 
 static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 {
@@ -3342,8 +3342,11 @@ int sdhci_add_host(struct sdhci_host *host)
 
 	caps[1] = (host->version >= SDHCI_SPEC_300) ?
 		sdhci_readl(host, SDHCI_CAPABILITIES_1) : 0;
-
+	#if defined(CONFIG_MACH_JSGLTE_CHN_CMCC)
+	if(strcmp(host->hw_name, "msm_sdcc.2") == 0) {
+	#else
 	if(strcmp(host->hw_name, "msm_sdcc.3") == 0) {
+	#endif
 		/* Custom: An external level shifter on SDC3 */
 		caps[0] |= (SDHCI_CAN_VDD_330 | SDHCI_CAN_VDD_300 | SDHCI_CAN_VDD_180);
 		/* 

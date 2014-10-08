@@ -17,6 +17,7 @@ obj-$(CONFIG_SENSORS_HSCDTD008A)	+= hscdtd008a_i2c.o alps-input.o
 obj-$(CONFIG_SENSORS_CM3323)	+= cm3323.o
 obj-$(CONFIG_SENSORS_CM36651)	+= cm36651.o
 obj-$(CONFIG_SENSORS_CM36653)	+= cm36653.o
+obj-$(CONFIG_SENSORS_CM36686)	+= cm36686.o
 obj-$(CONFIG_SENSORS_GP2A030A)	+= gp2ap030.o
 obj-$(CONFIG_SENSORS_TMD3782S)	+= taos_tmd3782.o
 obj-$(CONFIG_SENSORS_GP2A002)	+= gp2a002.o
@@ -31,3 +32,5 @@ obj-$(CONFIG_SENSORS_BMA254)	+= bma254.o
 obj-$(CONFIG_INPUT_MPU6500)	+= mpu6500_input.o mpu6500_selftest.o
 obj-$(CONFIG_SENSORS_YAS532)		+= yas532/
 obj-$(CONFIG_SENSORS_ADPD142)	 += adpd142.o
+# hrm_sensor
+obj-$(CONFIG_SENSORS_MAX86900)	 += max86900.o

@@ -706,7 +706,8 @@ power_attr(cpufreq_max_limit);
 power_attr(cpufreq_min_limit);
 
 struct cpufreq_limit_handle *cpufreq_min_touch;
-
+struct cpufreq_limit_handle *cpufreq_min_camera;
+struct cpufreq_limit_handle *cpufreq_min_sensor;
 
 int set_freq_limit(unsigned long id, unsigned int freq)
 {
@@ -722,6 +723,16 @@ int set_freq_limit(unsigned long id, unsigned int freq)
 		cpufreq_min_touch = NULL;
 	}
 
+	if (cpufreq_min_camera) {
+		cpufreq_limit_put(cpufreq_min_camera);
+		cpufreq_min_camera = NULL;
+	}
+
+	if (cpufreq_min_sensor) {
+		cpufreq_limit_put(cpufreq_min_sensor);
+		cpufreq_min_sensor = NULL;
+	}
+
 	pr_debug("%s: id=%d freq=%d\n", __func__, (int)id, freq);
 
 	/* min lock */
@@ -734,6 +745,27 @@ int set_freq_limit(unsigned long id, unsigned int freq)
 			}
 		}
 	}
+
+	if (id & DVFS_CAMERA_ID) {
+		if (freq != -1) {
+			cpufreq_min_camera = cpufreq_limit_min_freq(freq, "camera min");
+			if (IS_ERR(cpufreq_min_camera)) {
+				pr_err("%s: fail to get the handle\n", __func__);
+				goto out;
+			}
+		}
+	}
+
+	if (id & DVFS_SENSOR_ID) {
+		if (freq != -1) {
+			cpufreq_min_sensor = cpufreq_limit_min_freq(freq, "sensor min");
+			if (IS_ERR(cpufreq_min_sensor)) {
+				pr_err("%s: fail to get the handle\n", __func__);
+				goto out;
+			}
+		}
+	}
+
 	ret = 0;
 out:
 	mutex_unlock(&cpufreq_limit_mutex);
@@ -797,7 +829,7 @@ static unsigned long thermald_max_freq;
 
 static unsigned long touch_min_freq = MIN_TOUCH_LIMIT;
 static unsigned long unicpu_max_freq = MAX_UNICPU_LIMIT;
-
+static unsigned long sensor_min_freq = MIN_SENSOR_LIMIT;
 
 static int verify_cpufreq_target(unsigned int target)
 {
@@ -844,12 +876,16 @@ int set_freq_limit(unsigned long id, unsigned int freq)
 		thermald_max_freq = freq;
 	else if (id == DVFS_TOUCH_ID)
 		touch_min_freq = freq;
+	else if (id == DVFS_SENSOR_ID)
+		sensor_min_freq = freq;
 
 	/* set min - apps */
 	if (dvfs_id & DVFS_APPS_MIN_ID && min < apps_min_freq)
 		min = apps_min_freq;
 	if (dvfs_id & DVFS_TOUCH_ID && min < touch_min_freq)
 		min = touch_min_freq;
+	if (dvfs_id & DVFS_SENSOR_ID && min < sensor_min_freq)
+		min = sensor_min_freq;
 
 	/* set max */
 	if (dvfs_id & DVFS_APPS_MAX_ID && max > apps_max_freq)

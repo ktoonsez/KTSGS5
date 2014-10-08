@@ -2129,16 +2129,16 @@ static int get_fuelgauge_soc(struct i2c_client *client)
 		fuelgauge->info.full_check_flag = 0;
 
 	/*  Checks vcell level and tries to compensate SOC if needed.*/
-	/*  If jig cable is connected, then skip low batt compensation check. */
-	if (!sec_bat_check_jig_status() &&
-		value.intval == POWER_SUPPLY_STATUS_DISCHARGING)
-		fg_soc = low_batt_compensation(
-			client, fg_soc, fg_vcell, fg_current);
-	else if (fuelgauge->pdata->jig_irq &&
-		!gpio_get_value(fuelgauge->pdata->jig_irq) &&
-			value.intval == POWER_SUPPLY_STATUS_DISCHARGING)
-		fg_soc = low_batt_compensation(
-			client, fg_soc, fg_vcell, fg_current);
+	if (fuelgauge->pdata->jig_irq) {
+		if (!gpio_get_value(fuelgauge->pdata->jig_irq) &&
+				(value.intval == POWER_SUPPLY_STATUS_DISCHARGING))
+			fg_soc = low_batt_compensation(
+					client, fg_soc, fg_vcell, fg_current);
+	} else {
+		if(value.intval == POWER_SUPPLY_STATUS_DISCHARGING)
+			fg_soc = low_batt_compensation(
+					client, fg_soc, fg_vcell, fg_current);
+	}
 
 	if (fuelgauge->info.is_first_check)
 		fuelgauge->info.is_first_check = false;

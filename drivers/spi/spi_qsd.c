@@ -2712,7 +2712,7 @@ struct msm_spi_platform_data * __init msm_spi_dt_to_pdata(
 #ifdef ENABLE_SENSORS_FPRINT_SECURE
 	/* Even if you set the bam setting, */
 	/* you can't access bam when you use tzspi */
-	if ((dd->cs_gpios[0].gpio_num) == SPI5_GPIO_CS) {
+	if ((dd->cs_gpios[0].gpio_num) == FP_SPI_CS) {
 		pdata->use_bam = false;
 		pr_info("%s: disable bam for BLSP5 tzspi\n", __func__);
 	}

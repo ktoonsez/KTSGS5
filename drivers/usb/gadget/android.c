@@ -2699,16 +2699,6 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 		while (conf_str) {
 			name = strsep(&conf_str, ",");
 			if (name) {
-#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
-				/* Enable ncm function */
-				if (is_ncm_ready(name)) {
-					printk(KERN_DEBUG "usb: %s ncm on\n",
-							__func__);
-					err = android_enable_function(dev, conf,
-							"ncm");
-					continue;
-				}
-#endif
 				err = android_enable_function(dev, conf, name);
 				if (err)
 					pr_err("android_usb: Cannot enable %s",
@@ -2821,10 +2811,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		list_for_each_entry(conf, &dev->configs, list_item)
 			list_for_each_entry(f_holder, &conf->enabled_functions,
 						enabled_list) {
-#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
-				if (is_ncm_ready(f_holder->f->name))
-					set_ncm_device_descriptor(&cdev->desc);
-#endif
+
 				if (f_holder->f->enable)
 					f_holder->f->enable(f_holder->f);
 				if (!strncmp(f_holder->f->name,
@@ -3278,7 +3265,10 @@ static struct usb_composite_driver android_usb_driver = {
 #if defined(CONFIG_SEC_LT03_PROJECT) || defined(CONFIG_SEC_MONDRIAN_PROJECT)\
 	|| defined(CONFIG_SEC_KS01_PROJECT) || defined(CONFIG_SEC_PICASSO_PROJECT)\
 	|| defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)\
-	|| defined(CONFIG_SEC_KSPORTS_PROJECT)
+	|| defined(CONFIG_SEC_KSPORTS_PROJECT) || defined(CONFIG_SEC_JACTIVE_PROJECT)\
+	|| defined(CONFIG_SEC_S_PROJECT) || defined(CONFIG_SEC_PATEK_PROJECT)\
+	|| defined(CONFIG_SEC_CHAGALL_PROJECT) || defined(CONFIG_SEC_KLIMT_PROJECT)\
+	|| defined(CONFIG_MACH_JS01LTEDCM)
 	.max_speed	= USB_SPEED_HIGH
 #else
 	.max_speed	= USB_SPEED_SUPER

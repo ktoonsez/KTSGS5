@@ -346,6 +346,11 @@ KALLSYMS	= scripts/kallsyms
 PERL		= perl
 CHECK		= sparse
 
+ifeq ($(CONFIG_CRYPTO_FIPS),)
+ READELF	= $(CROSS_COMPILE)readelf
+ export READELF
+endif
+
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 MODFLAGS        = -DMODULE \
@@ -825,6 +830,10 @@ define rule_vmlinux__
 		/bin/false;                                                  \
 	fi;
 	$(verify_kallsyms)
+
+	$(if $(CONFIG_CRYPTO_FIPS),						
+	@$(kecho) '  FIPS : Generating hmac of crypto and updating vmlinux... ';	
+	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/fips_crypto_hmac.sh $(objtree)/vmlinux $(objtree)/System.map)
 endef
 
 

@@ -38,10 +38,6 @@
 #include "q6core.h"
 
 extern u32 score;
-
-#ifdef CONFIG_SND_SOC_MAX98504 // Vinay
-extern int32_t dsm_open(int32_t port_id,uint32_t*  dsm_params, u8* user_params);
-#endif
 struct msm_pcm_routing_bdai_data {
 	u16 port_id; /* AFE port ID */
 	u8 active; /* track if this backend is enabled */
@@ -165,45 +161,7 @@ union srs_trumedia_params_u {
 };
 static union srs_trumedia_params_u msm_srs_trumedia_params[2];
 static int srs_port_id = -1;
-#ifdef CONFIG_SND_SOC_MAX98504 // Vinay
 
-/*---------------------------DSM changes Starts----------------*/
-static int msm_routing_set_dsm_filter(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol) {
-	uint32_t filter_set;
-    int32_t port_id;
-    filter_set = ucontrol->value.integer.value[0];
-    if(filter_set == 7) {
-        /* corresponds to TxInit in dsm_filter_text array
-        if this array changes then this entry also needs to change */
-        port_id = 0x1001;//SLIMBUS_0_TX;
-    } else {
-        port_id = SLIMBUS_0_RX;
-    }
-    pr_err(" Starting DSM_open set called for port_id %d param value %d -----", port_id, filter_set);
-	mutex_lock(&routing_lock);
-    dsm_open(port_id, &filter_set, NULL);
-	mutex_unlock(&routing_lock);
-	return 0;
-}
-
-static const char *dsm_filter_text[] = { "Disable", "Enable", "GetPrms", \
-                                         "SetPrms", "SetClip", "NoIV",  \
-                                         "RxInit", "TxInit" };
-
-static const struct soc_enum dsm_enum[] = {
-    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(dsm_filter_text),
-                        dsm_filter_text),
-};
-
-static const struct snd_kcontrol_new dsm_filter_mixer_controls[] = {
-    SOC_ENUM_EXT("DSM", dsm_enum[0],
-    msm_routing_set_dsm_filter,
-    msm_routing_set_dsm_filter),
-};
-
-/*---------------------------DSM changes Ends----------------*/
-#endif
 
 static void srs_send_params(int port_id, unsigned int techs,
 		int param_block_idx)
@@ -246,6 +204,12 @@ int get_topology(int path_type)
 		topology_id = get_adm_rx_topology();
 	else
 		topology_id = get_adm_tx_topology();
+
+#ifdef CONFIG_SND_SOC_MAXIM_DSM_COPP
+	if((path_type!=ADM_PATH_PLAYBACK) && (topology_id ==0 || 0x00010315/*AUDIO_TX_MONO_COPP*/))	{
+		topology_id = ADM_CUSTOM_PP_TX_TOPO_ID_DYNAMIC;
+	}
+#endif
 
 	if (topology_id  == 0)
 		topology_id = NULL_COPP_TOPOLOGY;
@@ -478,7 +442,7 @@ void msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 				path_type,
 				msm_bedais[i].sample_rate,
 				msm_bedais[i].channel,
-				topology, false,
+				topology, perf_mode,
 				bits_per_sample);
 
 			payload.copp_ids[payload.num_copps++] =
@@ -771,9 +735,21 @@ static void msm_pcm_routing_process_voice(u16 reg, u16 val, int set)
 
 			if (voc_get_route_flag(session_id, RX_PATH) &&
 			   voc_get_route_flag(session_id, TX_PATH))
+			   #if !defined(CONFIG_MACH_KLTE_VZW)
+				{
 				voc_enable_cvp(session_id);
+			   	}
+			   #else
+			   	{
+					voc_enable_device(session_id);
+			   	}
+			   #endif
 		} else {
+			   #if !defined(CONFIG_MACH_KLTE_VZW)		
 			voc_disable_cvp(session_id);
+			   #else
+				voc_disable_device(session_id);
+			   #endif
 		}
 	} else {
 		voc_set_route_flag(session_id, TX_PATH, set);
@@ -782,9 +758,21 @@ static void msm_pcm_routing_process_voice(u16 reg, u16 val, int set)
 				msm_bedais[reg].port_id, DEV_TX);
 			if (voc_get_route_flag(session_id, RX_PATH) &&
 			   voc_get_route_flag(session_id, TX_PATH))
+			   #if !defined(CONFIG_MACH_KLTE_VZW)
+				{
 				voc_enable_cvp(session_id);
+			   	}
+			   #else
+			   	{
+					voc_enable_device(session_id);
+			   	}
+			   #endif
 		} else {
+			   #if !defined(CONFIG_MACH_KLTE_VZW)
 			voc_disable_cvp(session_id);
+			   #else
+				voc_disable_device(session_id);
+			   #endif
 		}
 	}
 }
@@ -1812,6 +1800,12 @@ static const struct snd_kcontrol_new tertiary_mi2s_rx_mixer_controls[] = {
 	SOC_SINGLE_EXT("MultiMedia4", MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
 	MSM_FRONTEND_DAI_MULTIMEDIA4, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
+	SOC_SINGLE_EXT("MultiMedia5", MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+	MSM_FRONTEND_DAI_MULTIMEDIA5, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
+	SOC_SINGLE_EXT("MultiMedia10", MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+	MSM_FRONTEND_DAI_MULTIMEDIA10, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),	
 };
 
 static const struct snd_kcontrol_new secondary_mi2s_rx_mixer_controls[] = {
@@ -2162,6 +2156,15 @@ static const struct snd_kcontrol_new mmul2_mixer_controls[] = {
 	SOC_SINGLE_EXT("MI2S_TX", MSM_BACKEND_DAI_MI2S_TX,
 	MSM_FRONTEND_DAI_MULTIMEDIA2, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
+#ifdef CONFIG_SND_SOC_MAX98505
+	SOC_SINGLE_EXT("TERT_MI2S_TX", MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
+	MSM_FRONTEND_DAI_MULTIMEDIA2, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
+#elif defined(CONFIG_SND_SOC_MAX98504)	
+	SOC_SINGLE_EXT("SEC_MI2S_TX", MSM_BACKEND_DAI_SECONDARY_MI2S_TX,
+	MSM_FRONTEND_DAI_MULTIMEDIA2, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
+#endif
 	SOC_SINGLE_EXT("SLIM_0_TX", MSM_BACKEND_DAI_SLIMBUS_0_TX,
 	MSM_FRONTEND_DAI_MULTIMEDIA2, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
@@ -3718,6 +3721,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"TERT_MI2S_RX Audio Mixer", "MultiMedia2", "MM_DL2"},
 	{"TERT_MI2S_RX Audio Mixer", "MultiMedia3", "MM_DL3"},
 	{"TERT_MI2S_RX Audio Mixer", "MultiMedia4", "MM_DL4"},
+	{"TERT_MI2S_RX Audio Mixer", "MultiMedia5", "MM_DL5"},
 	{"TERT_MI2S_RX", NULL, "TERT_MI2S_RX Audio Mixer"},
 
 	{"SEC_MI2S_RX Audio Mixer", "MultiMedia1", "MM_DL1"},
@@ -3755,6 +3759,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MultiMedia1 Mixer", "SEC_MI2S_TX", "SEC_MI2S_TX"},
 	{"MultiMedia1 Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"MultiMedia6 Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
+#ifdef CONFIG_SND_SOC_MAX98505
+	{"MultiMedia2 Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
+#elif defined(CONFIG_SND_SOC_MAX98504)		
+	{"MultiMedia2 Mixer", "SEC_MI2S_TX", "SEC_MI2S_TX"},
+#endif
 
 	{"INTERNAL_BT_SCO_RX Audio Mixer", "MultiMedia1", "MM_DL1"},
 	{"INTERNAL_BT_SCO_RX Audio Mixer", "MultiMedia2", "MM_DL2"},
@@ -4289,7 +4298,7 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				path_type,
 				bedai->sample_rate,
 				channels,
-				topology, false,
+				topology, fe_dai_perf_mode[i][session_type],
 				bits_per_sample);
 			}
 
@@ -4426,12 +4435,6 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(platform, msm_voc_session_controls,
 				      ARRAY_SIZE(msm_voc_session_controls));
 
-#ifdef CONFIG_SND_SOC_MAX98504 // Vinay
-    /* Adding DSM module */
-    snd_soc_add_platform_controls(platform,
-                dsm_filter_mixer_controls,
-                ARRAY_SIZE(dsm_filter_mixer_controls));
-#endif
 
 	return 0;
 }

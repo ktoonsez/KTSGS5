@@ -1877,10 +1877,10 @@ int slim_dealloc_ch(struct slim_device *sb, u16 chanh)
 {
 	struct slim_controller *ctrl = sb->ctrl;
 	u8 chan = SLIM_HDL_TO_CHIDX(chanh);
-	struct slim_ich *slc = &ctrl->chans[chan];
+	struct slim_ich *slc;
 	if (!ctrl)
 		return -EINVAL;
-
+	slc = &ctrl->chans[chan];
 	mutex_lock(&ctrl->sched.m_reconf);
 	if (slc->state == SLIM_CH_FREE) {
 		mutex_unlock(&ctrl->sched.m_reconf);

@@ -56,9 +56,6 @@
 #define TK_UPDATE_FAIL		-1
 #define TK_UPDATE_PASS		0
 
-#ifdef CONFIG_SEC_TSP_FACTORY
-#endif
-
 /* Flip cover*/
 #define TKEY_FLIP_MODE 
 
@@ -87,7 +84,13 @@
 #define TK_HAS_FIRMWARE_UPDATE
 #define TK_UPDATABLE_BD_ID	0
 
+#if defined(CONFIG_SEC_S_PROJECT)
+#define TK_USE_RECENT
+#define FW_PATH "tkey/s_cypress_tkey.fw"
+#else
 #define FW_PATH "tkey/fresco_n_cypress_tkey.fw"
+#endif
+
 #define TKEY_MODULE07_HWID 8
 #define TKEY_FW_PATH "/sdcard/cypress/fw.bin"
 
@@ -163,6 +166,7 @@ struct touchkey_i2c {
 	struct early_suspend early_suspend;
 #endif
 	struct mutex lock;
+	struct mutex i2c_lock;
 	struct wake_lock fw_wakelock;
 	struct device	*dev;
 	int irq;

@@ -194,7 +194,7 @@ static int ice4_clock_en(int onoff)
 #if defined(CONFIG_MACH_H3GDUOS)
      if (onoff) {
 		int rc = 0;
-		
+
 		//msm_tlmm_misc_reg_write(TLMM_SPARE_REG, 0x1);
 		rc = gpio_request(GPIO_FPGA_MAIN_CLK, "fpga_main_clk");
 
@@ -209,13 +209,13 @@ static int ice4_clock_en(int onoff)
      } else {
 		//msm_tlmm_misc_reg_write(TLMM_SPARE_REG, 0x5);
 		gpio_free(GPIO_FPGA_MAIN_CLK);
-     }  
+     }
 
       if (!fpga_main_src_clk){
-      	fpga_main_src_clk = clk_get(NULL, "gp1_src_clk");
+	fpga_main_src_clk = clk_get(NULL, "gp1_src_clk");
       }
       if (IS_ERR(fpga_main_src_clk)) {
-      	pr_err( "%s: unable to get fpga_main_src_clk\n", __func__);
+	pr_err( "%s: unable to get fpga_main_src_clk\n", __func__);
       }
       
       if (!fpga_main_clk){
@@ -326,7 +326,7 @@ static void barcode_gpio_config(void)
 		GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 #if !defined(CONFIG_MACH_H3GDUOS)
 	gpio_tlmm_config(GPIO_CFG(GPIO_FPGA_MAIN_CLK, \
-		2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);	
+		2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 #endif
 
 	gpio_request(g_pdata->cresetb, "irda_creset");
@@ -429,8 +429,7 @@ static int barcode_fpga_fimrware_update_start(const u8 *data, int len)
 		udelay(5);
 		pr_barcode("FPGA firmware update success\n");
 		fw_dl_complete = true;
-		break;		
-		
+		break;
 	} while (retry);
 	fpga_enable(0,0);
 	return 0;
@@ -1232,9 +1231,10 @@ static int __devinit barcode_emul_probe(struct i2c_client *client,
 	} else
 		pdata = client->dev.platform_data;
 
-#if !defined(CONFIG_MACH_VIENNAEUR) && !defined(CONFIG_MACH_LT03EUR)\
+#if !defined(CONFIG_MACH_VIENNAEUR) && !defined(CONFIG_MACH_VIENNAKOR) && !defined(CONFIG_MACH_LT03EUR)\
 	&& !defined(CONFIG_MACH_LT03SKT) && !defined(CONFIG_MACH_LT03KTT)\
-	&& !defined(CONFIG_MACH_LT03LGT) && !defined(CONFIG_MACH_V2)
+	&& !defined(CONFIG_MACH_LT03LGT) && !defined(CONFIG_MACH_V2)\
+	&& !defined(CONFIG_MACH_CHAGALL) && !defined(CONFIG_MACH_KLIMT)
 	if(system_rev < BOARD_REV02)
 		pdata->fw_type = ICE_I2C_2;
 

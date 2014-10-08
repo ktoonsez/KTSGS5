@@ -41,7 +41,7 @@
 
 #define TAPAN_HPH_PA_SETTLE_COMP_ON 3000
 #define TAPAN_HPH_PA_SETTLE_COMP_OFF 13000
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 #include "es325-export.h"
 #endif
 
@@ -1088,7 +1088,7 @@ static const struct snd_kcontrol_new tapan_common_snd_controls[] = {
 	SOC_SINGLE_TLV("LINEOUT2 Volume", TAPAN_A_RX_LINE_2_GAIN, 0, 20, 1,
 		line_gain),
 
-	SOC_SINGLE_TLV("SPK DRV Volume", TAPAN_A_SPKR_DRV_GAIN, 3, 7, 1,
+	SOC_SINGLE_TLV("SPK DRV Volume", TAPAN_A_SPKR_DRV_GAIN, 3, 8, 1,
 		line_gain),
 
 	SOC_SINGLE_TLV("ADC1 Volume", TAPAN_A_TX_1_EN, 2, 19, 0, analog_gain),
@@ -3335,7 +3335,7 @@ static unsigned int tapan_read(struct snd_soc_codec *codec,
 	return val;
 }
 
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 
 static int tapan_startup(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
@@ -3384,13 +3384,17 @@ static void tapan_shutdown(struct snd_pcm_substream *substream,
 				 tapan->dai[dai->id].ch_mask);
 		}
 	}
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
+	if ((tapan_core != NULL) &&
+	    (tapan_core->dev != NULL) &&
+	    (tapan_core->dev->parent != NULL))	{
+		es325_wrapper_sleep(dai->id);
+	}
+#endif
 	if ((tapan_core != NULL) &&
 	    (tapan_core->dev != NULL) &&
 	    (tapan_core->dev->parent != NULL) &&
 	    (active == 0)) {
-#ifdef CONFIG_SND_SOC_ES325
-		es325_wrapper_sleep(dai->id);
-#endif
 		pm_runtime_mark_last_busy(tapan_core->dev->parent);
 		pm_runtime_put(tapan_core->dev->parent);
 		dev_dbg(dai->codec->dev, "%s: unvote requested", __func__);
@@ -3863,7 +3867,7 @@ static int tapan_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 static int tapan_es325_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params,
 		struct snd_soc_dai *dai)
@@ -3954,7 +3958,7 @@ static int tapan_es325_get_channel_map(struct snd_soc_dai *dai,
 	return rc;
 }
 #endif
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 static struct snd_soc_dai_ops tapan_dai_ops = {
 	.startup = tapan_startup,
 	.shutdown = tapan_shutdown,
@@ -3976,7 +3980,7 @@ static struct snd_soc_dai_ops tapan_dai_ops = {
 };
 #endif
 
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 static struct snd_soc_dai_ops tapan_es325_dai_ops = {
 	.startup = tapan_startup,
 	.hw_params = tapan_es325_hw_params,
@@ -4069,7 +4073,7 @@ static struct snd_soc_dai_driver tapan9302_dai[] = {
 		},
 		.ops = &tapan_dai_ops,
 	},
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 	{
 		.name = "tapan_es325_rx1",
 		.id = AIF1_PB + ES325_DAI_ID_OFFSET,
@@ -4297,7 +4301,7 @@ static int tapan_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		(void) tapan_codec_enable_slim_chmask(dai, true);
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 		ret = es325_remote_cfg_slim_rx(w->shift);
 #endif
 		ret = wcd9xxx_cfg_slim_sch_rx(core, &dai->wcd9xxx_ch_list,
@@ -4305,7 +4309,7 @@ static int tapan_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 					      &dai->grph);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 		ret = es325_remote_close_slim_rx(w->shift);
 #endif
 		ret = wcd9xxx_close_slim_sch_rx(core, &dai->wcd9xxx_ch_list,
@@ -4337,7 +4341,7 @@ static int tapan_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	struct wcd9xxx *core;
 	struct snd_soc_codec *codec = w->codec;
 	struct tapan_priv *tapan_p = snd_soc_codec_get_drvdata(codec);
-	u32  ret = 0;
+	int  ret = 0;
 	struct wcd9xxx_codec_dai_data *dai;
 
 	core = dev_get_drvdata(codec->dev->parent);
@@ -4363,12 +4367,12 @@ static int tapan_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 		ret = wcd9xxx_cfg_slim_sch_tx(core, &dai->wcd9xxx_ch_list,
 					      dai->rate, dai->bit_width,
 					      &dai->grph);
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 		ret = es325_remote_cfg_slim_tx(w->shift);
 #endif
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 			ret = es325_remote_close_slim_tx(w->shift);
 #endif
 		ret = wcd9xxx_close_slim_sch_tx(core, &dai->wcd9xxx_ch_list,
@@ -5270,8 +5274,10 @@ static const struct tapan_reg_mask_val tapan_reg_defaults[] = {
 	/*Reduce EAR DAC bias to 70% */
 	TAPAN_REG_VAL(TAPAN_A_RX_EAR_BIAS_PA, 0x76),
 	/* Reduce LINE DAC bias to 70% */
-#if defined (CONFIG_SEC_MATISSE_PROJECT)
+#if defined(CONFIG_SEC_MATISSE_PROJECT) || defined(CONFIG_SEC_T10_PROJECT)
 	TAPAN_REG_VAL(TAPAN_A_RX_LINE_BIAS_PA, 0x78),
+#elif defined(CONFIG_MACH_MS01_EUR_3G)
+	TAPAN_REG_VAL(TAPAN_A_RX_LINE_BIAS_PA, 0x7A),
 #else
 	TAPAN_REG_VAL(TAPAN_A_RX_LINE_BIAS_PA, 0x7B),
 #endif
@@ -5368,7 +5374,11 @@ static const struct tapan_reg_mask_val tapan_codec_reg_init_val[] = {
 	/* Initialize current threshold to 365MA
 	 * number of wait and run cycles to 4096
 	 */
+#if defined (CONFIG_MACH_MILLETLTE_KOR)	 
+	{TAPAN_A_RX_HPH_OCP_CTL, 0xEB, 0x6B},
+#else	
 	{TAPAN_A_RX_HPH_OCP_CTL, 0xE9, 0x69},
+#endif
 	{TAPAN_A_RX_COM_OCP_COUNT, 0xFF, 0xFF},
 	{TAPAN_A_RX_HPH_L_TEST, 0x01, 0x01},
 	{TAPAN_A_RX_HPH_R_TEST, 0x01, 0x01},
@@ -5433,6 +5443,12 @@ static const struct tapan_reg_mask_val tapan_codec_reg_mib2_ctl_init_val[] = {
 };
 #endif
 
+#if defined(CONFIG_MACH_ATLANTICLTE_ATT) || defined(CONFIG_SEC_ATLANTIC3G_COMMON)
+static const struct tapan_reg_mask_val tapan_codec_reg_hph_ocp_ctl_init_val[] = {
+	{TAPAN_A_RX_HPH_OCP_CTL, 0xEB, 0x6B},
+};
+#endif
+
 void *tapan_get_afe_config(struct snd_soc_codec *codec,
 			   enum afe_config_type config_type)
 {
@@ -5491,6 +5507,13 @@ static void tapan_codec_init_reg(struct snd_soc_codec *codec)
 					tapan_codec_reg_mib2_ctl_init_val[0].val);
 		}
 #endif
+
+#if defined(CONFIG_MACH_ATLANTICLTE_ATT) || defined(CONFIG_SEC_ATLANTIC3G_COMMON)
+			snd_soc_update_bits(codec,tapan_codec_reg_hph_ocp_ctl_init_val[0].reg,
+					tapan_codec_reg_hph_ocp_ctl_init_val[0].mask,
+					tapan_codec_reg_hph_ocp_ctl_init_val[0].val);
+#endif
+
 }
 static void tapan_slim_interface_init_reg(struct snd_soc_codec *codec)
 {
@@ -5586,6 +5609,7 @@ static void wcd9xxx_prepare_hph_pa(struct wcd9xxx_mbhc *mbhc,
 	int i;
 	struct snd_soc_codec *codec = mbhc->codec;
 	u32 delay;
+	int ret = 0;
 
 	const struct wcd9xxx_reg_mask_val reg_set_paon[] = {
 		{WCD9XXX_A_CDC_CLSH_B1_CTL, 0x0F, 0x00},
@@ -5651,10 +5675,14 @@ static void wcd9xxx_prepare_hph_pa(struct wcd9xxx_mbhc *mbhc,
 			delay = 1000;
 		else
 			delay = 0;
-		wcd9xxx_soc_update_bits_push(codec, lh,
+		ret = wcd9xxx_soc_update_bits_push(codec, lh,
 					     reg_set_paon[i].reg,
 					     reg_set_paon[i].mask,
 					     reg_set_paon[i].val, delay);
+		if (ret < 0) {
+			pr_debug("%s: wcd9xxx_soc_update_bits_push failed\n", __func__);
+			return;
+		}
 	}
 	pr_debug("%s: PAs are prepared\n", __func__);
 	return;
@@ -6041,11 +6069,11 @@ static void tapan_enable_config_rco(struct wcd9xxx *core, bool enable)
 
 }
 
-static bool tapan_check_wcd9306(struct device *cdc_dev, bool sensed)
+static int tapan_check_wcd9306(struct device *cdc_dev, bool sensed)
 {
 	struct wcd9xxx *core = dev_get_drvdata(cdc_dev->parent);
 	u8 reg_val;
-	bool ret = true;
+	int ret = 1;
 	unsigned long timeout;
 	bool timedout;
 	struct wcd9xxx_core_resource *core_res = &core->core_res;
@@ -6072,7 +6100,7 @@ static bool tapan_check_wcd9306(struct device *cdc_dev, bool sensed)
 	if (wcd9xxx_reg_read(core_res, TAPAN_A_QFUSE_DATA_OUT1) ||
 	    wcd9xxx_reg_read(core_res, TAPAN_A_QFUSE_DATA_OUT2)) {
 		dev_info(cdc_dev, "%s: wcd9302 detected\n", __func__);
-		ret = false;
+		ret = 0;
 	} else
 		dev_info(cdc_dev, "%s: wcd9306 detected\n", __func__);
 
@@ -6134,6 +6162,7 @@ static int tapan_codec_probe(struct snd_soc_codec *codec)
 				  WCD9XXX_CDC_TYPE_TAPAN);
 	if (ret) {
 		pr_err("%s: wcd9xxx init failed %d\n", __func__, ret);
+		kfree(tapan);
 		return ret;
 	}
 
@@ -6197,7 +6226,7 @@ static int tapan_codec_probe(struct snd_soc_codec *codec)
 		WCD9XXX_BG_CLK_UNLOCK(&tapan->resmgr);
 	}
 
-#ifdef CONFIG_SND_SOC_ES325
+#ifdef CONFIG_SND_SOC_ES325_ATLANTIC
 	es325_remote_add_codec_controls(codec);
 #endif
 	ptr = kmalloc((sizeof(tapan_rx_chs) +
@@ -6353,13 +6382,13 @@ static const struct dev_pm_ops tapan_pm_ops = {
 static int __devinit tapan_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	bool is_wcd9306;
+	int is_wcd9306;
 
 	is_wcd9306 = tapan_check_wcd9306(&pdev->dev, false);
 	if (is_wcd9306 < 0) {
 		dev_info(&pdev->dev, "%s: cannot find codec type, default to 9306\n",
 			 __func__);
-		is_wcd9306 = true;
+		is_wcd9306 = 1;
 	}
 	codec_ver = is_wcd9306 ? WCD9306 : WCD9302;
 

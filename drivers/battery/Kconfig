@@ -7,6 +7,17 @@ config BATTERY_SAMSUNG
 	 To see battery-related functions,
 	 refer to sec_charging_common.h
 
+config BATTERY_SAMSUNG_DATA_FILE
+	depends on BATTERY_SAMSUNG
+	string "samsung battery data file"
+	default ""
+	help
+	 Path to the battery data file.
+
+config BATTERY_SAMSUNG_DATA
+	bool
+	default BATTERY_SAMSUNG_DATA_FILE != ""
+
 config CHARGING_VZWCONCEPT
 	tristate "VZW concept about the charging"
 	default n
@@ -269,6 +280,15 @@ config CHARGER_MAX77888
           MAX77888 incluse muic, pmic, haptic, led,
           flash driver.
           You have to define MFD_MAX77888
+
+config CHARGER_SM5414
+	tristate "SM5414 charger driver"
+	default n
+	help
+	 Say Y to include support
+	 for SM5414 charger driver.
+	 This driver source code implemented
+	 all functions for SMB5414 charger.
 
 config SAMSUNG_LPM_MODE
 	bool "Off charging mode support in sec battery driver"

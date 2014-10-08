@@ -385,7 +385,7 @@
 		status = "okay";
 		pma8084_l22: regulator-l22 {
 			regulator-min-microvolt = <3000000>;
-			regulator-max-microvolt = <3000000>;
+			regulator-max-microvolt = <3300000>;
 			qcom,init-voltage = <3000000>;
 			status = "okay";
 		};
@@ -481,6 +481,7 @@
 		ranges;
 		qcom,pfm-threshold = <76>;
 		qcom,use-phase-scaling-factor;
+		qcom,force-auto-mode;
 
 		krait0_vreg: regulator@f9088000 {
 			compatible = "qcom,krait-regulator";

@@ -770,7 +770,7 @@ capt:		c_substream = prtd->capture_substream;
 			goto done;
 		}
 		c_dma_buf = &c_substream->dma_buffer;
-		if (c_substream == NULL) {
+		if (c_dma_buf == NULL) {
 			pr_debug("c_dma_buf is NULL.\n");
 			goto done;
 		}

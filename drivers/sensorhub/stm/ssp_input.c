@@ -376,9 +376,12 @@ void report_light_data(struct ssp_data *data, struct sensor_value *lightdata)
 	data->buf[LIGHT_SENSOR].g = lightdata->g;
 	data->buf[LIGHT_SENSOR].b = lightdata->b;
 	data->buf[LIGHT_SENSOR].w = lightdata->w;
-#ifdef CONFIG_SENSORS_SSP_TMG399X
+#if defined (CONFIG_SENSORS_SSP_TMG399X)
 	data->buf[LIGHT_SENSOR].a_time = lightdata->a_time;
 	data->buf[LIGHT_SENSOR].a_gain = (0x03) & (lightdata->a_gain);
+#elif defined (CONFIG_SENSORS_SSP_MAX88921)
+	data->buf[LIGHT_SENSOR].ir_cmp = lightdata->ir_cmp;
+	data->buf[LIGHT_SENSOR].amb_pga = lightdata->amb_pga;
 #endif
 
 	input_report_rel(data->light_input_dev, REL_HWHEEL,
@@ -389,12 +392,16 @@ void report_light_data(struct ssp_data *data, struct sensor_value *lightdata)
 		data->buf[LIGHT_SENSOR].b + 1);
 	input_report_rel(data->light_input_dev, REL_MISC,
 		data->buf[LIGHT_SENSOR].w + 1);
-
-#ifdef CONFIG_SENSORS_SSP_TMG399X
+#if defined (CONFIG_SENSORS_SSP_TMG399X)
 	input_report_rel(data->light_input_dev, REL_RY,
 		data->buf[LIGHT_SENSOR].a_time + 1);
 	input_report_rel(data->light_input_dev, REL_RZ,
 		data->buf[LIGHT_SENSOR].a_gain + 1);
+#elif defined (CONFIG_SENSORS_SSP_MAX88921)
+	input_report_rel(data->light_input_dev, REL_RY,
+		data->buf[LIGHT_SENSOR].ir_cmp + 1);
+	input_report_rel(data->light_input_dev, REL_RZ,
+		data->buf[LIGHT_SENSOR].amb_pga + 1);
 #endif
 	input_sync(data->light_input_dev);
 }

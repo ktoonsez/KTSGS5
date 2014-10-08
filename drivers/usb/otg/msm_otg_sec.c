@@ -32,6 +32,9 @@ static int ulpi_write(struct usb_phy *phy, u32 val, u32 reg);
 static int ulpi_read(struct usb_phy *phy, u32 reg);
 static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on);
 
+#if defined(CONFIG_MUIC_SM5502_SUPPORT_LANHUB_TA)
+extern bool lanhub_ta_case;
+#endif
 int sec_battery_otg_control(int enable)
 {
 	union power_supply_propval value;
@@ -47,8 +50,16 @@ int sec_battery_otg_control(int enable)
 		return -1;
 	}
 
+#if defined(CONFIG_MUIC_SM5502_SUPPORT_LANHUB_TA)
+if (enable) {
+		current_cable_type = lanhub_ta_case ? POWER_SUPPLY_TYPE_LAN_HUB : POWER_SUPPLY_TYPE_OTG;
+		pr_info("%s: LANHUB+TA Case cable type change for the (%d) \n",
+								__func__,current_cable_type);
+}
+#else
 	if (enable)
 		current_cable_type = POWER_SUPPLY_TYPE_OTG;
+#endif
 	else
 		current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
 
@@ -62,7 +73,7 @@ int sec_battery_otg_control(int enable)
 	return ret;
 }
 
-struct booster_data sec_booster = {
+struct booster_data sec_booster_batt = {
 	.name = "sec_battery",
 	.boost = sec_battery_otg_control,
 };
@@ -133,12 +144,12 @@ static void msm_otg_host_notify(struct msm_otg *motg, int on)
 	pr_info("host_notify: %d, dock %d\n", on, motg->smartdock);
 
 	if (on)
-		msm_otg_host_phy_tune(motg, 0x63, 0x30, 0x13);
+		msm_otg_host_phy_tune(motg, 0x33, 0xB, 0x13);
 }
 
 static int msm_host_notify_init(struct device *dev, struct msm_otg *motg)
 {
-	sec_otg_register_booster(&sec_booster);
+	sec_otg_register_booster(&sec_booster_batt);
 	INIT_DELAYED_WORK(&motg->late_power_work, msm_otg_late_power_work);
 	return 0;
 }

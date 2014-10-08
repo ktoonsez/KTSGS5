@@ -61,6 +61,9 @@ enum extcon_cable_name {
 	EXTCON_FAST_CHARGER,
 	EXTCON_SLOW_CHARGER,
 	EXTCON_CHARGE_DOWNSTREAM, /* Charging an external device */
+#if defined (CONFIG_MUIC_DET_JACK)
+	EXTCON_EARJACK,
+#endif
 	EXTCON_MHL,
 	EXTCON_MHL_VB,
 	EXTCON_LINE_OUT,

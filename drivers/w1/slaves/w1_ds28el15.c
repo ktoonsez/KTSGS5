@@ -108,7 +108,7 @@ int verification = -1, id = 2, color;
 char g_sn[14];
 #endif
 #ifdef CONFIG_W1_CF
-int cf_node=-1;
+int cf_node = -1;
 #endif
 #ifdef CONFIG_SEC_H_PROJECT
 extern int verified;

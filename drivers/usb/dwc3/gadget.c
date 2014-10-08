@@ -2752,6 +2752,7 @@ static void dwc3_gadget_linksts_change_interrupt(struct dwc3 *dwc,
 	dev_vdbg(dwc->dev, "%s link %d\n", __func__, dwc->link_state);
 }
 
+#if 0
 static void dwc3_dump_reg_info(struct dwc3 *dwc)
 {
 	dbg_event(0xFF, "REGDUMP", 0);
@@ -2777,6 +2778,7 @@ static void dwc3_dump_reg_info(struct dwc3 *dwc)
 
 	dwc3_notify_event(dwc, DWC3_CONTROLLER_ERROR_EVENT);
 }
+#endif
 
 static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 		const struct dwc3_event_devt *event)
@@ -2806,7 +2808,6 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
 		dbg_event(0xFF, "ERROR", 0);
 		dev_vdbg(dwc->dev, "Erratic Error\n");
-		dwc3_dump_reg_info(dwc);
 		break;
 	case DWC3_DEVICE_EVENT_CMD_CMPL:
 		dev_vdbg(dwc->dev, "Command Complete\n");
@@ -2980,7 +2981,10 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 #if defined(CONFIG_SEC_LT03_PROJECT) || defined(CONFIG_SEC_MONDRIAN_PROJECT)\
 	|| defined(CONFIG_SEC_KS01_PROJECT) || defined(CONFIG_SEC_PICASSO_PROJECT)\
 	|| defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)\
-	|| defined(CONFIG_SEC_KSPORTS_PROJECT)
+	|| defined(CONFIG_SEC_KSPORTS_PROJECT) || defined(CONFIG_SEC_JACTIVE_PROJECT)\
+	|| defined(CONFIG_SEC_S_PROJECT) || defined(CONFIG_SEC_PATEK_PROJECT)\
+	|| defined(CONFIG_SEC_CHAGALL_PROJECT) || defined(CONFIG_SEC_KLIMT_PROJECT)\
+	|| defined(CONFIG_MACH_JS01LTEDCM)
 	dwc->gadget.max_speed		= USB_SPEED_HIGH;
 #else
 	dwc->gadget.max_speed		= USB_SPEED_SUPER;

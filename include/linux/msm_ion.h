@@ -30,7 +30,12 @@ enum ion_heap_ids {
 	ION_CP_MM_HEAP_ID = 8,
 	ION_CP_MFC_HEAP_ID = 12,
 	ION_CP_WB_HEAP_ID = 16, /* 8660 only */
-	ION_IOMMUCA_HEAP_ID = 20,
+#if defined(CONFIG_ARCH_MSM8226)
+	ION_CAMERA_HEAP_ID = 30, /* 8660 only */	
+#else
+	ION_CAMERA_HEAP_ID = 20, /* 8660 only */	
+#endif
+	ION_IOMMUCA_HEAP_ID = ION_CAMERA_HEAP_ID,
 	ION_SYSTEM_CONTIG_HEAP_ID = 21,
 	ION_ADSP_HEAP_ID = 22,
 	ION_PIL1_HEAP_ID = 23, /* Currently used for other PIL images */
@@ -41,7 +46,7 @@ enum ion_heap_ids {
 	ION_AUDIO_HEAP_ID = 28,
 
 	ION_MM_FIRMWARE_HEAP_ID = 29,
-	ION_CAMERA_HEAP_ID = 30,
+
 	ION_HEAP_ID_RESERVED = 31 /** Bit reserved for ION_FLAG_SECURE flag */
 };
 
@@ -519,7 +524,7 @@ struct ion_prefetch_data {
        unsigned long len;
 };
 
-#ifdef CONFIG_MACH_KLTE_JPN
+#if defined(CONFIG_MACH_KLTE_JPN) || defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_DTCP_ION_PHYS)
 /* struct ion_buffer_data
  *
  * @handle:	handle for the buffer being queried
@@ -565,7 +570,7 @@ struct ion_buffer_data {
 #define ION_IOC_DRAIN                  _IOWR(ION_IOC_MSM_MAGIC, 4, \
                                                struct ion_prefetch_data)
 
-#ifdef CONFIG_MACH_KLTE_JPN
+#if defined(CONFIG_MACH_KLTE_JPN) || defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_DTCP_ION_PHYS)
 /**
  * DOC: ION_IOC_GET_PHYS - get the physical address of the handle
  *
@@ -575,4 +580,5 @@ struct ion_buffer_data {
 									struct ion_buffer_data)
 
 #endif
+
 #endif

@@ -836,9 +836,6 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 	unsigned long flags = 0;
 	char __iomem *offset;
 	struct mdss_data_type *mdata;
-#ifdef CONFIG_FB_MSM_CAMERA_CSC
-	static u8 pre_csc_value = 0xFF;
-#endif
 	pr_debug("pnum=%x\n", pipe->num);
 
 	mdata = mdss_mdp_get_mdata();
@@ -866,16 +863,13 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 		 * TODO: Needs to be part of dirty bit logic: if there is a
 		 * previously configured pipe need to re-configure CSC matrix
 		 */
-#ifdef CONFIG_FB_MSM_CAMERA_CSC
-		if ((pipe->play_cnt == 0)||(pre_csc_value != csc_update)) {
+#if defined(CONFIG_FB_MSM_CAMERA_CSC) && !defined(CONFIG_MACH_KS01SKT) && !defined(CONFIG_MACH_KS01EUR) && !defined(CONFIG_MACH_KS01KTT) && !defined(CONFIG_MACH_KS01LGT) && !defined(CONFIG_SEC_ATLANTIC_PROJECT)
+		if ((pipe->play_cnt == 0)||(pre_csc_update != csc_update)) {
 #else
 		if ((pipe->play_cnt == 0)) {
 #endif
 			mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num, 1,
 					   MDSS_MDP_CSC_YUV2RGB);
-#ifdef CONFIG_FB_MSM_CAMERA_CSC
-			pre_csc_value = csc_update;
-#endif
 		}
 	}
 

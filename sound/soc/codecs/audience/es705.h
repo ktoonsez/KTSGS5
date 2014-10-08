@@ -9,11 +9,16 @@
 #ifndef _ES705_H
 #define _ES705_H
 
+#if defined(CONFIG_SEC_S_PROJECT)
+#define ES705_VDDCORE_MAX77826
+#endif
 #include <linux/cdev.h>
 #include <linux/mutex.h>
 #include <sound/soc.h>
 #include <linux/time.h>
-
+#ifdef ES705_VDDCORE_MAX77826
+#include <linux/regulator/consumer.h>
+#endif
 #include "es705-uart.h"
 
 #define SAMSUNG_ES705_FEATURE

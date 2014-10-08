@@ -97,6 +97,7 @@ config SEC_OOM_KILLER
 
 config SEC_DEBUG_LMK_MEMINFO
 	bool "Show Meminfo when lmk invoked"
+	depends on !SAMSUNG_PRODUCT_SHIP
 	default n
 	help
 	  Show memory information when lmk kills process

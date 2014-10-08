@@ -209,7 +209,6 @@ static inline void copy_pmd(pmd_t *pmdpd, pmd_t *pmdps)
 		if (pmdpd[0] != pmdps[0] || pmdpd[1] != pmdps[1]) {
 			printk(KERN_ERR"TIMA: pmdpd[0] %lx != pmdps[0] %lx -- pmdpd[1] %lx != pmdps[1] %lx in tima_wr_out = %lx\n",
 					(unsigned long) pmdpd[0], (unsigned long) pmdps[0], (unsigned long) pmdpd[1], (unsigned long) pmdps[1], tima_wr_out);
-			tima_send_cmd((unsigned long) pmdpd[0], 0x3f810221);
 		}
 		flush_pmd_entry(pmdpd);
 

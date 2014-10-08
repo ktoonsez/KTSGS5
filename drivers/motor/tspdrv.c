@@ -352,7 +352,12 @@ static int tspdrv_parse_dt(struct platform_device *pdev)
 				__func__, __LINE__);
 	}
 #endif
-	
+#if defined(CONFIG_MOTOR_DRV_MAX77888)
+	vibrator_drvdata.max77888_en_gpio = of_get_named_gpio(np, "samsung,vib_power_en", 0);
+	if (!gpio_is_valid(vibrator_drvdata.max77888_en_gpio)) {
+		pr_err("%s:%d, max77888_en_gpio not specified\n",__func__, __LINE__);
+	}
+#endif
 	rc = of_property_read_u32(np, "samsung,vib_model", &vibrator_drvdata.vib_model);
 	if (rc) {
 		pr_err("%s:%d, vib_model not specified\n",
@@ -538,7 +543,26 @@ static int32_t drv2603_gpio_init(void)
 	return 0;
 }
 #endif
-
+#if defined(CONFIG_MOTOR_DRV_MAX77888)
+void max77888_gpio_en(bool en)
+{
+	if (en) {
+		gpio_direction_output(vibrator_drvdata.max77888_en_gpio, 1);
+	} else {
+		gpio_direction_output(vibrator_drvdata.max77888_en_gpio, 0);
+	}
+}
+static int32_t max77888_gpio_init(void)
+{
+	int ret;
+	ret = gpio_request(vibrator_drvdata.max77888_en_gpio, "vib enable");
+	if (ret < 0) {
+		printk(KERN_ERR "vib enable gpio_request is failed\n");
+		return 1;
+	}
+	return 0;
+}
+#endif
 static __devinit int tspdrv_probe(struct platform_device *pdev)
 {
 	int ret, i, rc;   /* initialized below */

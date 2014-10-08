@@ -358,12 +358,13 @@ static void lpm_system_prepare(struct lpm_system_state *system_state,
 	const struct cpumask *nextcpu;
 
 	spin_lock(&system_state->sync_lock);
-#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
+#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO) || defined(CONFIG_ARCH_MSM8226)
 	if (index < 0 || num_powered_cores != system_state->num_cores_in_sync)
 #else
 	if (num_powered_cores != system_state->num_cores_in_sync)
 #endif
 	{
+		lpm_set_l2_mode(system_state, default_l2_mode);
 		spin_unlock(&system_state->sync_lock);
 		return;
 	}
@@ -440,7 +441,7 @@ static void lpm_system_unprepare(struct lpm_system_state *system_state,
 			system_lvl->num_cpu_votes--;
 	}
 
-#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
+#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO) || defined(CONFIG_ARCH_MSM8226)
 	if (!first_core_up || index < 0)
 #else
 	if (!first_core_up)
@@ -457,7 +458,7 @@ static void lpm_system_unprepare(struct lpm_system_state *system_state,
 		msm_mpm_exit_sleep(from_idle);
 	}
 unlock_and_return:
-#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
+#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO) || defined(CONFIG_ARCH_MSM8226)
 	system_state->last_entered_cluster_index = -1;
 #endif
 	spin_unlock(&system_state->sync_lock);
@@ -757,7 +758,7 @@ static void lpm_enter_low_power(struct lpm_system_state *system_state,
 
 	idx = lpm_system_select(system_state, cpu_index, from_idle);
 
-#if !(defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO))
+#if !(defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO) || defined(CONFIG_ARCH_MSM8226))
 	if (idx >= 0)
 #endif
 	{
@@ -1024,11 +1025,14 @@ static int lpm_system_probe(struct platform_device *pdev)
 					__func__);
 			goto fail;
 		}
-
+#if !(defined(CONFIG_ARCH_MSM8226))
 		if (l->l2_mode == MSM_SPM_L2_MODE_GDHS ||
 				l->l2_mode == MSM_SPM_L2_MODE_POWER_COLLAPSE)
 			l->notify_rpm = true;
-
+#else
+		key = "qcom,send-rpm-sleep-set";
+		l->notify_rpm = of_property_read_bool(node, key);
+#endif
 		if (l->l2_mode >= MSM_SPM_L2_MODE_GDHS)
 			l->sync = true;
 
@@ -1069,7 +1073,7 @@ static int lpm_system_probe(struct platform_device *pdev)
 	}
 	sys_state.system_level = level;
 	sys_state.num_system_levels = num_levels;
-#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
+#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO) || defined(CONFIG_ARCH_MSM8226)
 	sys_state.last_entered_cluster_index = -1;
 #endif
 	return ret;

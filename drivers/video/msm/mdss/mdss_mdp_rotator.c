@@ -617,7 +617,7 @@ static int mdss_mdp_rotator_finish(struct mdss_mdp_rotator_session *rot)
 	}
 
 	if (!list_empty(&rot->list))
-		list_del_init(&rot->list);
+		list_del(&rot->list);
 
 	rot_sync_pt_data = rot->rot_sync_pt_data;
 	commit_work = rot->commit_work;

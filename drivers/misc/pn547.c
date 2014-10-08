@@ -57,6 +57,10 @@
 #define I2C_ADDR_READ_L		0x51
 #define I2C_ADDR_READ_H		0x57
 
+#ifdef CONFIG_MACH_VICTORLTE_CTC
+extern unsigned int system_rev;
+#endif
+
 struct pn547_dev {
 	wait_queue_head_t read_wq;
 	struct mutex read_mutex;
@@ -318,9 +322,9 @@ static long pn547_dev_ioctl(struct file *filp,
 		if (arg == 2) {
 			/* power on with firmware download (requires hw reset)
 			 */
-	#ifdef CONFIG_SEC_MILLETWIFI_COMMON
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON)
 			gpio_direction_output(pn547_dev->ven_gpio, 1);
-	#endif
+#endif
 			gpio_set_value_cansleep(pn547_dev->ven_gpio, 1);
 			gpio_set_value(pn547_dev->firm_gpio, 1);
 			usleep_range(10000, 10050);
@@ -340,9 +344,9 @@ static long pn547_dev_ioctl(struct file *filp,
 			if (pn547_dev->conf_gpio)
 				pn547_dev->conf_gpio();
 			gpio_set_value(pn547_dev->firm_gpio, 0);
-	#ifdef CONFIG_SEC_MILLETWIFI_COMMON
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON)
 			gpio_direction_output(pn547_dev->ven_gpio, 1);
-	#endif
+#endif
 			gpio_set_value_cansleep(pn547_dev->ven_gpio, 1);
 			usleep_range(10000, 10050);
 			if (atomic_read(&pn547_dev->irq_enabled) == 0) {
@@ -362,9 +366,9 @@ static long pn547_dev_ioctl(struct file *filp,
 			pr_info("%s power off, irq=%d\n", __func__,
 				atomic_read(&pn547_dev->irq_enabled));
 			gpio_set_value(pn547_dev->firm_gpio, 0);
-	#ifdef CONFIG_SEC_MILLETWIFI_COMMON
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON)
 			gpio_direction_output(pn547_dev->ven_gpio, 0);
-	#endif
+#endif
 			gpio_set_value_cansleep(pn547_dev->ven_gpio, 0);
 			usleep_range(10000, 10050);
 		} else if (arg == 3) {
@@ -444,7 +448,14 @@ static int pn547_probe(struct i2c_client *client,
 	int addrcnt;
 	struct pn547_i2c_platform_data *platform_data;
 	struct pn547_dev *pn547_dev;
-
+#ifdef CONFIG_MACH_VICTORLTE_CTC
+	pr_info("%s : start  system_rev : %d\n", __func__,system_rev);
+	if (system_rev < 3)
+	{
+		pr_info("%s : probe fail \n", __func__);
+		return -ENODEV;
+	}
+#endif
 	if (client->dev.of_node) {
 		platform_data = devm_kzalloc(&client->dev,
 			sizeof(struct pn547_i2c_platform_data), GFP_KERNEL);

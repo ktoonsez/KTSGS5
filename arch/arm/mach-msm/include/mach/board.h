@@ -27,6 +27,14 @@
 #include <linux/msm_ssbi.h>
 #include <mach/msm_bus.h>
 
+#ifdef CONFIG_WCNSS_IRIS_REGISTER_DUMP
+#define WLAN_RF_REG_ADDR_START_OFFSET   0x3
+#define WLAN_RF_REG_DATA_START_OFFSET   0xf
+#define WLAN_RF_READ_REG_CMD            0x3
+#define WLAN_RF_WRITE_REG_CMD           0x2
+#define WLAN_RF_READ_CMD_MASK           0x3fff
+#endif
+
 struct msm_camera_io_ext {
 	uint32_t mdcphy;
 	uint32_t mdcsz;
@@ -535,8 +543,10 @@ struct msm_i2c_platform_data {
 	int aux_clk;
 	int aux_dat;
 	int src_clk_rate;
+#if defined(CONFIG_MACH_KS01EUR) || defined(CONFIG_SEC_CHAGALL_PROJECT)
 	int noise_rjct_sda;
 	int noise_rjct_scl;
+#endif
 	int use_gsbi_shared_mode;
 	int keep_ahb_clk_on;
 	void (*msm_i2c_config_gpio)(int iface, int config_type);
@@ -676,6 +686,10 @@ void msm_snddev_tx_route_config(void);
 void msm_snddev_tx_route_deconfig(void);
 
 extern phys_addr_t msm_shared_ram_phys; /* defined in arch/arm/mach-msm/io.c */
+
+#ifdef CONFIG_WCNSS_IRIS_REGISTER_DUMP
+u32 wcnss_rf_read_reg(u32 rf_reg_addr);
+#endif
 
 #if defined(CONFIG_BT_BCM4335) || defined(CONFIG_BT_BCM4339)
 void msm8974_bt_init(void);

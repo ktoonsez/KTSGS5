@@ -1,6 +1,5 @@
-
 /* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
@@ -234,7 +233,7 @@
 #endif
 
 #define SAMSUNG_TKEY_LED_BRIGHTNESS  90
-#ifdef CONFIG_MACH_AFYONLTE_TMO
+#if defined(CONFIG_SEC_AFYON_PROJECT) || defined(CONFIG_SEC_ATLANTIC_PROJECT) || defined( CONFIG_SEC_VASTA_PROJECT)
 #define SAMSUNG_USE_EXTERNAL_CHARGER
 #endif
 
@@ -1504,8 +1503,12 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 
 			rc = qpnp_led_masked_write(led,
 				FLASH_ENABLE_CONTROL(led->base),
+#if defined(CONFIG_MACH_VICTORLTE_CTC) || defined(CONFIG_SEC_MEGA2_PROJECT)
+				led->flash_cfg->enable_module,
+#else
 				led->flash_cfg->enable_module &
 				~FLASH_ENABLE_MODULE_MASK,
+#endif
 				FLASH_DISABLE_ALL);
 			if (rc) {
 				dev_err(&led->spmi_dev->dev,
@@ -1702,7 +1705,8 @@ static void qpnp_led_set(struct led_classdev *led_cdev,
 
 	if (value > led->cdev.max_brightness)
 		value = led->cdev.max_brightness;
-#ifdef CONFIG_MACH_AFYONLTE_TMO
+#if defined(CONFIG_MACH_AFYONLTE_TMO) || defined(CONFIG_MACH_AFYONLTE_CAN) || defined(CONFIG_MACH_MS01_EUR_3G) \
+	|| defined(CONFIG_MACH_AFYONLTE_MTR)
 	pr_info("[LED]%s: %s value = %d\n", __func__, led_cdev->name, value);
 	if(strncmp(led_cdev->name, "button-backlight",  16))
 		led->cdev.brightness = value;

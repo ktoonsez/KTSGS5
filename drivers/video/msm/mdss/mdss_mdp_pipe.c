@@ -189,7 +189,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 	int rc = 0, rot_mode = 0;
 	u32 nlines, format;
 	u16 width;
-#if defined(CONFIG_SEC_MATISSE_PROJECT)
+#if defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL) || defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
 	int wb_mixer = 0;
 #endif
 
@@ -247,7 +247,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 
 	nlines = pipe->bwc_mode ? 1 : 2;
 
-#if defined(CONFIG_SEC_MATISSE_PROJECT)
+#if defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL) || defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
 	if (pipe->mixer->type == MDSS_MDP_MIXER_TYPE_WRITEBACK)
 		wb_mixer = 1;
 #endif
@@ -265,7 +265,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 	}
 
 	for (i = 0; i < ps.num_planes; i++) {
-#if defined(CONFIG_SEC_MATISSE_PROJECT)
+#if defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL) || defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
 		if (rot_mode || wb_mixer) {
 #else
 		if (rot_mode) {
@@ -293,7 +293,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 	}
 
 	if (reserved < num_blks) {
-		pr_debug("insufficient MMB blocks\n");
+		pr_err("insufficient MMB blocks\n");
 		for (; i >= 0; i--)
 			mdss_mdp_smp_mmb_free(pipe->smp_map[i].reserved,
 				false);
@@ -792,7 +792,11 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	src_size = (src.h << 16) | src.w;
 	src_xy = (src.y << 16) | src.x;
 	dst_size = (dst.h << 16) | dst.w;
+#if defined(CONFIG_MDSS_UD_FLIP)
+	dst_xy = (((pipe->mixer->height - pipe->dst.y - pipe->dst.h) << 16) | pipe->dst.x);
+#else
 	dst_xy = (dst.y << 16) | dst.x;
+#endif
 
 	ystride0 =  (pipe->src_planes.ystride[0]) |
 			(pipe->src_planes.ystride[1] << 16);

@@ -527,4 +527,11 @@ config RESTART_REASON_DDR
 	help
 	  This comes in handy backup, when restart reason saved in IMEM is lost.
 
+comment "BSP Feature"
+menuconfig SEC_BSP
+	bool "Samsung TN BSP Feature"
+	default n
+	help
+	  Samsung TN BSP Feature.
+
 endmenu

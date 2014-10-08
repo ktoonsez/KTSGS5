@@ -307,6 +307,11 @@ static int msm_cpufreq_verify(struct cpufreq_policy *policy)
 
 static unsigned int msm_cpufreq_get_freq(unsigned int cpu)
 {
+#if defined(CONFIG_ARCH_MSM8226) || defined(CONFIG_ARCH_MSM8610)
+	if (is_clk && is_sync)
+		cpu = 0;
+#endif
+
 	if (is_clk)
 		return clk_get_rate(cpu_clk[cpu]) / 1000;
 
@@ -332,6 +337,16 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	if (cpu_is_msm8625() || cpu_is_msm8625q() || cpu_is_msm8226()
 		|| cpu_is_msm8610() || (is_clk && is_sync))
 		cpumask_setall(policy->cpus);
+
+#if defined(CONFIG_ARCH_MSM8226) || defined(CONFIG_ARCH_MSM8610)
+	cpu_work = &per_cpu(cpufreq_work, policy->cpu);
+	INIT_WORK(&cpu_work->work, set_cpu_work);
+	init_completion(&cpu_work->complete);
+
+	/* synchronous cpus share the same policy */
+	if (!cpu_clk[policy->cpu])
+		return 0;
+#endif
 
 	if (cpufreq_frequency_table_cpuinfo(policy, table)) {
 #ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
@@ -379,9 +394,11 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	policy->cpuinfo.transition_latency =
 		acpuclk_get_switch_time() * NSEC_PER_USEC;
 
+#if !defined(CONFIG_ARCH_MSM8226) && !defined(CONFIG_ARCH_MSM8610)
 	cpu_work = &per_cpu(cpufreq_work, policy->cpu);
 	INIT_WORK(&cpu_work->work, set_cpu_work);
 	init_completion(&cpu_work->complete);
+#endif
 
 	return 0;
 }

@@ -789,7 +789,9 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 #endif
 
 	if (local_usbsw->dock_ready == 1) {
-		if (adc == 0x10)
+		if (adc == 0x0f)
+			dev2 = DEV_INCOMPATIBLE; 
+		else if (adc == 0x10)
 			dev2 = DEV_SMARTDOCK;
 		else if (adc == 0x12)
 			dev2 = DEV_AUDIO_DOCK;
@@ -797,6 +799,8 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 		else if (adc == 0x13)
 			dev2 = DEV_LANHUB;
 #endif
+		else if (adc == 0x14)
+			dev2 = DEV_CHARGING_CABLE;
 	}
 
 	dev_info(&client->dev, "dev1: 0x%02x, dev2: 0x%02x, adc: 0x%02x\n",
@@ -897,8 +901,12 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
 				DisableFSA9485Interrupts();
 
-				isMhlAttached = MHL_ATTACHED;
-				schedule_delayed_work(&usbsw->mhl_work, msecs_to_jiffies(100));
+				if (isMhlAttached != MHL_ATTACHED) {
+					isMhlAttached = MHL_ATTACHED;
+					schedule_delayed_work(&usbsw->mhl_work, msecs_to_jiffies(100));
+				} else {
+					dev_info(&client->dev, "FSA mhl is initializing... bypass\n");
+				}
 
 				EnableFSA9485Interrupts();
 #else
@@ -951,6 +959,12 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				}
 			}
 #endif /* !CONFIG_MUIC_FSA9485_SUPPORT_CAR_DOCK */
+		} else if (dev2 & DEV_INCOMPATIBLE) {
+			usbsw->adc = adc;
+			dev_info(&client->dev, "Inompatible CHARGER connect\n");
+
+			if (pdata->in_charger_cb)
+				pdata->in_charger_cb(FSA9485_ATTACHED);
 		/* SmartDock */
 		} else if (dev2 & DEV_SMARTDOCK) {
 			usbsw->adc = adc;
@@ -1034,12 +1048,20 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 			if (pdata->lanhub_cb)
 				pdata->lanhub_cb(FSA9485_ATTACHED);
 #endif
+		/* CHARGING CABLE */
+		} else if (dev2 & DEV_CHARGING_CABLE) {
+			dev_info(&client->dev, "charging cable connect\n");
+			usbsw->dock_attached = FSA9485_ATTACHED;
+			usbsw->adc = adc;
+
+			if (pdata->charge_cb)
+				pdata->charge_cb(FSA9485_ATTACHED);
 		/* Incompatible */
 		} else if (dev3 & DEV_VBUS_DEBOUNCE) {
 			dev_info(&client->dev,
-					"Incompatible Charger connect\n");
-			if (pdata->in_charger_cb)
-				pdata->in_charger_cb(FSA9485_ATTACHED);
+					"Unsupported ADC, VBUS is valid = CHARGER\n");
+			if (pdata->charger_cb)
+				pdata->charger_cb(FSA9485_ATTACHED);
 		}
 	/* Detached */
 	} else {
@@ -1140,6 +1162,12 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				dev_info(&client->dev, "[FSA9485] uart disconnect\n");
 			}
 #endif /* !CONFIG_MUIC_FSA9485_SUPPORT_CAR_DOCK */
+		} else if (usbsw->adc == 0x0f) {
+			dev_info(&client->dev, "Incompatible Charger disconnect\n");
+
+			if (pdata->in_charger_cb)
+				pdata->in_charger_cb(FSA9485_DETACHED);
+			usbsw->adc = 0;
 		} else if (usbsw->adc == 0x10) {
 			dev_info(&client->dev, "smart dock disconnect\n");
 
@@ -1208,11 +1236,19 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 			usbsw->adc = 0;
 			usbsw->lanhub_ta_status=0;
 #endif
+		/* Charging Cable */
+		} else if (usbsw->adc == 0x14) {
+			dev_info(&client->dev, "charging_cable disconnect\n");
+			usbsw->dock_attached = FSA9485_DETACHED;
+			usbsw->adc = 0;
+			usbsw->dev2 = 0;
+			if (pdata->charge_cb)
+				pdata->charge_cb(FSA9485_DETACHED);
 		} else if (usbsw->dev3 & DEV_VBUS_DEBOUNCE) {
 			dev_info(&client->dev,
-					"Incompatible Charger disconnect\n");
-			if (pdata->in_charger_cb)
-				pdata->in_charger_cb(FSA9485_DETACHED);
+					"Unsupported adc, Charger disconnect\n");
+			if (pdata->charger_cb)
+				pdata->charger_cb(FSA9485_DETACHED);
 		}
 		/*	set auto mode	*/
 		i2c_smbus_write_byte_data(client,FSA9485_REG_CTRL, 0x1E);
@@ -1557,7 +1593,11 @@ static int __devinit fsa9485_probe(struct i2c_client *client,
 	if(poweroff_charging)
 		schedule_delayed_work(&usbsw->init_work, msecs_to_jiffies(1000));
 	else
+#ifdef CONFIG_SEC_BERLUTI_PROJECT
+		schedule_delayed_work(&usbsw->init_work, msecs_to_jiffies(100));
+#else
 		schedule_delayed_work(&usbsw->init_work, msecs_to_jiffies(3000));
+#endif
 	INIT_DELAYED_WORK(&usbsw->audio_work, fsa9485_delayed_audio);
 	schedule_delayed_work(&usbsw->audio_work, msecs_to_jiffies(20000));
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)

@@ -251,7 +251,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*on) (struct mdss_panel_data *pdata);
 	int (*off) (struct mdss_panel_data *pdata);
 #if defined (CONFIG_FB_MSM_MDSS_S6E8AA0A_HD_PANEL)
-	int (*mtp) (struct mdss_panel_data *pdata);	
+	int (*mtp) (struct mdss_panel_data *pdata);
 #endif
 	int (*partial_update_fnc) (struct mdss_panel_data *pdata);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
@@ -281,6 +281,28 @@ struct mdss_dsi_ctrl_pdata {
 	int rst_gpio;
 	int disp_en_gpio;
 	int disp_en_gpio2;
+#if defined(CONFIG_FB_MSM_MDSS_HX8394C_TFT_VIDEO_720P_PANEL)
+	int disp_en_vsp_gpio;
+	int disp_en_vsn_gpio;
+#endif
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQXGA_S6TNMR7_PT_PANEL)
+	int tcon_ready_gpio;
+#endif
+#if defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PANEL)
+	int lcd_crack_det;
+	int expander_enble_gpio;
+#endif
+#if defined(CONFIG_FB_MSM_MDSS_SHARP_HD_PANEL)
+	int disp_en_gpio_p;
+	int disp_en_gpio_n;
+#endif
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_WXGA_PT_DUAL_PANEL)
+	int lcd_crack_det_gpio;
+	int lcd_esd_det_gpio;
+	int lcd_sel_gpio;
+	struct regulator *lcd_3p0_vreg;
+	struct regulator *lcd_1p8_vreg;
+#endif
 	int bl_on_gpio;
 	int disp_te_gpio;
 	int mode_gpio;
@@ -295,6 +317,9 @@ struct mdss_dsi_ctrl_pdata {
 	int bklt_max;
 	int new_fps;
 	int pwm_enabled;
+#if defined(CONFIG_CABC_TUNING_HX8394C)
+	int current_cabc_duty;
+#endif
 	struct pwm_device *pwm_bl;
 	struct dsi_drv_cm_data shared_pdata;
 	u32 pclk_rate;
@@ -310,7 +335,16 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds ce_off_cmds;
 	struct dsi_panel_cmds cabc_on_cmds;
 	struct dsi_panel_cmds cabc_off_cmds;
+#if defined(CONFIG_CABC_TUNING_HX8394C)
+	struct dsi_panel_cmds cabc_duty_72;
+	struct dsi_panel_cmds cabc_duty_74;
+	struct dsi_panel_cmds cabc_duty_78;
+	struct dsi_panel_cmds cabc_duty_82;
+#endif
 	struct dsi_panel_cmds cabc_tune_cmds;
+#if defined(CONFIG_FB_MSM_MDSS_CPT_QHD_PANEL)
+	struct dsi_panel_cmds disp_on_cmd;
+#endif
 
 
 	int dsi_on_state;
@@ -371,6 +405,7 @@ int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_cmd_desc *cmds, int rlen);
 
+void set_ctrl_base(struct mdss_panel_data *pdata);
 void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
 				struct mdss_panel_data *pdata);
 void mdss_dsi_op_mode_config(int mode,

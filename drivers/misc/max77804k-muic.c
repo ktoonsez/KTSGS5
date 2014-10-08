@@ -858,7 +858,12 @@ static int max77804k_muic_set_usb_path(struct max77804k_muic_info *info, int pat
 		if (ret) {
 			dev_err(info->dev, "%s: fail to set safout!\n",
 				__func__);
+#if defined CONFIG_SEC_RUBENS_PROJECT
+			//TODO : please remove comment on battery/regulator bring up
+			//return ret;
+#else
 			return ret;
+#endif
 		}
 	}
 

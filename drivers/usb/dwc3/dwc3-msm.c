@@ -628,7 +628,7 @@ static int dwc3_msm_dbm_ep_config(struct dwc3_msm *mdwc, u8 usb_ep, u8 bam_pipe,
  */
 static int dwc3_msm_dbm_ep_unconfig(struct dwc3_msm *mdwc, u8 usb_ep)
 {
-	u8 dbm_ep;
+	int dbm_ep;
 	u32 data;
 
 	dev_dbg(mdwc->dev, "%s\n", __func__);

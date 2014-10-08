@@ -1502,7 +1502,8 @@ extern unsigned int system_rev;
 
 #if defined(CONFIG_MACH_KLTE_JPN)
 #define UART_DOWNLOAD_WAKEUP_HWREV 7
-#elif defined(CONFIG_MACH_KACTIVELTE_EUR) || defined(CONFIG_MACH_KACTIVELTE_ATT) || defined(CONFIG_MACH_KSPORTSLTE_SPR) || defined(CONFIG_MACH_KACTIVELTE_SKT) || defined(CONFIG_MACH_KACTIVELTE_CAN)
+#elif defined(CONFIG_MACH_KACTIVELTE_EUR) || defined(CONFIG_MACH_KACTIVELTE_ATT) || defined(CONFIG_MACH_KSPORTSLTE_SPR) \
+	|| defined(CONFIG_MACH_KACTIVELTE_SKT) || defined(CONFIG_SEC_S_PROJECT) || defined(CONFIG_MACH_KACTIVELTE_CAN) || defined(CONFIG_MACH_KACTIVELTE_DCM)
 #define UART_DOWNLOAD_WAKEUP_HWREV 0
 #else
 #define UART_DOWNLOAD_WAKEUP_HWREV 6 /* HW rev0.7 */
@@ -3295,6 +3296,7 @@ int es705_put_veq_block(int volume)
 		ret = es705->dev_read(es705, (char *)&resp,
 				ES705_READ_VE_WIDTH);
 		count++;
+		usleep_range(2000, 2000);
 	} while (resp != cmd && count < max_retry_cnt);
 
 	if (resp != cmd) {
@@ -3333,6 +3335,7 @@ int es705_put_veq_block(int volume)
 		ret = es705->dev_read(es705, (char *)&fin_resp,
 				ES705_READ_VE_WIDTH);
 		count++;
+		usleep_range(2000, 2000);
 	} while (fin_resp != 0x802f0000 && count < max_retry_cnt);
 
 	if (fin_resp != 0x802f0000) {
@@ -4632,6 +4635,9 @@ int es705_core_probe(struct device *dev)
 {
 	struct esxxx_platform_data *pdata = dev->platform_data;
 	int rc = 0;
+#ifdef ES705_VDDCORE_MAX77826
+	struct regulator *es705_vdd_core = NULL;
+#endif
 
 #if defined(CONFIG_MACH_KLTE_KOR)
 	const char *fw_filename = "audience-es705-fw-kltekor.bin";
@@ -4744,6 +4750,17 @@ int es705_core_probe(struct device *dev)
 			__func__, vs_filename, rc);
 		goto request_vs_firmware_error;
 	}
+
+#ifdef ES705_VDDCORE_MAX77826
+	es705_vdd_core = regulator_get(NULL, "max77826_ldo1");
+	if (IS_ERR(es705_vdd_core)) {
+		dev_err(dev, "%s(): es705 VDD CORE regulator_get fail\n", __func__);
+		return rc;
+	}
+	regulator_set_voltage(es705_vdd_core, 1100000, 1100000);
+	regulator_enable(es705_vdd_core);
+	regulator_put(es705_vdd_core);
+#endif
 
 	if (pdata->esxxx_clk_cb) {
 		pdata->esxxx_clk_cb(1);

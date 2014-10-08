@@ -1925,6 +1925,11 @@ restart:
 	nr_scanned = sc->nr_scanned;
 	get_scan_count(mz, sc, nr);
 
+#ifdef CONFIG_RUNTIME_COMPCACHE
+	if (rtcc_reclaim(sc))
+		nr[LRU_INACTIVE_FILE] = nr[LRU_ACTIVE_FILE] = 0;
+#endif /* CONFIG_RUNTIME_COMPCACHE */
+
 	blk_start_plug(&plug);
 	while (nr[LRU_INACTIVE_ANON] || nr[LRU_ACTIVE_FILE] ||
 					nr[LRU_INACTIVE_FILE]) {
@@ -1932,9 +1937,6 @@ restart:
 		if (rtcc_reclaim(sc)) {
 			if (rc->nr_swapped >= rc->nr_anon)
 				nr[LRU_INACTIVE_ANON] = nr[LRU_ACTIVE_ANON] = 0;
-
-			if ((sc->nr_reclaimed + nr_reclaimed - rc->nr_swapped) >= rc->nr_file)
-				nr[LRU_INACTIVE_FILE] = nr[LRU_ACTIVE_FILE] = 0;
 		}
 #endif /* CONFIG_RUNTIME_COMPCACHE */
 

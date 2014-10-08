@@ -717,10 +717,10 @@ static int sdcardfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 	parent = dget_parent(dentry);
 	if(!check_caller_access_to_name(parent->d_inode, dentry->d_name.name,
 						sbi->options.derive, 0, 0)) {
+		dput(parent);
 		printk(KERN_INFO "%s: need to check the caller's gid in packages.list\n" 
 						 "  dentry: %s, task:%s\n",
 						 __func__, dentry->d_name.name, current->comm);
-		dput(parent);
 		return -EACCES;
 	}
 	dput(parent);
