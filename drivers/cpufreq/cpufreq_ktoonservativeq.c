@@ -339,7 +339,10 @@ void send_cable_state_kt(unsigned int state)
 			queue_work_on(0, dbs_wq, &hotplug_online_work);
 	}
 	else
+	{
 		disable_hotplug_chrg_override = false;
+		ktoonservative_boostpulse(true);
+	}
 }
 
 bool set_music_playing_statekt(bool state)
