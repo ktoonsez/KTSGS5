@@ -679,10 +679,9 @@ static int ir_remocon_work(struct irda_ice40_data *ir_data, int count)
 
 	mutex_unlock(&data->mutex);
 
-	emission_time = data->ir_sum;
-
+	emission_time = (1000 * (data->ir_sum) / (data->ir_freq));
 	if (emission_time > 0)
-		usleep(emission_time);
+		msleep(emission_time);
 
 	pr_irda("%s: emission_time = %d\n",
 			__func__, emission_time);
@@ -730,6 +729,8 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 	struct irda_ice40_data *data = dev_get_drvdata(dev);
 	unsigned int _data;
 	unsigned int count = 2, i = 0;
+	unsigned int c_factor = 0;
+	unsigned int temp_data = 0;
 	int ret;
 
 	pr_irda("%s ir_send called[%d]\n", __func__, __LINE__);
@@ -753,12 +754,11 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 							= _data & 0xFF;
 				count += 3;
 			} else {
-				data->ir_sum += _data;
-				data->i2c_block_transfer.data[count]   = _data >> 24;
-				data->i2c_block_transfer.data[count+1] = _data >> 16;
-				data->i2c_block_transfer.data[count+2] = _data >> 8;
-				data->i2c_block_transfer.data[count+3] = _data & 0xFF;
-				count += 4;
+				c_factor = 1000000 / data->ir_freq;
+				temp_data = _data / c_factor;
+				data->ir_sum += temp_data;
+				data->i2c_block_transfer.data[count++] = (temp_data >> 8);
+				data->i2c_block_transfer.data[count++] = temp_data & 0xFF;
 			}
 
 			while (_data > 0) {

@@ -452,6 +452,9 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id++;
 		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id == 0)
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id = 1;
+		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id < 3)
+			pr_err("%s: [ISP_REGUPDATE_DBG] frame_id(%lu)\n", __func__,
+		       vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id);
 		break;
 	case VFE_RAW_0:
 	case VFE_RAW_1:
@@ -1265,6 +1268,9 @@ static int msm_isp_start_axi_stream(struct vfe_device *vfe_dev,
 	}
 	msm_isp_update_stream_bandwidth(vfe_dev);
 	vfe_dev->hw_info->vfe_ops.axi_ops.reload_wm(vfe_dev, wm_reload_mask);
+	pr_err("%s: [ISP_REGUPDATE_DBG] call reg_update!!\n", __func__);
+	pr_err("%s Start stream %d src %d stream type %d\n", __func__,
+		stream_info->stream_id, stream_info->stream_src, stream_info->stream_type);
 	vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev);
 
 	msm_isp_update_camif_output_count(vfe_dev, stream_cfg_cmd);

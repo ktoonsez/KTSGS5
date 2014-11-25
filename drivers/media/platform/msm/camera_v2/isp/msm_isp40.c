@@ -504,6 +504,10 @@ static void msm_vfe40_process_reg_update(struct vfe_device *vfe_dev,
 	msm_isp_update_framedrop_reg(vfe_dev);
 	msm_isp_update_error_frame_count(vfe_dev);
 
+	if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id < 3)
+		pr_err("%s: [ISP_REGUPDATE_DBG] frame_id(%lu)\n", __func__,
+			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id);
+
 	vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev);
 	return;
 }
@@ -1387,6 +1391,15 @@ static void msm_vfe40_get_halt_restart_mask(uint32_t *irq0_mask,
 	*irq0_mask = BIT(31);
 	*irq1_mask = BIT(8);
 }
+
+static int msm_vfe40_get_reg_update(uint32_t irq0_status, uint32_t irq1_status)
+{
+	int rc = 0;
+	if (irq0_status & 0xF0)
+		rc = 1;
+	return rc;
+}
+
 static struct msm_vfe_axi_hardware_info msm_vfe40_axi_hw_info = {
 	.num_wm		= 6,
 	.num_comp_mask	= 2,
@@ -1476,6 +1489,7 @@ struct msm_vfe_hardware_info vfe40_hw_info = {
 			.restore_irq_mask	= msm_vfe40_restore_irq_mask,
 			.get_halt_restart_mask	= msm_vfe40_get_halt_restart_mask,
 			.process_error_status	= msm_vfe40_process_error_status,
+			.get_regupdate_status = msm_vfe40_get_reg_update,
 		},
 		.stats_ops			= {
 			.get_stats_idx		= msm_vfe40_get_stats_idx,
