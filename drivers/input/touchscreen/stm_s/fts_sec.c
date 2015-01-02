@@ -1009,6 +1009,9 @@ static void run_rawcap_read(void *device_data)
 	char buff[CMD_STR_LEN] = { 0 };
 	short min = 0x7FFF;
 	short max = 0x8000;
+	unsigned char data[FTS_EVENT_SIZE];
+	unsigned char regAdd;
+	int fail_retry = 0;
 
 	set_default_result(info);
 
@@ -1020,6 +1023,25 @@ static void run_rawcap_read(void *device_data)
 		info->cmd_state = CMD_STATUS_NOT_APPLICABLE;
 		return;
 	}
+
+		fts_interrupt_set(info, INT_DISABLE);
+		fts_command(info, CX_TUNNING);
+		fts_delay(300);
+
+		regAdd = READ_ONE_EVENT;
+		while (fts_read_reg(info, &regAdd, 1, (unsigned char *)data, FTS_EVENT_SIZE)) {
+			if ((data[0] == EVENTID_STATUS_EVENT) &&
+				(data[1] == STATUS_EVENT_MUTUAL_AUTOTUNE_DONE)) {
+				break;
+			}
+
+			if (fail_retry++ > FTS_RETRY_COUNT * 15) {
+				tsp_debug_info(true, info->dev, "%s: Raw data read Time Over\n", __func__);
+				break;
+			}
+			fts_delay(10);
+		}
+		fts_interrupt_set(info, INT_ENABLE);
 
 	fts_delay(500);
 	fts_read_frame(info, TYPE_FILTERED_DATA, &min, &max);
@@ -1115,7 +1137,7 @@ static void get_delta(void *device_data)
 
 void fts_read_self_frame(struct fts_ts_info *info, unsigned short oAddr)
 {
-	char buff[64] = {0, };
+	char buff[66] = {0, };
 	short *data = 0;
 	char temp[9] = {0, };
 	char temp2[512] = {0, };
@@ -1177,6 +1199,10 @@ void fts_read_self_frame(struct fts_ts_info *info, unsigned short oAddr)
 	}
 
 	data = (short *)&buff[0];
+
+	memset(temp, 0x00, ARRAY_SIZE(temp));
+	memset(temp2, 0x00, ARRAY_SIZE(temp2));
+
 	for (i = 0; i < info->SenseChannelLength; i++) {
 		tsp_debug_info(true, &info->client->dev,
 				"%s: Rx [%d] = %d\n", __func__,
@@ -1270,7 +1296,7 @@ static void get_cx_data(void *device_data)
 	int node = 0;
 
 	set_default_result(info);
-	if (info->touch_stopped || !info->cx_data) {
+	if (info->touch_stopped) {
 		tsp_debug_info(true, &info->client->dev, "%s: [ERROR] Touch is stopped\n",
 			__func__);
 		snprintf(buff, sizeof(buff), "%s", "TSP turned off");
@@ -1296,12 +1322,12 @@ static void run_cx_data_read(void *device_data)
 {
 	struct fts_ts_info *info = (struct fts_ts_info *)device_data;
 	char buff[CMD_STR_LEN] = { 0 };
-	unsigned char ReadData[info->ForceChannelLength][info->SenseChannelLength];
+	unsigned char ReadData[info->ForceChannelLength][info->SenseChannelLength + FTS_CX2_READ_LENGTH];
 	unsigned char regAdd[8];
 	unsigned char buf[8];
 	unsigned char r_addr = READ_ONE_EVENT;
 	unsigned int addr, rx_num, tx_num;
-	int i, j, cx_rx_length, address_offset = 0, start_tx_offset = 0, retry = 0;
+	int i, j, cx_rx_length, max_tx_length, max_rx_length, address_offset = 0, start_tx_offset = 0, retry = 0;
 
 	set_default_result(info);
 
@@ -1314,13 +1340,17 @@ static void run_cx_data_read(void *device_data)
 		return;
 	}
 
+	fts_command(info, SENSEOFF);
 	disable_irq(info->irq);
 
 	tx_num = info->ForceChannelLength;
 	rx_num = info->SenseChannelLength;
 
-	start_tx_offset = FTS_CX2_TX_START * FTS_MAX_RX_LENGTH / FTS_CX2_READ_LENGTH * FTS_CX2_ADDR_OFFSET;
-	address_offset = FTS_MAX_RX_LENGTH /FTS_CX2_READ_LENGTH;
+	max_tx_length = FTS_MAX_TX_LENGTH -4;
+	max_rx_length = FTS_MAX_RX_LENGTH -4;
+
+	start_tx_offset = FTS_CX2_TX_START * max_rx_length / FTS_CX2_READ_LENGTH * FTS_CX2_ADDR_OFFSET;
+	address_offset = max_rx_length /FTS_CX2_READ_LENGTH;
 
 	for(j = 0; j < tx_num; j++) {
 		addr = FTS_CX2_BASE_ADDR + (j * address_offset * FTS_CX2_ADDR_OFFSET) + start_tx_offset;
@@ -1360,15 +1390,16 @@ static void run_cx_data_read(void *device_data)
 		}
 	}
 
-	if (!info->cx_data) {
+	if (info->cx_data) {
 		for (j = 0; j < tx_num; j++) {
-			for(i = 0; i < rx_num; i++) {
+			for(i = 0; i < rx_num; i++)
 				info->cx_data[(j * rx_num) + i] = ReadData[j][i];
-			}
 		}
 	}
+
 	snprintf(buff, sizeof(buff), "%s", "OK");
 	enable_irq(info->irq);
+	fts_command(info, SENSEON);
 
 	info->cmd_state = CMD_STATUS_OK;
 	set_cmd_result(info, buff, strnlen(buff, sizeof(buff)));
@@ -1477,10 +1508,15 @@ static void hover_enable(void *device_data)
 		} else {
 		if (enables) {
 			unsigned char regAdd[4] = {0xB0, 0x01, 0x29, 0x41};
+			unsigned char Dly_regAdd[4] = {0xB0, 0x01, 0x72, 0x04};
+			fts_write_reg(info, &Dly_regAdd[0], 4);
 			fts_write_reg(info, &regAdd[0], 4);
 			fts_command(info, FTS_CMD_HOVER_ON);
 			info->hover_enabled = true;
+			info->hover_ready = false;
 		} else {
+			unsigned char Dly_regAdd[4] = {0xB0, 0x01, 0x72, 0x08};
+			fts_write_reg(info, &Dly_regAdd[0], 4);
 			fts_command(info, FTS_CMD_HOVER_OFF);
 			info->hover_enabled = false;
 			info->hover_ready = false;

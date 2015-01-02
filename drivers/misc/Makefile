@@ -51,6 +51,7 @@ obj-y				+= carma/
 obj-$(CONFIG_USB_SWITCH_FSA9480) += fsa9480.o
 obj-$(CONFIG_USB_SWITCH_TSU6721) += tsu6721.o
 obj-$(CONFIG_SM5502_MUIC) += sm5502.o
+obj-$(CONFIG_SM5504_MUIC) += sm5504.o
 obj-$(CONFIG_USB_SWITCH_FSA9485) += fsa9485.o
 obj-$(CONFIG_USB_SWITCH_RT8973) += rt8973.o
 obj-$(CONFIG_ALTERA_STAPL)	+=altera-stapl/
@@ -97,3 +98,5 @@ obj-$(CONFIG_SEC_FPGA_ICE40XX)	+= ice40xx.o
 obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
 obj-$(CONFIG_CHECK_SIMSLOT_COUNT) += sim_slot.o
 obj-$(CONFIG_SEC_MODEM) += modem_if/
+
+obj-y += dualwave/

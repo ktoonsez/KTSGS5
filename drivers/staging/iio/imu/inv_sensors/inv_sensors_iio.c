@@ -11,6 +11,7 @@
 #include <linux/gpio.h>
 #include <linux/semaphore.h>
 #include <linux/suspend.h>
+#include <linux/wakelock.h>
 #include <linux/sensor/inv_sensors.h>
 
 #include "../../iio.h"
@@ -62,6 +63,7 @@ struct invsens_iio_data {
 	bool motion_alert_is_occured;
 	bool motion_alert_factory_mode;
 	unsigned long motion_alert_start_time;
+	struct wake_lock motion_alert_wake_lock;
 
 	bool irq_is_disabled;
 
@@ -662,36 +664,6 @@ static ssize_t invsens_accel_raw_show(struct device *dev,
 		iio_data->accel_cache[2]);
 }
 
-static ssize_t invsens_gyro_raw_show(struct device *dev,
-				      struct device_attribute *attr,
-				      char *buf)
-{
-	int res = SM_SUCCESS;
-
-	struct invsens_iio_data *iio_data = dev_get_drvdata(dev);
-
-	pr_info("%s", __func__);
-
-	if (!iio_data->fso_enabled) {
-		down(&iio_data->sema);
-
-		res = invsens_sm_enable_sensor(&iio_data->sm_data,
-			INV_FUNC_FT_SENSOR_ON, true, SM_DELAY_DEFAULT);
-		iio_data->fso_enabled = true;
-		up(&iio_data->sema);
-	}
-
-
-	if (!res) {
-		cancel_delayed_work(&iio_data->fso_work);
-		schedule_delayed_work(&iio_data->fso_work,
-			msecs_to_jiffies(2000));
-	}
-	return snprintf(buf, PAGE_SIZE, "%d, %d, %d\n",
-		iio_data->gyro_cache[0],
-		iio_data->gyro_cache[1], iio_data->gyro_cache[2]);
-}
-
 
 static IIO_DEVICE_ATTR(control, S_IRUGO, NULL, invsens_control_store, 0);
 static IIO_DEVICE_ATTR(reg_dump, S_IRUGO, invsens_reg_dump_show, NULL, 0);
@@ -705,25 +677,6 @@ static IIO_DEVICE_ATTR(hwst_gyro, S_IRUGO | S_IWUSR,
 		       invsens_hwst_gyro_show, NULL, 0);
 static IIO_DEVICE_ATTR(swst_compass, S_IRUGO | S_IWUSR,
 		       invsens_swst_compass_show, NULL, 0);
-static IIO_DEVICE_ATTR(motion_interrupt, S_IRUGO | S_IWUSR,
-		       invsens_motion_interrupt_show,
-		       invsens_motion_interrupt_store, 0);
-static IIO_DEVICE_ATTR(accel_raw, S_IRUGO | S_IWUSR,
-		       invsens_accel_raw_show, NULL, 0);
-static IIO_DEVICE_ATTR(gyro_raw, S_IRUGO | S_IWUSR,
-		       invsens_gyro_raw_show, NULL, 0);
-static IIO_DEVICE_ATTR(temperature, S_IRUGO | S_IWUSR,
-		       invsens_temperature_show, NULL, 0);
-static IIO_DEVICE_ATTR(s_gyro_selftest, S_IRUGO | S_IWUSR,
-		       invsens_s_gyro_selftest_show, NULL, 0);
-static IIO_DEVICE_ATTR(s_accel_selftest, S_IRUGO | S_IWUSR,
-		       invsens_s_accel_selftest_show, NULL, 0);
-static IIO_DEVICE_ATTR(s_accel_cal, S_IRUGO | S_IWUSR,
-		       invsens_s_accel_cal_show, NULL, 0);
-static IIO_DEVICE_ATTR(s_accel_cal_start, S_IRUGO | S_IWUSR,
-		       NULL, invsens_s_accel_cal_start_store, 0);
-static IIO_DEVICE_ATTR(gyro_is_on, S_IRUGO | S_IWUSR,
-		       invsens_gyro_is_on_show, NULL, 0);
 
 
 static struct attribute *invsens_attributes[] = {
@@ -734,15 +687,6 @@ static struct attribute *invsens_attributes[] = {
 	&iio_dev_attr_hwst_accel.dev_attr.attr,
 	&iio_dev_attr_hwst_gyro.dev_attr.attr,
 	&iio_dev_attr_swst_compass.dev_attr.attr,
-	&iio_dev_attr_motion_interrupt.dev_attr.attr,
-	&iio_dev_attr_accel_raw.dev_attr.attr,
-	&iio_dev_attr_gyro_raw.dev_attr.attr,
-	&iio_dev_attr_temperature.dev_attr.attr,
-	&iio_dev_attr_s_gyro_selftest.dev_attr.attr,
-	&iio_dev_attr_s_accel_selftest.dev_attr.attr,
-	&iio_dev_attr_s_accel_cal_start.dev_attr.attr,
-	&iio_dev_attr_s_accel_cal.dev_attr.attr,
-	&iio_dev_attr_gyro_is_on.dev_attr.attr,
 	NULL,
 };
 
@@ -913,7 +857,7 @@ static void invsens_prefetch_data(struct invsens_iio_data *iio_data,
 		invsens_sm_ioctl(&iio_data->sm_data,
 			INV_IOCTL_RESET_FIFO, 0, NULL);
 		INVSENS_LOGE("reset fifo\n");
-		return;
+		//return; /*remove to deliver normally stored data to HAL*/
 	}
 
 	*need_to_store = true;
@@ -934,6 +878,7 @@ static void invsens_prefetch_data(struct invsens_iio_data *iio_data,
 
 		pr_info("[INV]%s: motion interrupt is delivered !!!!!\n", __func__);
 		iio_data->motion_alert_is_occured = true;
+		wake_lock_timeout(&iio_data->motion_alert_wake_lock, msecs_to_jiffies(2000));
 	}
 }
 
@@ -1001,6 +946,9 @@ static irqreturn_t invsens_thread_handler(int irq, void *user_data)
 	bool need_to_store = false;
 
 	INV_DBG_FUNC_NAME;
+
+	if (iio_data->irq_is_disabled == true)
+		goto error_trylock;
 
 	if (down_trylock(&iio_data->sema))
 		goto error_trylock;
@@ -1197,6 +1145,8 @@ static int invsens_probe(struct i2c_client *client,
 		goto exit_register_device_failed;
 
 #ifdef CONFIG_SENSORS
+	wake_lock_init(&data->motion_alert_wake_lock, WAKE_LOCK_SUSPEND,
+			"motion_alert_wake_lock");
 	result = sensors_register(data->gyro_sensor_device,
 		data, gyro_sensor_attrs, "gyro_sensor");
 	if (result) {
@@ -1222,6 +1172,7 @@ err_accel_sensor_register_failed:
 	sensors_unregister(data->gyro_sensor_device, gyro_sensor_attrs);
 err_gyro_sensor_register_failed:
 	iio_device_unregister(data->indio_dev);
+	wake_lock_destroy(&data->motion_alert_wake_lock);
 #endif
 exit_register_device_failed:
 	invsens_sm_term(&data->sm_data);
@@ -1279,6 +1230,8 @@ static int invsens_suspend(struct i2c_client *client, pm_message_t mesg)
 		iio_data->irq_is_disabled = true;
 	} else
 		enable_irq_wake(iio_data->irq);
+
+	data_list.request_fifo_reset = false;
 
 	pr_info("[INV] %s: finish\n", __func__);
 	return 0;

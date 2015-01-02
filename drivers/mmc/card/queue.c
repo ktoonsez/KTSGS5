@@ -350,22 +350,43 @@ int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card,
 #endif
 
 	if (!mqrq_cur->bounce_buf && !mqrq_prev->bounce_buf) {
+		unsigned int max_segs = host->max_segs;
+
 		blk_queue_bounce_limit(mq->queue, limit);
 		blk_queue_max_hw_sectors(mq->queue,
 			min(host->max_blk_count, host->max_req_size / 512));
-		blk_queue_max_segments(mq->queue, host->max_segs);
 		blk_queue_max_segment_size(mq->queue, host->max_seg_size);
+retry:
+		blk_queue_max_segments(mq->queue, host->max_segs);
 
 		mqrq_cur->sg = mmc_alloc_sg(host->max_segs, &ret);
-		if (ret)
+		if (ret == -ENOMEM)
+			goto cur_sg_alloc_failed;
+		else if (ret)
 			goto cleanup_queue;
-
 
 		mqrq_prev->sg = mmc_alloc_sg(host->max_segs, &ret);
-		if (ret)
+		if (ret == -ENOMEM)
+			goto prev_sg_alloc_failed;
+		else if (ret)
 			goto cleanup_queue;
+
+		goto success;
+
+prev_sg_alloc_failed:
+		kfree(mqrq_cur->sg);
+		mqrq_cur->sg = NULL;
+cur_sg_alloc_failed:
+		host->max_segs /= 2;
+		if (host->max_segs) {
+			goto retry;
+		} else {
+			host->max_segs = max_segs;
+			goto cleanup_queue;
+		}
 	}
 
+success:
 	sema_init(&mq->thread_sem, 1);
 
 	mq->thread = kthread_run(mmc_queue_thread, mq, "mmcqd/%d%s",
@@ -451,6 +472,7 @@ EXPORT_SYMBOL(mmc_cleanup_queue);
 int mmc_queue_suspend(struct mmc_queue *mq, int wait)
 {
 	struct request_queue *q = mq->queue;
+	struct request *req;
 	unsigned long flags;
 	int rc = 0;
 
@@ -470,9 +492,26 @@ int mmc_queue_suspend(struct mmc_queue *mq, int wait)
 			blk_start_queue(q);
 			spin_unlock_irqrestore(q->queue_lock, flags);
 			rc = -EBUSY;
-		} else if (rc && wait) {
-			down(&mq->thread_sem);
-			rc = 0;
+		} else if (wait) {
+			/*
+			 * wait is set only when mmc_blk_shutdown calls this.
+			 */
+			mutex_lock(&q->sysfs_lock);
+			queue_flag_set_unlocked(QUEUE_FLAG_DEAD, q);
+			spin_lock_irqsave(q->queue_lock, flags);
+			queue_flag_set(QUEUE_FLAG_DEAD, q);
+
+			while((req = blk_fetch_request(q)) != NULL){
+				req->cmd_flags |= REQ_QUIET;
+				__blk_end_request_all(req,-EIO);
+			}
+
+			spin_unlock_irqrestore(q->queue_lock, flags);
+			mutex_unlock(&q->sysfs_lock);
+			if (rc) {
+				down(&mq->thread_sem);
+				rc = 0;
+			}
 		}
 	}
 	return rc;

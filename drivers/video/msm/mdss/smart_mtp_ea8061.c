@@ -2897,7 +2897,7 @@ static int smart_dimming_init(struct SMART_DIM *psmart)
 
 #if defined(AID_OPERATION)
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_HD_PANEL)
-	if(id3 == EVT2_EA8061_HESTIA_REV_J)
+	if((id3 == EVT2_EA8061_HESTIA_REV_J) ||(id3 == EVT2_EA8061_HESTIA_REV_A))
 		gamma_init_revJ(psmart,
 			(char *)(&(psmart->gen_table[lux_loop].gamma_setting)),
 			GAMMA_SET_MAX);

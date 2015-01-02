@@ -1616,7 +1616,7 @@ static int load_fw_in_sdcard(struct cypress_touchkey_info *info)
 	set_fs(KERNEL_DS);
 
 	fp = filp_open(fw_name, O_RDONLY, S_IRUSR);
-	if (!fp) {
+	if (IS_ERR(fp)) {
 		dev_err(&client->dev, "%s: fail to open fw in %s\n",
 			__func__, fw_name);
 		ret = -ENOENT;

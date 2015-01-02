@@ -49,6 +49,7 @@ struct tc300k_platform_data {
 	int	*keycodes;
 	u8	suspend_type;
 	u8	exit_flag;
-	
+	const char *vcc_en_ldo_name;
+	const char *vdd_led_ldo_name;
 };
 #endif /* __LINUX_TC360_H */

@@ -50,6 +50,13 @@ config AD525X_DPOT
 	  This driver can also be built as a module.  If so, the module
 	  will be called ad525x_dpot.
 
+config MUIC_MAX77804K_SUPPORT_DESKDOCK
+	bool "MUIC_MAX77804K_SUPPORT_DESKDOCK"
+	depends on MFD_MAX77804K
+	default n
+	help
+	if you say yes here you will get support for Desk dock detection.
+
 config MUIC_MAX77803_SUPPORT_MHL_CABLE_DETECTION
 	  bool "MUIC_MAX77803_SUPPORT_MHL_CABLE_DETECTION"
 	  depends on MFD_MAX77803
@@ -437,6 +444,14 @@ config SAMSUNG_JACK
 	 To samsung jack is reviewed and supported in all the
 	 samsung devices.
 
+config EARJACK_ADC_SYSFS
+	bool "EarJack & BTN adc sysfs"
+	depends on SAMSUNG_JACK
+	default n
+	help
+	This is sysfs for sec_jack driver jack type and
+	btn type adc values.
+
 config HMC6352
 	tristate "Honeywell HMC6352 compass"
 	depends on I2C
@@ -594,6 +609,12 @@ config MUIC_SM5502_SUPPORT_LANHUB_TA
 	 This option enable the LANHUB + TA Support for the SM5502 MUIC
 	 Disabling the option for the FACTORY Binaries due to delay issue
 	 in the Factory Test PGM.
+
+config SM5504_MUIC
+	bool "SILICON MITUS MUIC"
+	default n
+	help
+	  This option enables SILICON MITUS MUIC SM5504.
 
 config ATT_CHARGER_SUPPORT
 	bool "ATT 219K Charger Support"
@@ -935,6 +956,13 @@ config SEC_NFC_IF_I2C_GPIO
 	select I2C_ALGOBIT
 endchoice
 
+config SEC_NFC_NO_POWER_CONTROL
+	bool "Unused external power control (SIM VDD)"
+	depends on SEC_NFC_PRODUCT_N5
+	default n
+	help
+	  Unnecessary driver controls NFC external power control for SIM power.
+
 config SEC_NFC_CLK_REQ
 	bool "External clock control (RF clock)"
 	depends on SEC_NFC_PRODUCT_N5
@@ -1034,6 +1062,12 @@ config MUIC_DET_JACK
 	 MUIC can recognize earjack device type and earkey using ADC values.
 	 Some project use muic earjack instead of 3.5phi earjack.
 	 Max77804k muic also support earjack detection.
+
+config SGLTE_QSC_MODEM
+	bool "SGLTE QSC MODEM DOWNLOAD"
+	default n
+	help
+	  This option enables SGLTE QSC Modem download.	  
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

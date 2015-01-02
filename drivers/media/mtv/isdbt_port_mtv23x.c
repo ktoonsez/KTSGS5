@@ -372,7 +372,7 @@ static void mtv23x_power_off(void)
 
 	if (mtv23x_cb_ptr->is_power_on) {
 		mtv23x_on_air = false;
-		isdbt_control_irq(false);
+//		isdbt_control_irq(false);
 		isdbt_control_gpio(false);
 
 		mtv23x_cb_ptr->is_power_on = false;
@@ -448,7 +448,7 @@ static int mtv23x_power_on(unsigned long arg)
 
 			return ret;
 		} else {
-			isdbt_control_irq(true);
+//			isdbt_control_irq(true);
 			mtv23x_cb_ptr->is_power_on = true;
 			return 0;
 		}

@@ -53,7 +53,10 @@
 #define PRESS_HDR   0x8000
 #define PEDO_HDR    0x9000
 #define SMD_HDR	  0xA000
-
+#define ACCEL_HDR_EXT   0x4001
+#define GYRO_HDR_EXT   0x2001
+#define CPASS_HDR_EXT   0x1001
+#define LPQUAT_HDR_EXT 0x0801
 
 struct dmp_feat_mem_t {
 	int feat;
@@ -824,6 +827,7 @@ static int dmp_parse_fifo(struct dmp_dctl_t *dctl,
 
 		switch (header) {
 		case ACCEL_HDR:
+		case ACCEL_HDR_EXT:
 			{
 				struct invsens_data_t *d =
 				    &buffer->items[buffer->count++];
@@ -836,6 +840,7 @@ static int dmp_parse_fifo(struct dmp_dctl_t *dctl,
 			}
 			break;
 		case GYRO_HDR:
+		case GYRO_HDR_EXT:
 			{
 				struct invsens_data_t *d =
 				    &buffer->items[buffer->count++];
@@ -848,6 +853,7 @@ static int dmp_parse_fifo(struct dmp_dctl_t *dctl,
 			}
 			break;
 		case CPASS_HDR:
+		case CPASS_HDR_EXT:
 			{
 				struct invsens_data_t *d =
 				    &buffer->items[buffer->count++];
@@ -877,6 +883,7 @@ static int dmp_parse_fifo(struct dmp_dctl_t *dctl,
 			}
 			break;
 		case LPQUAT_HDR:
+		case LPQUAT_HDR_EXT:
 			{
 				struct invsens_data_t *d =
 				    &buffer->items[buffer->count++];
@@ -912,7 +919,7 @@ static int dmp_parse_fifo(struct dmp_dctl_t *dctl,
 		}
 	};
 
-	if (buffer->count >= INVSENS_DATA_ITEM_MAX - 1) {
+	if (buffer->count > INVSENS_DATA_ITEM_MAX - 1) {
 		buffer->request_fifo_reset = true;
 		INVSENS_LOGE("Reset fifo\n");
 	}

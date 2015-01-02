@@ -58,6 +58,10 @@
 #define BT_EN_GENERAL_GPIO
 #define GPIO_BT_EN 31
 #define BT_WAKE 91
+#elif defined(CONFIG_MACH_CHAGALL_KDI)
+#define BT_EN_GENERAL_GPIO
+#define GPIO_BT_EN 63
+#define BT_WAKE 9
 #elif defined(CONFIG_MACH_KLIMT_VZW) || defined(CONFIG_MACH_CHAGALL)
 // general gpio
 #define BT_EN_GENERAL_GPIO

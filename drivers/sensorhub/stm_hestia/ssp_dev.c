@@ -128,6 +128,9 @@ static void initialize_variable(struct ssp_data *data)
 	defined(CONFIG_SENSORS_SSP_MAX88920)
 	data->ges_device = NULL;
 #endif
+#ifdef CONFIG_SENSORS_SSP_UVIS25
+	data->uv_device = NULL;
+#endif
 	data->voice_device = NULL;
 #if SSP_SEC_DEBUG
 	data->bMcuDumpMode = sec_debug_is_enabled();

@@ -1011,15 +1011,9 @@ static unsigned char fts_event_handler_type_b(struct fts_ts_info *info,
 			input_report_abs(info->input_dev,
 					 ABS_MT_TOUCH_MINOR, min(bw,
 								 bh));
-#if defined(CONFIG_SEC_S_PROJECT)
-			input_report_abs(info->input_dev,
-					 ABS_MT_SUMSIZE, sumsize);
-#else
 			input_report_abs(info->input_dev,
 					 ABS_MT_WIDTH_MAJOR, z);
-			input_report_abs(info->input_dev, ABS_MT_ANGLE,
-					 angle);
-#endif
+
 			input_report_abs(info->input_dev, ABS_MT_PALM,
 					 palm);
 
@@ -1675,15 +1669,8 @@ static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
 				 0, 255, 0, 0);
 	input_set_abs_params(info->input_dev, ABS_MT_TOUCH_MINOR,
 				 0, 255, 0, 0);
-#if defined(CONFIG_SEC_S_PROJECT)
-	input_set_abs_params(info->input_dev, ABS_MT_SUMSIZE,
-				 0, 255, 0, 0);
-#else
 	input_set_abs_params(info->input_dev, ABS_MT_WIDTH_MAJOR,
 				 0, 255, 0, 0);
-	input_set_abs_params(info->input_dev, ABS_MT_ANGLE,
-				 -90, 90, 0, 0);
-#endif
 	input_set_abs_params(info->input_dev, ABS_MT_PALM, 0, 1, 0, 0);
 	input_set_abs_params(info->input_dev, ABS_MT_DISTANCE,
 				 0, 255, 0, 0);

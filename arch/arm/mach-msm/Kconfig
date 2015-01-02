@@ -344,7 +344,6 @@ config ARCH_FSM9900
 	select MSM_GPIOMUX
 	select MULTI_IRQ_HANDLER
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
 	select MSM_PIL
 	select MSM_NATIVE_RESTART
 	select MSM_RESTART_V2
@@ -739,12 +738,46 @@ config SEC_RUBENS_PROJECT
          Common flag for all the Rubens Models and variants. Please use this flag for all
          the features common in all the Rubens Variants(3G,LTE,Wifi & Carrier).
 
+config MACH_VASTALTE_CHN_CMCC_DUOS
+        bool "VASTALTE_CHN_CMCC Projects"
+        default n
+        help
+         Common flag for all the vastalte chn-cmcc Models and variants. Please use this flag for all
+         the features common in all the vastalte chn cmcc Variants.
+
+config VASTALTE_CHN_CMCC_DUOS_COMMON
+        bool "VASTA LTE CHN_CMCC Common"
+        default n
+        help
+         MSM8926 MODEL VSAT C TDC Varaints common flag. Specific changes for differentiating
+         between variants must be added in the MACH specific flag.
+
+config SEC_VASTALTE_CHN_CMMCC_DUOS_PROJECT
+        bool "VASTALTE_CHN_CMCC Projects"
+        default n
+        help
+         Common flag for all the vastalte tdc Models and variants. Please use this flag for all
+         the features common in all the vastalte chn-cmcc Variants.
+
 config SEC_ATLANTIC_PROJECT
 	bool "ATLANTIC Projects"
         default n
         help
          Common flag for all the Atlantic Models and variants. Please use this flag for all
 	 the features common in all the Atlantic Variants(3G,LTE,Wifi & Carrier).
+
+config MACH_HESTIALTE_ATT
+	bool "HESTIA ATT Projects"
+        default n
+        help
+         Common flag for all the HESTIA Models and variants. Please use this flag for ATT Crrier changes.
+
+config MACH_HESTIALTE_EUR
+	bool "HESTIA Projects"
+        default n
+        help
+         Common flag for all the HESTIA Models and variants. Please use this flag for all
+	 the features common in all the HESTIA Variants(3G,LTE,Wifi & Carrier).
 
 config SEC_HESTIA_PROJECT
 	bool "HESTIA Projects"
@@ -793,6 +826,13 @@ config SEC_RUBENSLTE_COMMON
         default n
         help
          MSM8226 MODEL RUBENS LTE Varaints common flag. Specific changes for differentiating
+         between variants must be added in the MACH specific flag.
+
+config SEC_RUBENSWIFI_COMMON
+        bool "RUBENS WIFI Common"
+        default n
+        help
+         MSM8226 MODEL RUBENS WIFI Varaints common flag. Specific changes for differentiating
          between variants must be added in the MACH specific flag.
 
 config SEC_MILLETWIFI_COMMON
@@ -1046,11 +1086,25 @@ config MACH_RUBENSLTE_OPEN
          MSM8226 MODEL RUBENS LTE OPEN TAB SM T-365 Specific changes for differentiating
          it with the other models on the same MSM8x26 chipset.
 
+config MACH_RUBENSWIFI_OPEN
+        bool "RUBENS WIFI OPEN TAB"
+        default n
+        help
+         MSM8226 MODEL RUBENS WIFI OPEN TAB SM T-360 Specific changes for differentiating
+         it with the other models on the same MSM8x26 chipset.
+
 config MACH_DEGASLTE_SPR
         bool "DEGAS LTE SPR TAB"
         default n
         help
          MSM8226 MODEL DEGAS LTE SPR TAB Specific changes for differentiating
+         it with the other models on the same MSM8x26 chipset.
+
+config MACH_DEGASLTE_VZW
+        bool "DEGAS LTE VZW TAB"
+        default n
+        help
+         MSM8226 MODEL DEGAS LTE VZW TAB Specific changes for differentiating
          it with the other models on the same MSM8x26 chipset.
 
 config MACH_MATISSE3G_OPEN
@@ -1112,12 +1166,6 @@ config MACH_ATLANTIC3GEUR_OPEN
         help
          MSM8228 Model Atlantic 3G Euro Open Specific flag.
 
-config MACH_HESITALTE_EUR
-	bool "HESTIA EUR LTE"
-        default n
-        help
-         MSM8928 Model Atlantic LTE ATT Specific flag.
-
 config MACH_BERLUTI3G_EUR
 	bool "BERLUTI 3G EUR TAB"
         default n
@@ -1165,6 +1213,12 @@ config MACH_MS01_EUR_3G
         bool "MSM8226 MS01 EUR 3G"
         help
           Support for the Samsung MS01 EUR 3G device
+
+config MACH_MS01_EUR_LTE
+        depends on SEC_MS01_PROJECT
+        bool "MSM8226 MS01 EUR 3G"
+        help
+          Support for the Samsung MS01 EURO LTE device
 
 config MACH_VICTOR3GDSDTV_LTN
 	bool "VICTOR3GDSDTV LTN"
@@ -2387,6 +2441,12 @@ config MACH_CHAGALL_VZW
 	help
 	  Support for Samsung CHAGALL_VZW device.
 
+config MACH_CHAGALL_USC
+	default n
+	bool "Samsung model CHAGALL_USC"
+	help
+	  Support for Samsung CHAGALL_USC device.
+
 config MACH_CHAGALL_DCM
 	default n
 	bool "Samsung model CHAGALL_DCM"
@@ -3170,20 +3230,6 @@ config MSM_PCIE
 	  Enables the PCIe functionality by configures PCIe core on
 	  MSM chipset and by enabling the ARM PCI framework extension.
 
-config MSM_RPC_SDIO_XPRT
-	depends on MSM_SDIO_AL
-	default y
-	bool "MSM SDIO XPRT Layer"
-	help
-	  SDIO Transport Layer for RPC Rouer
-
-config MSM_RPC_SDIO_DEBUG
-	depends on MSM_RPC_SDIO_XPRT
-	default y
-	bool "MSM SDIO XPRT debug support"
-	help
-	  Support for debugging SDIO XPRT
-
 config MSM_SMD_DEBUG
 	depends on MSM_SMD
 	default y
@@ -3191,21 +3237,6 @@ config MSM_SMD_DEBUG
 	help
 	  Support for debugging the SMD for communication
 	  between the ARM9 and ARM11
-
-config MSM_SDIO_AL
-	depends on ((ARCH_MSM7X30 || MACH_MSM8X60_FUSN_FFA || MACH_TYPE_MSM8X60_FUSION) && HAS_WAKELOCK)
-	default y
-	tristate "SDIO-Abstraction-Layer"
-	help
-	  Support MSM<->MDM Communication over SDIO bus.
-	  MDM SDIO-Client should have pipes support.
-
-config MSM_SDIO_DMUX
-	bool "SDIO Data Mux Driver"
-	depends on MSM_SDIO_AL
-	default n
-	help
-	  Support Muxed Data Channels over SDIO interface.
 
 config MSM_BAM_DMUX
 	bool "BAM Data Mux Driver"
@@ -3287,16 +3318,6 @@ config MSM_SMD_NMEA
 
 	  If in doubt, say yes.
 
-config MSM_SDIO_TTY
-	bool "SDIO TTY Driver"
-	depends on MSM_SDIO_AL
-	default n
-	help
-	  Provides a TTY driver SDIO TTY
-	  This driver can be used by user space
-	  applications for passing data through the
-	  SDIO interface.
-
 config MSM_SMD_TTY
 	bool "SMD TTY Driver"
 	depends on MSM_SMD
@@ -3324,13 +3345,6 @@ config MSM_SMD_PKT
 
 	  If in doubt, say yes.
 
-config MSM_SDIO_CMUX
-	bool "SDIO CMUX Driver"
-	depends on MSM_SDIO_AL
-	default n
-	help
-	  Provides a Muxed port interface over SDIO QMI
-
 config MSM_DSPS
 	bool "Sensors DSPS driver"
 	depends on (MSM_PIL && (ARCH_MSM8X60 || ARCH_MSM8960))
@@ -3342,13 +3356,6 @@ config MSM_DSPS
 	  themself.
 	  The number of clocks and their name may vary between targets.
 	  It also triggers the PIL to load the DSPS firmware.
-
-config MSM_SDIO_CTL
-	bool "SDIO CTL Driver"
-	depends on MSM_SDIO_CMUX
-	default n
-	help
-	  Provides a binary SDIO control port interface.
 
 config MSM_ONCRPCROUTER
 	depends on MSM_SMD
@@ -3481,31 +3488,6 @@ config MSM_RPCSERVER_HANDSET
 	help
 	  Support for receiving handset events like headset detect,
 	  headset switch and clamshell state.
-
-config MSM_RMT_STORAGE_CLIENT
-	depends on (ARCH_MSM && MSM_ONCRPCROUTER)
-	default n
-	bool "Remote Storage RPC client"
-	help
-	  Provide RPC mechanism for remote processors to access storage
-	  device on apps processor.
-
-config MSM_RMT_STORAGE_CLIENT_STATS
-	depends on (MSM_RMT_STORAGE_CLIENT && DEBUG_FS)
-	default n
-	bool "Remote storage RPC client performance statistics"
-	help
-	  Collects performance statistics and shows this information
-	  through a debugfs file rmt_storage_stats.
-
-config MSM_SDIO_SMEM
-        depends on MSM_SDIO_AL
-        default n
-        bool "SDIO SMEM for remote storage"
-        help
-          Copies data from remote MDM9K memory to local MSM8x60
-	  memory. Used by remote storage client to shadow
-	  MDM9K filesystem.
 
 config MSM_DALRPC
 	bool "DAL RPC support"
@@ -4718,6 +4700,13 @@ config MSM_UARTDM_Core_v14
 	help
 		Select if BLSP based UART Core v.14 or higher is present.
 
+config MSM_COMMON_LOG
+	bool "Use to export symbols for parsing memory dump"
+	help
+	 Use this to export symbols to a memory dump table. This table
+	 can be used by post analysis tools to extract information from
+	 memory when device crashes.
+
 config MSM_BOOT_STATS
 	bool "Use MSM boot stats reporting"
 	help
@@ -4878,6 +4867,11 @@ config PCM_ROUTE_VOICE_STUB
 	default n
 	depends on ARCH_MSM8974
 
+config BT_CALL_FORWARDING
+	bool "External AUXPCM device route to SLIMBUS using the VOICE_STUB Front End"
+	default n
+	depends on ARCH_MSM8974
+
 config KRAIT_REGULATOR
 	bool "Support Kraits powered via ganged regulators in the pmic"
 	help
@@ -4896,4 +4890,10 @@ config MUIC_RESET_PIN_ENABLE
         help 
                 This request is from H/W team
 		In case of mUIC voltage drop, mUIC will be reset
+
+config SEC_SMART_MGR_RUNQUEUE_AVG
+	default n
+	bool "Samsung added for read current run queue"
+	help
+	  Support for Smart MGR function.
 endif

@@ -799,8 +799,6 @@ static unsigned char fts_event_handler_type_b(struct fts_ts_info *info,
 					 ABS_MT_TOUCH_MINOR, min(bw,
 								 bh));
 
-			input_report_abs(info->input_dev,
-					 ABS_MT_SUMSIZE, sumsize);
 			input_report_abs(info->input_dev, ABS_MT_PALM,
 					 palm);
 
@@ -829,7 +827,7 @@ static unsigned char fts_event_handler_type_b(struct fts_ts_info *info,
 				tm = info->touch_mode;
 				input_report_switch(info->input_dev, SW_GLOVE, tm);
 #endif
-			} else if ((data[1 + EventNum * FTS_EVENT_SIZE] & 0x0f) == 0x0d) {
+			} else if (data[1 + EventNum * FTS_EVENT_SIZE] == 0x0d) {
 				unsigned char regAdd[4] = {0xB0, 0x01, 0x29, 0x01};
 				fts_write_reg(info, &regAdd[0], 4);
 
@@ -1048,7 +1046,7 @@ int fts_vdd_on(bool onoff)
 	if(gpio_ldo_en_p > 0){	
 	gpio_direction_output(gpio_ldo_en_p, onoff);
 	}	
-	msleep(50);
+	//msleep(50);
 	return 1;
 }
 void fts_init_gpio(struct fts_ts_info *info, struct fts_ts_platform_data *pdata)
@@ -1222,9 +1220,10 @@ static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
 		goto err_get_regulator;
 
 
-	if (info->board->power)
+	if (info->board->power){
 		info->board->power(true);
-
+		msleep(10);
+	}
 	info->dev = &info->client->dev;
 	info->input_dev = input_allocate_device();
 	if (!info->input_dev) {
@@ -1303,8 +1302,6 @@ static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
 	input_set_abs_params(info->input_dev, ABS_MT_TOUCH_MAJOR,
 				 0, 255, 0, 0);
 	input_set_abs_params(info->input_dev, ABS_MT_TOUCH_MINOR,
-				 0, 255, 0, 0);
-	input_set_abs_params(info->input_dev, ABS_MT_SUMSIZE,
 				 0, 255, 0, 0);
 	input_set_abs_params(info->input_dev, ABS_MT_PALM, 0, 1, 0, 0);
 	input_set_abs_params(info->input_dev, ABS_MT_DISTANCE,
@@ -1787,8 +1784,10 @@ static int fts_start_device(struct fts_ts_info *info)
 		goto out;
 	}
 
-	if (info->board->power)
+	if (info->board->power){
 		info->board->power(true);
+		msleep(10);
+	}
 
 	info->touch_stopped = false;
 	info->reinit_done = false;
@@ -1801,6 +1800,15 @@ static int fts_start_device(struct fts_ts_info *info)
  out:
 	mutex_unlock(&info->device_mutex);
 	return 0;
+}
+
+static void fts_shutdown(struct i2c_client *client)
+{
+	struct fts_ts_info *info = i2c_get_clientdata(client);
+
+	tsp_debug_info(true, &info->client->dev, "FTS %s called!\n", __func__);
+
+	fts_stop_device(info);
 }
 
 #ifdef CONFIG_PM
@@ -1896,6 +1904,7 @@ static struct i2c_driver fts_i2c_driver = {
 		   },
 	.probe = fts_probe,
 	.remove = fts_remove,
+	.shutdown = fts_shutdown,
 #if (!defined(CONFIG_HAS_EARLYSUSPEND)) && (!defined(CONFIG_PM)) && !defined(USE_OPEN_CLOSE)
 	.suspend = fts_suspend,
 	.resume = fts_resume,

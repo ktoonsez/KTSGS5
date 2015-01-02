@@ -36,8 +36,8 @@
 #define CAL_SKIP_ADC	52
 #define CAL_FAIL_ADC	80
 #elif defined(CONFIG_SENSORS_SSP_STM_HESTIA)
-#define CAL_SKIP_ADC	305
-#define CAL_FAIL_ADC	500
+#define CAL_SKIP_ADC	205 /* 60% * LOW THD */
+#define CAL_FAIL_ADC	480 /* 100% * HIGH THD */
 #else
 #define CAL_SKIP_ADC	55
 #define CAL_FAIL_ADC	90
@@ -73,7 +73,7 @@ static ssize_t proximity_avg_show(struct device *dev,
 static ssize_t proximity_avg_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
-	char chTempbuf[4] = { 0 };
+	char chTempbuf[9] = { 0, };
 	int iRet;
 	int64_t dEnable;
 	struct ssp_data *data = dev_get_drvdata(dev);
@@ -86,7 +86,7 @@ static ssize_t proximity_avg_store(struct device *dev,
 		return iRet;
 
 	if (dEnable) {
-		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 4);
+		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 9);
 		data->bProximityRawEnabled = true;
 	} else {
 		send_instruction(data, REMOVE_SENSOR, PROXIMITY_RAW,
@@ -100,13 +100,13 @@ static ssize_t proximity_avg_store(struct device *dev,
 static u16 get_proximity_rawdata(struct ssp_data *data)
 {
 	u16 uRowdata = 0;
-	char chTempbuf[4] = { 0 };
+	char chTempbuf[9] = { 0, };
 
 	s32 dMsDelay = 20;
 	memcpy(&chTempbuf[0], &dMsDelay, 4);
 
 	if (data->bProximityRawEnabled == false) {
-		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 4);
+		send_instruction(data, ADD_SENSOR, PROXIMITY_RAW, chTempbuf, 9);
 		msleep(200);
 		uRowdata = data->buf[PROXIMITY_RAW].prox[0];
 		send_instruction(data, REMOVE_SENSOR, PROXIMITY_RAW,
@@ -123,7 +123,7 @@ static ssize_t proximity_state_show(struct device *dev,
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%u\n", get_proximity_rawdata(data));
+	return sprintf(buf, "%u\n", get_proximity_rawdata(data) - PROX_TRIM);
 }
 
 static ssize_t proximity_raw_data_show(struct device *dev,
@@ -131,16 +131,16 @@ static ssize_t proximity_raw_data_show(struct device *dev,
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%u\n", get_proximity_rawdata(data));
+	return sprintf(buf, "%u\n", get_proximity_rawdata(data) - PROX_TRIM);
 }
 
 static int get_proximity_threshold(struct ssp_data *data)
 {
-	if (data->uCrosstalk < CAL_SKIP_ADC) {
+	if (data->uCrosstalk < (CAL_SKIP_ADC + PROX_TRIM)) {
 		data->uProxCanc = 0;
 		data->uProxCalResult = 2;
 		pr_info("[SSP] crosstalk < %d, skip calibration\n", CAL_SKIP_ADC);
-	} else if (data->uCrosstalk <= CAL_FAIL_ADC) {
+	} else if (data->uCrosstalk <= (CAL_FAIL_ADC + PROX_TRIM)) {
 		data->uProxCanc = data->uCrosstalk * 5 / 10;
 		data->uProxCalResult = 1;
 	} else {

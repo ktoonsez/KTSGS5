@@ -52,7 +52,6 @@
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
 #define _ALPM_GAMMA_COPY_0xBC_
-#define CONFIG_PANEL_RECOVERY
 #define ALPM_MODE
 #endif
 
@@ -62,6 +61,7 @@
 So this one makes the err fg interrup go low level with lcd on seq. (in dtsi) when ddi reset is abnormal  */
 
 #define CONFIG_ESD_FG_RECOVERY
+#define CONFIG_PCD_CHECK  /*to check pcd*/
 #endif
 
 static struct dsi_buf dsi_panel_tx_buf;
@@ -243,6 +243,10 @@ struct work_struct  err_fg_work;
 static int err_fg_gpio = 0;	/* PM_GPIO4 */
 static int esd_count = 0;
 int err_fg_working = 0;
+#endif
+
+#if defined(CONFIG_PCD_CHECK)
+static int pcd_gpio = 0;
 #endif
 
 #if defined(CONFIG_LCD_CLASS_DEVICE) && defined(DDI_VIDEO_ENHANCE_TUNING)
@@ -592,7 +596,7 @@ void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
 static char paset[] = {0x2b, 0x00, 0x00, 0x05, 0x00};	/* DTYPE_DCS_LWRITE */
 static struct dsi_cmd_desc partial_update_enable_cmd[] = {
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(caset)}, caset},
+	{{DTYPE_DCS_LWRITE, 0, 0, 0, 1, sizeof(caset)}, caset},
 	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(paset)}, paset},
 };
 int mdss_dsi_panel_partial_update(struct mdss_panel_data *pdata)
@@ -625,6 +629,13 @@ int mdss_dsi_panel_partial_update(struct mdss_panel_data *pdata)
 								& 0xFF));
 	partial_update_enable_cmd[1].payload = paset;
 	pr_debug("%s: enabling partial update\n", __func__);
+        pr_debug("%s: x=%d y=%d w=%d h=%d\n",
+                        __func__,  pdata->panel_info.roi_x, pdata->panel_info.roi_y,
+                                        pdata->panel_info.roi_w, pdata->panel_info.roi_h);
+        pr_debug("%s:{0x%0x,0x%0x,0x%0x,0x%0x,0x%0x}\n",__func__,
+                        caset[0],caset[1],caset[2],caset[3],caset[4]);
+        pr_debug("%s:{0x%0x,0x%0x,0x%0x,0x%0x,0x%0x}\n",__func__,
+                        paset[0],paset[1],paset[2],paset[3],paset[4]);
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = partial_update_enable_cmd;
 	cmdreq.cmds_cnt = 2;
@@ -1082,7 +1093,7 @@ static int make_brightcontrol_hbm_set(int bl_level)
     if(msd.panel == PANEL_FHD_OCTA_S6E3FA2_CMD){
 		gamma_control = get_hbm_gamma_control_set();
 		cmd_count = update_bright_packet(cmd_count, &gamma_control);
-   }else if(msd.panel == PANEL_HD_OCTA_EA8064G_CMD || msd.panel == PANEL_FHD_OCTA_EA8064G_CMD ){
+   }else if( msd.panel == PANEL_FHD_OCTA_EA8064G_CMD ){
 		elvss_control = get_elvss_control_set(cd_idx);
 		cmd_count = update_bright_packet(cmd_count, &elvss_control);
     }
@@ -1242,6 +1253,15 @@ static int make_brightcontrol_set(int bl_level)
 
 	cmd_count = update_bright_packet(cmd_count, &aid_control);
 
+#if defined(HBM_RE)
+	if ((msd.panel == PANEL_HD_OCTA_EA8064G_CMD)||(msd.panel == PANEL_FHD_OCTA_EA8064G_CMD)) {
+		/*hbm off cmd*/
+		if(msd.dstat.hbm_mode == 1){
+			hbm_off_control = get_hbm_off_set();/*53 00*/
+			cmd_count = update_bright_packet(cmd_count, &hbm_off_control);
+		}
+	}
+#endif
 	/* acl */
 	if (msd.dstat.acl_on||msd.dstat.siop_status) {
 		acl_on_cont = get_acl_control_on_set(); /*b5 51/29*/
@@ -1253,16 +1273,6 @@ static int make_brightcontrol_set(int bl_level)
 		acl_off_cont = get_acl_control_off_set(); /*b5 41,55 00 */
 		cmd_count = update_bright_packet(cmd_count, &acl_off_cont);
 	}
-
-#if defined(HBM_RE)
-	if ((msd.panel == PANEL_HD_OCTA_EA8064G_CMD)||(msd.panel == PANEL_FHD_OCTA_EA8064G_CMD)) {
-		/*hbm off cmd*/
-		if(msd.dstat.hbm_mode == 1){
-			hbm_off_control = get_hbm_off_set();/*53 00*/
-			cmd_count = update_bright_packet(cmd_count, &hbm_off_control);
-		}
-	}
-#endif
 
 	/*elvss*/
 	elvss_control = get_elvss_control_set(cd_idx);
@@ -1365,18 +1375,21 @@ void mdss_dsi_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_cmd_desc *c
 u32 mdss_dsi_cmd_receive(struct mdss_dsi_ctrl_pdata *ctrl, struct dsi_cmd_desc *cmd, int rlen)
 {
     struct dcs_cmd_req cmdreq;
+	char *buf;
 
 	if (get_lcd_attached() == 0) {
 		printk("%s: get_lcd_attached(0)!\n",__func__);
 		return 0;
 	}
 
+	buf = kmalloc(sizeof(rlen), GFP_KERNEL);
+
     memset(&cmdreq, 0, sizeof(cmdreq));
     cmdreq.cmds = cmd;
     cmdreq.cmds_cnt = 1;
     cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
     cmdreq.rlen = rlen;
-	cmdreq.rbuf = ctrl->rx_buf.data;
+	cmdreq.rbuf = buf;
     cmdreq.cb = NULL; /* call back */
     /*
 	 * This mutex is to sync up with dynamic FPS changes
@@ -1733,8 +1746,8 @@ int mipi_samsung_disp_send_cmd(
 			else
 				flag = 0;
 #endif
-			if (msd.dstat.bright_level)
-				msd.dstat.recent_bright_level = msd.dstat.bright_level;
+			msd.dstat.recent_bright_level = msd.dstat.bright_level;
+
 #if defined(HBM_RE)
 			if(msd.dstat.auto_brightness == 6) {
 				cmd_size = make_brightcontrol_hbm_set(msd.dstat.bright_level);
@@ -2221,7 +2234,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			if (te_set_done == TE_SET_DONE) {
 				mipi_samsung_disp_send_cmd(PANEL_SET_TE, true);
 			} else
-				msleep(120);
+				msleep(100);
 		}
 #endif
 	}
@@ -2284,11 +2297,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		mipi_samsung_disp_send_cmd(PANEL_PARTIAL_ON, true);
 #endif
 
-	// to prevent splash during wakeup
-	if (msd.dstat.recent_bright_level) {
-		msd.dstat.bright_level = msd.dstat.recent_bright_level;
-		mipi_samsung_disp_send_cmd(PANEL_BRIGHT_CTRL, true);
-	}
+	msd.dstat.bright_level = msd.dstat.recent_bright_level;
+	mipi_samsung_disp_send_cmd(PANEL_BRIGHT_CTRL, true);
 
 #if defined(CONFIG_MDNIE_LITE_TUNING)
 	is_negative_on();
@@ -2306,8 +2316,14 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 #endif
 
 #if defined(CONFIG_ESD_FG_RECOVERY)
+	if (err_fg_working){
+		err_fg_working = 0;
+		esd_count++;
+	}
+
 	enable_irq(gpio_to_irq(err_fg_gpio));
-	pr_info("%s: ESD enable irq (%d)\n", __func__,gpio_get_value(err_fg_gpio));
+	pr_info("%s: ESD enable irq (%d)esd_count(%d)\n", __func__,
+		gpio_get_value(err_fg_gpio),esd_count);
 #endif
 
 end:
@@ -2337,11 +2353,11 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	msd.ctrl_pdata = ctrl;
 
 #if defined(CONFIG_ESD_FG_RECOVERY)
-		if (!err_fg_working && msd.dstat.on) {
-			disable_irq_nosync(gpio_to_irq(err_fg_gpio));
-			cancel_work_sync(&err_fg_work);
-			pr_info("%s: ESD disable irq (%d)\n", __func__, gpio_get_value(err_fg_gpio));
-		}
+	if (!err_fg_working && msd.dstat.on) {
+		disable_irq_nosync(gpio_to_irq(err_fg_gpio));
+		cancel_work_sync(&err_fg_work);
+		pr_info("%s: ESD disable irq (%d)\n", __func__, gpio_get_value(err_fg_gpio));
+	}
 #endif
 	msd.dstat.on = 0;
 	msd.mfd->resume_state = MIPI_SUSPEND_STATE;
@@ -2617,6 +2633,168 @@ error2:
 
 }
 
+int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
+				char *dst_format)
+{
+	int rc = 0;
+	switch (bpp) {
+	case 3:
+		*dst_format = DSI_CMD_DST_FORMAT_RGB111;
+		break;
+	case 8:
+		*dst_format = DSI_CMD_DST_FORMAT_RGB332;
+		break;
+	case 12:
+		*dst_format = DSI_CMD_DST_FORMAT_RGB444;
+		break;
+	case 16:
+		switch (mipi_mode) {
+		case DSI_VIDEO_MODE:
+			*dst_format = DSI_VIDEO_DST_FORMAT_RGB565;
+			break;
+		case DSI_CMD_MODE:
+			*dst_format = DSI_CMD_DST_FORMAT_RGB565;
+			break;
+		default:
+			*dst_format = DSI_VIDEO_DST_FORMAT_RGB565;
+			break;
+		}
+		break;
+	case 18:
+		switch (mipi_mode) {
+		case DSI_VIDEO_MODE:
+			if (pixel_packing == 0)
+				*dst_format = DSI_VIDEO_DST_FORMAT_RGB666;
+			else
+				*dst_format = DSI_VIDEO_DST_FORMAT_RGB666_LOOSE;
+			break;
+		case DSI_CMD_MODE:
+			*dst_format = DSI_CMD_DST_FORMAT_RGB666;
+			break;
+		default:
+			if (pixel_packing == 0)
+				*dst_format = DSI_VIDEO_DST_FORMAT_RGB666;
+			else
+				*dst_format = DSI_VIDEO_DST_FORMAT_RGB666_LOOSE;
+			break;
+		}
+		break;
+	case 24:
+		switch (mipi_mode) {
+		case DSI_VIDEO_MODE:
+			*dst_format = DSI_VIDEO_DST_FORMAT_RGB888;
+			break;
+		case DSI_CMD_MODE:
+			*dst_format = DSI_CMD_DST_FORMAT_RGB888;
+			break;
+		default:
+			*dst_format = DSI_VIDEO_DST_FORMAT_RGB888;
+			break;
+		}
+		break;
+	default:
+		rc = -EINVAL;
+		break;
+	}
+	return rc;
+}
+
+static int mdss_dsi_parse_panel_features(struct device_node *np,
+	struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	struct mdss_panel_info *pinfo;
+
+	if (!np || !ctrl) {
+		pr_err("%s: Invalid arguments\n", __func__);
+		return -ENODEV;
+	}
+
+	pinfo = &ctrl->panel_data.panel_info;
+	pinfo->cont_splash_enabled = of_property_read_bool(np,
+		"qcom,cont-splash-enabled");
+
+	pinfo->partial_update_enabled = of_property_read_bool(np,
+		"qcom,partial-update-enabled");
+	pr_info("%s:%d Partial update %s\n", __func__, __LINE__,
+		(pinfo->partial_update_enabled ? "enabled" : "disabled"));
+	if (pinfo->partial_update_enabled)
+		ctrl->partial_update_fnc = mdss_dsi_panel_partial_update;
+
+	pinfo->ulps_feature_enabled = of_property_read_bool(np,
+		"qcom,ulps-enabled");
+	pr_info("%s: ulps feature %s", __func__,
+		(pinfo->ulps_feature_enabled ? "enabled" : "disabled"));
+
+	return 0;
+}
+static void mdss_panel_parse_te_params(struct device_node *np,
+				       struct mdss_panel_info *panel_info)
+{
+
+	u32 tmp;
+	int rc = 0;
+	/*
+	 * TE default: dsi byte clock calculated base on 70 fps;
+	 * around 14 ms to complete a kickoff cycle if te disabled;
+	 * vclk_line base on 60 fps; write is faster than read;
+	 * init == start == rdptr;
+	 */
+	panel_info->te.tear_check_en =
+		!of_property_read_bool(np, "qcom,mdss-tear-check-disable");
+	rc = of_property_read_u32
+		(np, "qcom,mdss-tear-check-sync-cfg-height", &tmp);
+	panel_info->te.sync_cfg_height = (!rc ? tmp : 0xfff0);
+	rc = of_property_read_u32
+		(np, "qcom,mdss-tear-check-sync-init-val", &tmp);
+	panel_info->te.vsync_init_val = (!rc ? tmp : panel_info->yres);
+	rc = of_property_read_u32
+		(np, "qcom,mdss-tear-check-sync-threshold-start", &tmp);
+	panel_info->te.sync_threshold_start = (!rc ? tmp : 4);
+	rc = of_property_read_u32
+		(np, "qcom,mdss-tear-check-sync-threshold-continue", &tmp);
+	panel_info->te.sync_threshold_continue = (!rc ? tmp : 4);
+	rc = of_property_read_u32(np, "qcom,mdss-tear-check-start-pos", &tmp);
+	panel_info->te.start_pos = (!rc ? tmp : panel_info->yres);
+	rc = of_property_read_u32
+		(np, "qcom,mdss-tear-check-rd-ptr-trigger-intr", &tmp);
+	panel_info->te.rd_ptr_irq = (!rc ? tmp : panel_info->yres + 1);
+	rc = of_property_read_u32(np, "qcom,mdss-tear-check-frame-rate", &tmp);
+	panel_info->te.refx100 = (!rc ? tmp : 6000);
+}
+
+static void mdss_dsi_parse_roi_alignment(struct device_node *np,
+		struct mdss_panel_info *pinfo)
+{
+	int len = 0;
+	u32 value[6];
+	struct property *data;
+	data = of_find_property(np, "qcom,panel-roi-alignment", &len);
+	len /= sizeof(u32);
+	if (!data || (len != 6)) {
+		pr_debug("%s: Panel roi alignment not found", __func__);
+	} else {
+		int rc = of_property_read_u32_array(np,
+				"qcom,panel-roi-alignment", value, len);
+		if (rc)
+			pr_debug("%s: Error reading panel roi alignment values",
+					__func__);
+		else {
+			pinfo->xstart_pix_align = value[0];
+			pinfo->width_pix_align = value[1];
+			pinfo->ystart_pix_align = value[2];
+			pinfo->height_pix_align = value[3];
+            pinfo->min_width = value[4];
+			pinfo->min_height = value[5];
+		}
+
+		pr_debug("%s: ROI alignment: [%d, %d, %d, %d, %d, %d]",
+				__func__, pinfo->xstart_pix_align,
+				pinfo->width_pix_align, pinfo->ystart_pix_align,
+				pinfo->height_pix_align, pinfo->min_width,
+				pinfo->min_height);
+	}
+}
+
 static int mdss_panel_parse_dt(struct device_node *np,
 					struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -2672,6 +2850,21 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		}
 #endif
 
+#if defined(CONFIG_PCD_CHECK)
+	pcd_gpio = of_get_named_gpio(np, "qcom,pcd-irq-gpio", 0);
+	if (!gpio_is_valid(pcd_gpio)) {
+		pr_err("%s:%d, pcd gpio not specified\n",
+						__func__, __LINE__);
+	} else {
+		rc = gpio_request(pcd_gpio, "pcd_enable");
+		if (rc) {
+			pr_err("request pcd gpio failed, rc=%d\n",
+				   rc);
+			gpio_free(pcd_gpio);
+			return -ENODEV;
+			}
+	}
+#endif
 	rc = of_property_read_u32(np, "qcom,mdss-pan-bpp", &tmp);
 	if (rc) {
 		pr_err("%s:%d, panel bpp not specified\n",
@@ -2801,10 +2994,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->mipi.wr_mem_start =
 		(!rc ? tmp : 0x2c);
 
-	rc = of_property_read_u32(np,
-		"qcom,mdss-pan-te-sel", &tmp);
-	pinfo->mipi.te_sel =
-		(!rc ? tmp : 1);
+
 
 	rc = of_property_read_u32(np,
 		"qcom,mdss-pan-dsi-dst-format", &tmp);
@@ -2839,6 +3029,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32_array(np, "qcom,mdss-pan-dsi-t-clk", res, 2);
 	pinfo->mipi.t_clk_pre = (!rc ? res[0] : 0x24);
 	pinfo->mipi.t_clk_post = (!rc ? res[1] : 0x03);
+
+	pinfo->mipi.rx_eot_ignore = of_property_read_bool(np,
+		"qcom,mdss-dsi-rx-eot-ignore");
+	pinfo->mipi.tx_eot_append = of_property_read_bool(np,
+		"qcom,mdss-dsi-tx-eot-append");
 
 	rc = of_property_read_u32(np, "qcom,mdss-pan-dsi-stream", &tmp);
 	pinfo->mipi.stream = (!rc ? tmp : 0);
@@ -3094,6 +3289,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_samsung_parse_panel_table(np, &acl_map_table,
 				"samsung,panel-acl-map-table");
+	mdss_dsi_parse_roi_alignment(np, pinfo);
+
+	mdss_panel_parse_te_params(np, pinfo);
 
 	/* Process the lux value table */
 	mdss_samsung_parse_candella_lux_mapping_table(np, &candela_map_table,
@@ -3226,7 +3424,17 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 #endif
 
+
+	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
+	if (rc) {
+		pr_err("%s: failed to parse panel features\n", __func__);
+		goto error;
+	}
+
+
 	return 0;
+error:
+	return -EINVAL;
 }
 
 #if defined(CONFIG_HAS_EARLYSUSPEND)
@@ -3570,16 +3778,12 @@ static int samsung_dsi_panel_event_handler(int event)
 	char fctrl;
 #endif
 
-	pr_debug("%s : %d",__func__,event);
 	switch (event) {
 		case MDSS_EVENT_FRAME_UPDATE:
 			if(msd.dstat.wait_disp_on) {
-				pr_info("DISPLAY_ON\n");
 				mipi_samsung_disp_send_cmd(PANEL_DISPLAY_ON, true);
 
 				mipi_samsung_read_nv_mem(msd.pdata, &rddpm_cmds, &rddpm_buf);
-				msd.dstat.wait_disp_on = 0;
-
 #ifdef CONFIG_PANEL_RECOVERY
 				if (rddpm_buf != 0x9c) {
 					char *envp[2] = {"PANEL_ALIVE=0", NULL};
@@ -3589,6 +3793,8 @@ static int samsung_dsi_panel_event_handler(int event)
 					pr_err("Panel has gone bad, sending uevent - %s\n", envp[0]);
 				}
 #endif
+				msd.dstat.wait_disp_on = 0;
+				pr_info("DISPLAY_ON\n");
 			}
 			break;
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
@@ -3844,7 +4050,7 @@ static ssize_t mipi_samsung_disp_get_power(struct device *dev,
 	if (unlikely(mfd->key != MFD_KEY))
 		return -EINVAL;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", mfd->panel_power_on);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", mfd->panel_power_on);
 	pr_info("mipi_samsung_disp_get_power(%d)\n", mfd->panel_power_on);
 
 	return rc;
@@ -3979,7 +4185,7 @@ static ssize_t mipi_samsung_disp_acl_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.dstat.acl_on);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", msd.dstat.acl_on);
 	pr_info("acl status: %d\n", *buf);
 
 	return rc;
@@ -4041,7 +4247,7 @@ static ssize_t mipi_samsung_disp_siop_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.dstat.siop_status);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", msd.dstat.siop_status);
 	pr_info("siop status: %d\n", *buf);
 
 	return rc;
@@ -4116,7 +4322,7 @@ static ssize_t mipi_samsung_auto_brightness_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n",
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n",
 					msd.dstat.auto_brightness);
 	pr_info("auto_brightness: %d\n", *buf);
 
@@ -4328,7 +4534,7 @@ static ssize_t mipi_samsung_alpm_show(struct device *dev,
 	if (pinfo && pinfo->alpm_event)
 		current_status = (int)pinfo->alpm_event(CHECK_CURRENT_STATUS);
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", current_status);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", current_status);
 	pr_info("[ALPM_DEBUG] %s: alpm display range %d to %d, current status : %d \n",\
 					 __func__, alpm_disp_range[0], alpm_disp_range[1], current_status);
 
@@ -4476,7 +4682,7 @@ static ssize_t mipi_samsung_alpm_backlight_show(struct device *dev,
 	if (pinfo && pinfo->alpm_event)
 		bl_level = (int)pinfo->alpm_event(CHECK_BL_VALUE);
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", bl_level);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", bl_level);
 	pr_info("[ALPM_DEBUG] %s: Brightness level : %d \n",\
 					 __func__, bl_level);
 
@@ -4773,7 +4979,7 @@ static irqreturn_t err_fg_irq_handler(int irq, void *handle)
 {
 	struct msm_fb_data_type *mfd = msd.mfd;
 
-	if(err_fg_working || !(mfd->panel_power_on)) return IRQ_HANDLED;
+	if(err_fg_working || !(mfd->panel_power_on) || mdss_fb_get_first_cmt_flag()) return IRQ_HANDLED;
 
 	pr_info("%s handler + irq(%d) state(%d)", __func__, irq, gpio_get_value(err_fg_gpio));
 	err_fg_working = 1;
@@ -4788,6 +4994,8 @@ void err_fg_work_func(struct work_struct *work)
 {
 	struct msm_fb_data_type *mfd = msd.mfd;
 	struct mdss_panel_data *pdata = msd.pdata;
+	char *envp[2] = {"PANEL_ALIVE=0", NULL};
+	struct device *dev = msd.mfd->fbi->dev;
 
 	pr_info("%s : start irqstate(%d)", __func__, gpio_get_value(err_fg_gpio));
 
@@ -4797,26 +5005,12 @@ void err_fg_work_func(struct work_struct *work)
 	}
 
 	if (mfd->panel_power_on) {
-
 		pdata->panel_info.panel_dead = true; /*for cmd mode panel only*/
-		mutex_lock(&mfd->power_state);
-		mutex_lock(&mfd->ctx_lock);
 
-		mdelay(5);
-		msd.pdata->event_handler(msd.pdata, MDSS_EVENT_BLANK, NULL);
-		mdelay(5);
-		msd.pdata->event_handler(msd.pdata, MDSS_EVENT_UNBLANK, NULL);
-		mdelay(5);
-		msd.mfd->mdp.kickoff_fnc(msd.mfd, NULL);
-
-		mutex_unlock(&mfd->ctx_lock);
-		mutex_unlock(&mfd->power_state);
-
+		kobject_uevent_env(&dev->kobj, KOBJ_CHANGE, envp);
+		pr_err("Panel has gone bad, sending uevent - %s\n", envp[0]);
 	}
-	esd_count++;
-	err_fg_working = 0;
 
-	pr_info("%s esd_count(%d) end", __func__, esd_count);
 	return;
 }
 
@@ -5229,7 +5423,7 @@ static ssize_t mipi_samsung_hmt_change_porch_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.hmt_stat.hmt_porch);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", msd.hmt_stat.hmt_porch);
 	pr_info("[HMT] porch input : %d\n", *buf);
 
 	return rc;
@@ -5338,7 +5532,7 @@ static ssize_t mipi_samsung_hmt_aid_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.hmt_stat.hmt_aid);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", msd.hmt_stat.hmt_aid);
 	pr_info("[HMT] aid input : %d\n", *buf);
 
 	return rc;
@@ -5388,7 +5582,7 @@ static ssize_t mipi_samsung_hmt_bright_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.hmt_stat.hmt_bl_level);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", msd.hmt_stat.hmt_bl_level);
 	pr_info("[HMT] hmt bright : %d\n", *buf);
 
 	return rc;
@@ -5428,7 +5622,7 @@ static ssize_t mipi_samsung_hmt_dual_scan_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.hmt_stat.hmt_dual);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", msd.hmt_stat.hmt_dual);
 	pr_info("[HMT] dual scan input : %d\n", *buf);
 
 	return rc;
@@ -5465,7 +5659,7 @@ static ssize_t mipi_samsung_hmt_reverse_show(struct device *dev,
 {
 	int rc;
 
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n", msd.hmt_stat.hmt_dual);
+	rc = snprintf((char *)buf, PAGE_SIZE, "%d\n", msd.hmt_stat.hmt_dual);
 	pr_info("[HMT] reverse input : %d\n", *buf);
 
 	return rc;
@@ -5723,12 +5917,17 @@ int mdss_dsi_panel_init(struct device_node *node, struct mdss_dsi_ctrl_pdata *ct
 	int rc = 0;
 	static const char *panel_name;
 	bool cont_splash_enabled;
-	bool partial_update_enabled;
+	struct mdss_panel_info *pinfo;
 
 	pr_debug("%s: ++ \n", __func__);
 
-	if (!node)
+
+	if (!node || !ctrl_pdata) {
+		pr_err("%s: Invalid arguments\n", __func__);
 		return -ENODEV;
+	}
+
+	pinfo = &ctrl_pdata->panel_data.panel_info;
 
 	panel_name = of_get_property(node, "label", NULL);
 	if (!panel_name)
@@ -5749,16 +5948,12 @@ int mdss_dsi_panel_init(struct device_node *node, struct mdss_dsi_ctrl_pdata *ct
 				"qcom,cont-splash-enabled");
 	else
 		cont_splash_enabled = false;
-	if (!cont_splash_enabled) {
-		pr_info("%s:%d Continuous splash flag not found.\n",
-				__func__, __LINE__);
-		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 0;
-	} else {
-		pr_info("%s:%d Continuous splash flag enabled.\n",
-				__func__, __LINE__);
 
-		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 1;
-	}
+	if (!cmd_cfg_cont_splash)
+	pinfo->cont_splash_enabled = false;
+
+	pr_info("%s: Continuous splash %s", __func__,
+	pinfo->cont_splash_enabled ? "enabled" : "disabled");
 
 #if defined(CONFIG_ESD_FG_RECOVERY)
 	INIT_WORK(&err_fg_work, err_fg_work_func);
@@ -5772,6 +5967,9 @@ int mdss_dsi_panel_init(struct device_node *node, struct mdss_dsi_ctrl_pdata *ct
 	disable_irq(gpio_to_irq(err_fg_gpio));
 #endif
 
+#if defined(CONFIG_PCD_CHECK)
+	pr_info("%s : start pcd irqstate(%d)", __func__, gpio_get_value(pcd_gpio));
+#endif
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->event_handler = samsung_dsi_panel_event_handler;
@@ -5789,18 +5987,8 @@ int mdss_dsi_panel_init(struct device_node *node, struct mdss_dsi_ctrl_pdata *ct
 	init_completion(&te_check_comp);
 #endif
 	msd.dstat.on = 0;
-	msd.dstat.recent_bright_level = 0;
+	msd.dstat.recent_bright_level = 255;
 
-	partial_update_enabled =of_property_read_bool(node,"qcom,partial-update-enabled");
-	if (partial_update_enabled) {
-		pr_info("%s:%d Partial update enabled.\n", __func__, __LINE__);
-		ctrl_pdata->panel_data.panel_info.partial_update_enabled = 1;
-		ctrl_pdata->partial_update_fnc = mdss_dsi_panel_partial_update;
-	} else {
-		pr_info("%s:%d Partial update disabled.\n", __func__, __LINE__);
-		ctrl_pdata->panel_data.panel_info.partial_update_enabled = 0;
-		ctrl_pdata->partial_update_fnc = NULL;
-	}
 #if defined(CONFIG_LCD_CLASS_DEVICE)
 	rc = mdss_samsung_create_sysfs();
 	if (rc) {

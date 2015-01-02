@@ -52,6 +52,14 @@
 
 #define MAX_BUFFER_SIZE		512
 
+#undef pr_info
+#undef pr_debug
+#undef pr_err
+
+#define pr_info printk
+#define pr_debug printk
+#define pr_err printk
+
 #define NFC_DEBUG 0
 #define MAX_TRY_I2C_READ	10
 #define I2C_ADDR_READ_L		0x51
@@ -322,7 +330,7 @@ static long pn547_dev_ioctl(struct file *filp,
 		if (arg == 2) {
 			/* power on with firmware download (requires hw reset)
 			 */
-#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON)
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON) || defined(CONFIG_SEC_RUBENSWIFI_COMMON)
 			gpio_direction_output(pn547_dev->ven_gpio, 1);
 #endif
 			gpio_set_value_cansleep(pn547_dev->ven_gpio, 1);
@@ -344,7 +352,7 @@ static long pn547_dev_ioctl(struct file *filp,
 			if (pn547_dev->conf_gpio)
 				pn547_dev->conf_gpio();
 			gpio_set_value(pn547_dev->firm_gpio, 0);
-#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON)
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON) || defined(CONFIG_SEC_RUBENSWIFI_COMMON)
 			gpio_direction_output(pn547_dev->ven_gpio, 1);
 #endif
 			gpio_set_value_cansleep(pn547_dev->ven_gpio, 1);
@@ -366,7 +374,7 @@ static long pn547_dev_ioctl(struct file *filp,
 			pr_info("%s power off, irq=%d\n", __func__,
 				atomic_read(&pn547_dev->irq_enabled));
 			gpio_set_value(pn547_dev->firm_gpio, 0);
-#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON)
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON) || defined(CONFIG_SEC_RUBENSLTE_COMMON) || defined(CONFIG_SEC_RUBENSWIFI_COMMON)
 			gpio_direction_output(pn547_dev->ven_gpio, 0);
 #endif
 			gpio_set_value_cansleep(pn547_dev->ven_gpio, 0);
@@ -601,6 +609,13 @@ static int pn547_probe(struct i2c_client *client,
 	}
 	INIT_WORK(&pn547_dev->work_nfc_clock, nfc_work_func_clock);
 #endif
+	if(client->irq <=0)	
+	{
+		pr_info("%s : [Before] requesting IRQ %d\n", __func__, client->irq);
+		client->irq = gpio_to_irq(pn547_dev->irq_gpio);
+		pr_info("%s : [After] requesting IRQ %d\n", __func__, client->irq);
+	}
+
 	ret = request_irq(client->irq, pn547_dev_irq_handler,
 			  IRQF_TRIGGER_RISING, "pn547", pn547_dev);
 	if (ret) {

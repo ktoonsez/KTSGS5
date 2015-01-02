@@ -100,6 +100,11 @@ int srs_trumedia_open(int port_id, int srs_tech_id, void *srs_params)
 		sz = sizeof(struct adm_cmd_set_pp_params_inband_v5) +
 			sizeof(struct srs_trumedia_params_GLOBAL);
 		adm_params = kzalloc(sz, GFP_KERNEL);
+		if (!adm_params) {
+			pr_err("%s, adm params memory alloc failed\n",
+				__func__);
+			return -ENOMEM;
+		}
 		adm_params->payload_size =
 			sizeof(struct srs_trumedia_params_GLOBAL) +
 			sizeof(struct adm_param_data_v5);
@@ -124,6 +129,11 @@ int srs_trumedia_open(int port_id, int srs_tech_id, void *srs_params)
 		sz = sizeof(struct adm_cmd_set_pp_params_inband_v5) +
 			sizeof(struct srs_trumedia_params_WOWHD);
 		adm_params = kzalloc(sz, GFP_KERNEL);
+		if (!adm_params) {
+			pr_err("%s, adm params memory alloc failed\n",
+				__func__);
+			return -ENOMEM;
+		}
 		adm_params->payload_size =
 			sizeof(struct srs_trumedia_params_WOWHD) +
 			sizeof(struct adm_param_data_v5);
@@ -149,6 +159,11 @@ int srs_trumedia_open(int port_id, int srs_tech_id, void *srs_params)
 		sz = sizeof(struct adm_cmd_set_pp_params_inband_v5) +
 			sizeof(struct srs_trumedia_params_CSHP);
 		adm_params = kzalloc(sz, GFP_KERNEL);
+		if (!adm_params) {
+			pr_err("%s, adm params memory alloc failed\n",
+				__func__);
+			return -ENOMEM;
+		}
 		adm_params->payload_size =
 			sizeof(struct srs_trumedia_params_CSHP) +
 			sizeof(struct adm_param_data_v5);
@@ -173,6 +188,11 @@ int srs_trumedia_open(int port_id, int srs_tech_id, void *srs_params)
 		sz = sizeof(struct adm_cmd_set_pp_params_inband_v5) +
 			sizeof(struct srs_trumedia_params_HPF);
 		adm_params = kzalloc(sz, GFP_KERNEL);
+		if (!adm_params) {
+			pr_err("%s, adm params memory alloc failed\n",
+				__func__);
+			return -ENOMEM;
+		}
 		adm_params->payload_size =
 			sizeof(struct srs_trumedia_params_HPF) +
 			sizeof(struct adm_param_data_v5);
@@ -193,6 +213,11 @@ int srs_trumedia_open(int port_id, int srs_tech_id, void *srs_params)
 		sz = sizeof(struct adm_cmd_set_pp_params_inband_v5) +
 			sizeof(struct srs_trumedia_params_PEQ);
 		adm_params = kzalloc(sz, GFP_KERNEL);
+		if (!adm_params) {
+			pr_err("%s, adm params memory alloc failed\n",
+				__func__);
+			return -ENOMEM;
+		}
 		adm_params->payload_size =
 				sizeof(struct srs_trumedia_params_PEQ) +
 				sizeof(struct adm_param_data_v5);
@@ -215,6 +240,11 @@ int srs_trumedia_open(int port_id, int srs_tech_id, void *srs_params)
 		sz = sizeof(struct adm_cmd_set_pp_params_inband_v5) +
 			sizeof(struct srs_trumedia_params_HL);
 		adm_params = kzalloc(sz, GFP_KERNEL);
+		if (!adm_params) {
+			pr_err("%s, adm params memory alloc failed\n",
+				__func__);
+			return -ENOMEM;
+		}
 		adm_params->payload_size =
 			sizeof(struct srs_trumedia_params_HL) +
 			sizeof(struct adm_param_data_v5);
@@ -407,7 +437,8 @@ int adm_get_params(int port_id, uint32_t module_id, uint32_t param_id,
 		rc = -EINVAL;
 		goto adm_get_param_return;
 	}
-	if (params_data) {
+	if ((params_data) && (adm_get_parameters[0] <
+		ARRAY_SIZE(adm_get_parameters))) {
 		for (i = 0; i < adm_get_parameters[0]; i++)
 			params_data[i] = adm_get_parameters[1+i];
 	}
@@ -456,6 +487,12 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 {
 	uint32_t *payload;
 	int i, index;
+
+	if (data == NULL) {
+		pr_err("%s: data paramter is null\n", __func__);
+		return -EINVAL;
+	}
+
 	payload = data->payload;
 
 	if (data->opcode == RESET_EVENTS) {
@@ -601,7 +638,12 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 					data->payload_size))
 				break;
 
-			if (data->payload_size > (4 * sizeof(uint32_t))) {
+			/* payload[3] is the param size, check if payload */
+			/* is big enough and has a valid param size */
+			if ((data->payload_size > (4 * sizeof(uint32_t))) &&
+				(payload[3] <= ADM_GET_PARAMETER_LENGTH) &&
+				(adm_get_parameters[0] <
+				ARRAY_SIZE(adm_get_parameters))) {
 				adm_get_parameters[0] = payload[3];
 				pr_debug("GET_PP PARAM:received parameter length: %x\n",
 						adm_get_parameters[0]);
@@ -1146,6 +1188,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		open.topology_id = topology;
 		if ((open.topology_id == VPM_TX_SM_ECNS_COPP_TOPOLOGY) ||
 			(open.topology_id == VPM_TX_DM_FLUENCE_COPP_TOPOLOGY) ||
+			(open.topology_id == VPM_TX_DM_RFECNS_COPP_TOPOLOGY) ||
 		   	 (open.topology_id == VPM_TX_SM_LVVE_COPP_TOPOLOGY) ||
 			/* LVVE for Barge-in */
 			(open.topology_id == 0x1000BFF0) ||
@@ -1157,6 +1200,10 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			rate = ULL_SUPPORTED_SAMPLE_RATE;
 			if(channel_mode > ULL_MAX_SUPPORTED_CHANNEL)
 				channel_mode = ULL_MAX_SUPPORTED_CHANNEL;
+		} else if (perf_mode == LOW_LATENCY_PCM_MODE) {
+			if ((open.topology_id == DOLBY_ADM_COPP_TOPOLOGY_ID) ||
+			    (open.topology_id == SRS_TRUMEDIA_TOPOLOGY_ID))
+				open.topology_id = DEFAULT_COPP_TOPOLOGY;
 		}
 
 		open.dev_num_channel = channel_mode & 0x00FF;

@@ -2400,6 +2400,61 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	return alloc_flags;
 }
 
+#ifdef CONFIG_SEC_SLOWPATH
+unsigned int oomk_state; /* 0 none, bit_0 time's up, bit_1 OOMK */
+
+struct slowpath_pressure {
+	unsigned int total_jiffies;
+	struct mutex slow_lock;
+} slowpath;
+
+/* slowtime - milliseconds time spend int __alloc_pages_slowpath() */
+static void slowpath_pressure(unsigned int slowtime)
+{
+	mutex_lock(&slowpath.slow_lock);
+	if (unlikely(slowpath.total_jiffies + slowtime >= UINT_MAX))
+		slowpath.total_jiffies = UINT_MAX;
+	else
+		slowpath.total_jiffies += slowtime;
+	mutex_unlock(&slowpath.slow_lock);
+}
+
+unsigned int get_and_reset_timeup(void)
+{
+	bool val = 0;
+
+	val = oomk_state;
+	oomk_state = 0;
+	pr_debug("%s: timeup %u\n", __func__, val);
+
+	return val;
+}
+
+unsigned int get_and_reset_slowtime(void)
+{
+	static bool first_read = false;
+	unsigned int slowtime = 0;
+
+	slowtime = slowpath.total_jiffies;
+	if (unlikely(first_read == false)) {
+		first_read = true;
+		slowtime = 0;
+	}
+	slowpath.total_jiffies = 0;
+	pr_debug("%s: slowtime %u\n", __func__, slowtime);
+
+	return slowtime;
+}
+
+static int __init slowpath_init(void)
+{
+	mutex_init(&slowpath.slow_lock);
+	return 0;
+}
+
+module_init(slowpath_init)
+#endif
+
 static inline struct page *
 __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	struct zonelist *zonelist, enum zone_type high_zoneidx,
@@ -2415,7 +2470,10 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	bool deferred_compaction = false;
 	bool contended_compaction = false;
 #ifdef CONFIG_SEC_OOM_KILLER
-	unsigned long oom_invoke_timeout = jiffies + HZ/4;
+	unsigned long oom_invoke_timeout = jiffies + HZ/32;
+#endif
+#ifdef CONFIG_SEC_SLOWPATH
+	unsigned long slowpath_time = jiffies;
 #endif
 
 	/*
@@ -2542,10 +2600,13 @@ rebalance:
 			    !(gfp_mask & __GFP_NOFAIL))
 				goto nopage;
 #ifdef CONFIG_SEC_OOM_KILLER
-			if (did_some_progress)
+			if (did_some_progress) {
 				pr_info("time's up : calling "
 					"__alloc_pages_may_oom(o:%d, gfp:0x%x)\n", order, gfp_mask);
-
+#ifdef CONFIG_SEC_SLOWPATH
+				oomk_state |= 0x01;
+#endif
+			}
 #endif
 
 			page = __alloc_pages_may_oom(gfp_mask, order,
@@ -2607,10 +2668,20 @@ rebalance:
 
 nopage:
 	warn_alloc_failed(gfp_mask, order, NULL);
+#ifdef CONFIG_SEC_SLOWPATH
+	slowpath_time = jiffies - slowpath_time;
+	if (wait && slowpath_time)
+		slowpath_pressure(slowpath_time);
+#endif
 	return page;
 got_pg:
 	if (kmemcheck_enabled)
 		kmemcheck_pagealloc_alloc(page, order, gfp_mask);
+#ifdef CONFIG_SEC_SLOWPATH
+	slowpath_time = jiffies - slowpath_time;
+	if (wait && slowpath_time)
+		slowpath_pressure(slowpath_time);
+#endif
 	return page;
 
 }

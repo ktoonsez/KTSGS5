@@ -515,6 +515,8 @@ static ssize_t bma254_raw_data_show(struct device *dev,
 		bma254_activate(bma254, true);
 #if defined(CONFIG_MACH_KANAS3G_CTC)||defined(CONFIG_MACH_KANAS3G_CMCC)
 		msleep(300);
+#elif defined (CONFIG_MACH_VICTORLTE_CTC)
+		msleep(50);
 #endif
 		schedule_delayed_work(&bma254->work, msecs_to_jiffies(bma254->delay));
 	}

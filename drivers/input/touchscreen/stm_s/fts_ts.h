@@ -116,6 +116,8 @@
 
 #define EVENTID_GESTURE                     0x20
 
+#define STATUS_EVENT_MUTUAL_AUTOTUNE_DONE	0x01
+
 #define INT_ENABLE						0x41
 #define INT_DISABLE						0x00
 

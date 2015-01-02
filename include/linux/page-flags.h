@@ -295,7 +295,6 @@ PAGEFLAG(CMA, cma)
 #endif
 
 u64 stable_page_flags(struct page *page);
-
 #ifdef CONFIG_SDP
 static inline int PageSensitive(struct page *page)
 {

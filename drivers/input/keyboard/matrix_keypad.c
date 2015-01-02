@@ -321,7 +321,7 @@ static int matrix_keypad_resume(struct device *dev)
 static const SIMPLE_DEV_PM_OPS(matrix_keypad_pm_ops,
 				matrix_keypad_suspend, matrix_keypad_resume);
 #endif
-
+extern int system_rev;
 static int __devinit init_matrix_gpio(struct platform_device *pdev,
 					struct matrix_keypad *keypad)
 {
@@ -346,6 +346,12 @@ static int __devinit init_matrix_gpio(struct platform_device *pdev,
 #endif
 	}
 
+#ifdef CONFIG_SEC_PATEK_PROJECT
+	if (system_rev <= 0x01){
+		pdata->row_gpios[3] = 28;
+		pr_info("[keypad] KBC(3) : gpio 77 -> 28 (board_rev = %x)\n", system_rev);
+	}
+#endif
 	for (i = 0; i < pdata->num_row_gpios; i++) {
 		err = gpio_request(pdata->row_gpios[i], "matrix_kbd_row");
 		if (err) {

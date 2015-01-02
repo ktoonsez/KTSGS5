@@ -237,8 +237,13 @@ ssize_t mcu_sleep_factorytest_show(struct device *dev,
 			goto exit;
 		}
 
-		data->get_sensor_data[iSensorData]((char *)buffer,
-			&iDataIdx, &(fsb[iSensorData]));
+		if(data->get_sensor_data[iSensorData] == NULL)
+			pr_err("[SSP]: %s - get_sensor_data[%d] is null\n",
+				__func__, iDataIdx);
+		else {
+			data->get_sensor_data[iSensorData]((char *)buffer,
+				&iDataIdx, &(fsb[iSensorData]));
+		}
 	}
 
 	fsb[PRESSURE_SENSOR].pressure[0] -= data->iPressureCal;

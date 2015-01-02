@@ -115,7 +115,7 @@ int msm_isp_update_bandwidth(enum msm_isp_hw_client client,
 
 	mutex_lock(&bandwidth_mgr_mutex);
 	if (!isp_bandwidth_mgr.use_count ||
-		!isp_bandwidth_mgr.bus_client) {
+	    !isp_bandwidth_mgr.bus_client) {
 		pr_err("%s:error bandwidth manager inactive use_cnt:%d bus_clnt:%d\n",
 			__func__, isp_bandwidth_mgr.use_count,
 			isp_bandwidth_mgr.bus_client);
@@ -842,9 +842,9 @@ static void msm_isp_process_overflow_irq(
 
 	if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id == 0 &&
 	    vfe_dev->axi_data.src_info[VFE_RAW_0].frame_id == 0) {
-		pr_err("%s first frame. Skip \n", __func__);
-		pr_err("%s: First frame irq_status0 0x%X irq_status1 0x%X\n",
-			__func__, *irq_status0, *irq_status1);
+//		pr_err("%s first frame. Skip \n", __func__);
+//		pr_err("%s: First frame irq_status0 0x%X irq_status1 0x%X\n",
+//			__func__, *irq_status0, *irq_status1);
 	}
 
 	/*Mask out all other irqs if recovery is started*/
@@ -1009,12 +1009,11 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 		msm_isp_update_error_info(vfe_dev, error_mask0, error_mask1);
 
 	if ((irq_status0 == 0) && (irq_status1 == 0) &&
-	    (!((error_mask0 != 0) || (error_mask1 != 0)) &&
-	     vfe_dev->error_info.error_count == 1)) {
+		(!((error_mask0 != 0) || (error_mask1 != 0)) &&
+		 vfe_dev->error_info.error_count == 1)) {
 		ISP_DBG("%s: irq_status0 & 1 are both 0!\n", __func__);
 		return IRQ_HANDLED;
 	}
-
 /*
         if (atomic_read(&vfe_dev->error_info.overflow_state) != NO_OVERFLOW) {
                 pr_err("%s HW is in overflow state. Don't process IRQ until recovery\n",

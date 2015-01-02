@@ -85,6 +85,7 @@ struct max86900_device_data
 	struct mutex activelock;
 #if defined(CONFIG_SENSORS_SSP_STM_HESTIA)
 	int ldo_en;
+	int vdd_en;
 #else
 	struct regulator *vdd_1p8;
 #if defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_KSPORTSLTE_SPR)

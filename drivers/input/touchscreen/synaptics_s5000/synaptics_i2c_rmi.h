@@ -55,7 +55,7 @@
 //#define SECURE_TSP
 
 /* To support suface touch, firmware should support data
- * which is required related app ex) MT_ANGLE, MT_PALM ...
+ * which is required related app ex) MT_PALM ...
  * Synpatics IC report those data through F51's edge swipe
  * fucntionality.
  */

@@ -6083,7 +6083,22 @@ static void synaptics_rmi4_f54_status_work(struct work_struct *work)
 
 	if (f54->status != STATUS_BUSY)
 		return;
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+	retval = f54->fn_ptr->read(rmi4_data,
+			f54->query_base_addr,
+			f54->query.data,
+			sizeof(f54->query.data));
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to read f54 query registers\n",
+				__func__);
+		retval = -EINVAL;
+		goto error_exit;
+	}
 
+	f54->rx_assigned = f54->query.num_of_rx_electrodes;
+	f54->tx_assigned = f54->query.num_of_tx_electrodes;
+#endif
 	set_report_size();
 	if (f54->report_size == 0) {
 		dev_err(&rmi4_data->i2c_client->dev,

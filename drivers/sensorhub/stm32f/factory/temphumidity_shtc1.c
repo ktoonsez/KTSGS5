@@ -32,12 +32,16 @@
 #define IOCTL_READ_THM_BARO_DATA	_IOR(SHTC1_IOCTL_MAGIC, 0x06, unsigned short *)
 #define IOCTL_READ_THM_GYRO_DATA	_IOR(SHTC1_IOCTL_MAGIC, 0x07, unsigned short *)
 
-#if defined (CONFIG_MACH_HLTEATT)
+#if defined (CONFIG_MACH_JSGLTE_CHN_CMCC)
+#define MODEL_NAME	"GT-I9508V"
+#elif defined (CONFIG_MACH_HLTEATT)
 #define MODEL_NAME	"SM-N900A"
+#elif defined (CONFIG_MACH_HLTE_CHN_CMCC)
+#define MODEL_NAME	"SM-N9008V"
+#elif defined (CONFIG_MACH_HLTE_CHN_TDOPEN)
+#define MODEL_NAME	"SM-N9008S"
 #elif defined (CONFIG_MACH_H3GDUOS_CTC)
 #define MODEL_NAME	"SM-N9009"
-#elif defined (CONFIG_MACH_JSGLTE_CHN_CMCC)
-#define MODEL_NAME	"GT-I9508V"
 #elif defined (CONFIG_MACH_H3GDUOS_CU)
 #define MODEL_NAME	"SM-N9002"
 #elif defined (CONFIG_MACH_H3G_CHN_OPEN)

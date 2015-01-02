@@ -105,12 +105,6 @@ static inline void assert_reg_lock(void)
 	lockdep_assert_held(&reg_mutex);
 }
 
-static const struct ieee80211_regdomain *get_cfg80211_regdom(void)
-{
-	return rcu_dereference_protected(cfg80211_regdomain,
-					 lockdep_is_held(&reg_mutex));
-}
-
 /* Used to queue up regulatory hints */
 static LIST_HEAD(reg_requests_list);
 static spinlock_t reg_requests_lock;
@@ -310,7 +304,7 @@ static bool is_user_regdom_saved(void)
 
 static bool is_cfg80211_regdom_intersected(void)
 {
-	return is_intersected_alpha2(get_cfg80211_regdom()->alpha2);
+	return is_intersected_alpha2(cfg80211_regdomain->alpha2);
 }
 			
 static int reg_copy_regd(const struct ieee80211_regdomain **dst_regd,
@@ -351,6 +345,9 @@ static void reg_regdb_search(struct work_struct *work)
 	struct reg_regdb_search_request *request;
 	const struct ieee80211_regdomain *curdom, *regdom;
 	int i, r;
+	bool set_reg = false;
+
+	mutex_lock(&cfg80211_mutex);
 
 	mutex_lock(&reg_regdb_search_mutex);
 	while (!list_empty(&reg_regdb_search_list)) {
@@ -366,9 +363,7 @@ static void reg_regdb_search(struct work_struct *work)
 				r = reg_copy_regd(&regdom, curdom);
 				if (r)
 					break;
-				mutex_lock(&cfg80211_mutex);
-				set_regdom(regdom);
-				mutex_unlock(&cfg80211_mutex);
+				set_reg = true;
 				break;
 			}
 		}
@@ -376,6 +371,11 @@ static void reg_regdb_search(struct work_struct *work)
 		kfree(request);
 	}
 	mutex_unlock(&reg_regdb_search_mutex);
+
+	if (set_reg)
+		set_regdom(regdom);
+
+	mutex_unlock(&cfg80211_mutex);
 }
 
 static DECLARE_WORK(reg_regdb_work, reg_regdb_search);
@@ -1198,7 +1198,7 @@ void regulatory_update(struct wiphy *wiphy,
 	if (last_request)
 		wiphy_update_regulatory(wiphy, last_request->initiator);
 	else
-	wiphy_update_regulatory(wiphy, setby);
+		wiphy_update_regulatory(wiphy, setby);
 	mutex_unlock(&reg_mutex);
 }
 
@@ -1392,12 +1392,12 @@ static int ignore_request(struct wiphy *wiphy,
 		 * Process user requests only after previous user/driver/core
 		 * requests have been processed
 		 */
-		if (last_request->initiator == NL80211_REGDOM_SET_BY_CORE ||
+		if ((last_request->initiator == NL80211_REGDOM_SET_BY_CORE ||
 		    last_request->initiator == NL80211_REGDOM_SET_BY_DRIVER ||
-		    last_request->initiator == NL80211_REGDOM_SET_BY_USER) {
+		     last_request->initiator == NL80211_REGDOM_SET_BY_USER)) {
 			if (last_request->intersect) {
 				if (!is_cfg80211_regdom_intersected())
-				return -EAGAIN;
+					return -EAGAIN;
 			} else if (regdom_changes(last_request->alpha2)) {
 				return -EAGAIN;
 			}

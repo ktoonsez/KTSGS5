@@ -90,7 +90,7 @@ struct gp2a_data {
 
 	int irq;
 	int gpio;
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 	int vled_gpio;
 #endif
 	int con_gpio;
@@ -193,12 +193,12 @@ static int gp2a_regulator_onoff(struct device *dev, bool onoff)
 {
 	struct regulator *gp2a_vcc, *gp2a_lvs1;
 	char *gp2a_vcc_reg, *gp2a_lvs1_reg;
-#if defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 	struct regulator *gp2a_2p8;
 	char *gp2a_2p8_reg;
 #endif
 
-#if !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 	gp2a_vcc_reg = "gp2a030a-vcc";
 	gp2a_lvs1_reg = "gp2a030a-lvs1";
 #else
@@ -218,7 +218,7 @@ static int gp2a_regulator_onoff(struct device *dev, bool onoff)
 		devm_regulator_put(gp2a_vcc);
 		return -ENOMEM;
 	}
-#if defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 	gp2a_2p8 = devm_regulator_get(dev, gp2a_2p8_reg);
 	if (IS_ERR(gp2a_2p8)) {
 		pr_err("%s: cannot get gp2a_2p8\n", __func__);
@@ -232,12 +232,12 @@ static int gp2a_regulator_onoff(struct device *dev, bool onoff)
 		regulator_enable(gp2a_vcc);
 		msleep(5);
 		regulator_enable(gp2a_lvs1);
-#if defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 		msleep(5);
 		regulator_enable(gp2a_2p8);
 #endif
 	} else {
-#if defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 		regulator_disable(gp2a_2p8);
 		msleep(5);
 #endif
@@ -248,7 +248,7 @@ static int gp2a_regulator_onoff(struct device *dev, bool onoff)
 
 	devm_regulator_put(gp2a_vcc);
 	devm_regulator_put(gp2a_lvs1);
-#if defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 	devm_regulator_put(gp2a_2p8);
 #endif
 	msleep(10);
@@ -530,6 +530,14 @@ gp2a_light_enable_store(struct device *dev, struct device_attribute *attr,
 
 	if (value) {
 		if (data->light_enabled == SENSOR_DISABLE) {
+			if(data->prox_enabled == SENSOR_DISABLE )
+			{
+				err = gp2a_regulator_onoff(dev, true);
+				if (err) {
+					pr_err("%s, Power Up Failed\n", __func__);
+					return err;
+				}
+			}
 			lightsensor_onoff(1, data);
 			schedule_delayed_work(&data->light_work, msecs_to_jiffies(100));
 			data->light_enabled = SENSOR_ENABLE;
@@ -538,6 +546,14 @@ gp2a_light_enable_store(struct device *dev, struct device_attribute *attr,
 		}
 	} else {
 		if (data->light_enabled == SENSOR_ENABLE) {
+			if(data->prox_enabled == SENSOR_DISABLE )
+			{
+				err = gp2a_regulator_onoff(dev, false);
+				if (err) {
+					pr_err("%s, Power Down Failed\n", __func__);
+					return err;
+				}
+			}
 			lightsensor_onoff(0, data);
 			schedule_delayed_work(&data->light_work,
 						msecs_to_jiffies(data->light_delay));
@@ -716,7 +732,7 @@ static int gp2a_prox_onoff(u8 onoff, struct gp2a_data  *data)
 		turn on light sensor and proximity sensor */
 	if (onoff) {
 		int i;
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 		gpio_set_value(data->vled_gpio, 1);
 #endif
 
@@ -743,7 +759,7 @@ static int gp2a_prox_onoff(u8 onoff, struct gp2a_data  *data)
 			value = 0x00;	/*shutdown mode */
 			gp2a_i2c_write(data, (u8) (COMMAND1), &value);
 		}
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 		gpio_set_value(data->vled_gpio, 0);
 #endif
 	}
@@ -789,7 +805,14 @@ gp2a_prox_enable_store(struct device *dev, struct device_attribute *attr,
 		if (data->prox_enabled == SENSOR_DISABLE) {
 			uint16_t thrd = 0;
 			u8 reg;
-
+			if(data->light_enabled == SENSOR_DISABLE )
+			{
+				err = gp2a_regulator_onoff(dev, true);
+				if (err) {
+					pr_err("%s, Power Up Failed\n", __func__);
+					return err;
+				}
+			}
 			gp2a_prox_onoff(1, data);
 
 			err = gp2a_prox_open_calibration(data);
@@ -823,6 +846,14 @@ gp2a_prox_enable_store(struct device *dev, struct device_attribute *attr,
 	} else {
 
 		if (data->prox_enabled == SENSOR_ENABLE) {
+			if(data->light_enabled == SENSOR_DISABLE )
+			{
+				err = gp2a_regulator_onoff(dev, false);
+				if (err) {
+					pr_err("%s, Power Down Failed\n", __func__);
+					return err;
+				}
+			}
 			disable_irq(data->irq);
 			disable_irq_wake(data->irq);
 			gp2a_prox_onoff(0, data);
@@ -1447,7 +1478,7 @@ static int gp2a_setup_irq(struct gp2a_data *data)
 
 	pr_err("%s, start\n", __func__);
 
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 	rc = gpio_request(data->vled_gpio, "gpio_vled_en");
 	if (unlikely(rc < 0)) {
 		pr_err("%s: gpio %d request failed (%d)\n",
@@ -1467,7 +1498,7 @@ static int gp2a_setup_irq(struct gp2a_data *data)
 	if (unlikely(rc < 0)) {
 		pr_err("%s: gpio %d request failed (%d)\n",
 				__func__, data->gpio, rc);
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 		goto err_gpio_direction_output;
 #else
 		goto done;
@@ -1501,7 +1532,7 @@ static int gp2a_setup_irq(struct gp2a_data *data)
 err_request_irq:
 err_gpio_direction_input:
 	gpio_free(data->gpio);
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 err_gpio_direction_output:
 	gpio_free(data->vled_gpio);
 #endif
@@ -1525,7 +1556,7 @@ static int gp2a_parse_dt(struct gp2a_data *data, struct device *dev)
 		return -ENODEV;
 	}
 
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 	data->vled_gpio = of_get_named_gpio_flags(this_node,
 						"gp2a030a,vled_gpio", 0, &flags);
 	if (data->vled_gpio < 0) {
@@ -1630,7 +1661,7 @@ static int gp2a_probe(struct i2c_client *client,
 		goto input_register_device_err;
 	}
 
-#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 	err = sensors_create_symlink(&data->light_input_dev->dev.kobj, data->light_input_dev->name);
 	if (err < 0) {
 		pr_err("%s sensors_create_symlink light error\n", __func__);
@@ -1671,7 +1702,7 @@ static int gp2a_probe(struct i2c_client *client,
 		pr_err("%s input_register_device prox error\n", __func__);
 		goto input_register_prox_device_err;
 	}
-#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 	err = sensors_create_symlink(&data->prox_input_dev->dev.kobj, data->prox_input_dev->name);
 	if (err < 0) {
 		pr_err("%s sensors_create_symlink light error\n", __func__);
@@ -1717,6 +1748,11 @@ static int gp2a_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&data->prox_avg_work, gp2a_work_avg_prox);
 #endif
 #endif
+	err = gp2a_regulator_onoff(&client->dev, false);
+	if (err) {
+		pr_err("%s, Power Down Failed\n", __func__);
+		return err;
+	}
 
 	goto done;
 
@@ -1735,7 +1771,7 @@ sensors_register_light_err:
 	sysfs_remove_group(&data->prox_input_dev->dev.kobj,
 			&gp2a_prox_attribute_group);
 sysfs_create_group_prox_err:
-#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 	sensors_remove_symlink(&data->prox_input_dev->dev.kobj,
 			data->prox_input_dev->name);
 sensors_create_symlink_err:
@@ -1745,7 +1781,7 @@ input_register_prox_device_err:
 	input_free_device(data->prox_input_dev);
 input_allocate_prox_device_err:
 	gpio_free(data->gpio);
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 	gpio_free(data->vled_gpio);
 #endif
 err_setup_irq:
@@ -1753,7 +1789,7 @@ err_setup_irq:
 	sysfs_remove_group(&data->light_input_dev->dev.kobj,
 			&gp2a_light_attribute_group);
 sysfs_create_group_light_err:
-#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 	sensors_remove_symlink(&data->light_input_dev->dev.kobj,
 			data->light_input_dev->name);
 sensors_create_symlink_light_err:
@@ -1800,7 +1836,7 @@ static void gp2a_shutdown(struct i2c_client *client)
 	if (system_rev >= 12) {
 		gpio_free(data->con_gpio);
 	}
-#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G)
+#if !defined(CONFIG_SEC_BERLUTI_PROJECT) && !defined(CONFIG_MACH_MS01_EUR_3G) && !defined(CONFIG_MACH_MS01_EUR_LTE)
 	gpio_free(data->vled_gpio);
 #endif
 #endif
@@ -1814,14 +1850,28 @@ static int gp2a_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct gp2a_data *data = i2c_get_clientdata(client);
+	int err=0;
 
-#ifdef CONFIG_SENSORS_GP2A030A_PROX
-	disable_irq(data->irq);
-#endif
 	if (data->light_enabled) {
 		cancel_delayed_work_sync(&data->light_work);
 		lightsensor_onoff(0, data);
+		if(data->prox_enabled == SENSOR_DISABLE)
+		{
+			err = gp2a_regulator_onoff(&client->dev, false);
+			if (err) {
+				pr_err("%s, Power Down Failed\n", __func__);
+				return err;
+			}
+		}
 	}
+#ifdef CONFIG_SENSORS_GP2A030A_PROX
+	if (data->prox_enabled) {
+		disable_irq(data->irq);
+		/*enable_irq_wake(gp2a->irq); already wake irq enabled */
+	} else {
+		// Chip is Off and Power is also Off.
+	}
+#endif
 	pr_info("%s, is called\n", __func__);
 	return 0;
 }
@@ -1830,14 +1880,28 @@ static int gp2a_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct gp2a_data *data = i2c_get_clientdata(client);
+	int err=0;
 
 	if (data->light_enabled) {
 		lightsensor_onoff(1, data);
 		schedule_delayed_work(&data->light_work,
 				msecs_to_jiffies(data->light_delay));
+		if(data->prox_enabled == SENSOR_DISABLE)
+		{
+			err = gp2a_regulator_onoff(&client->dev, true);
+			if (err) {
+				pr_err("%s, Power Up Failed\n", __func__);
+				return err;
+			}
+		}
 	}
 #ifdef CONFIG_SENSORS_GP2A030A_PROX
-	enable_irq(data->irq);
+	if (data->prox_enabled) {
+		enable_irq(data->irq);
+		/*enable_irq_wake(gp2a->irq); already wake irq enabled */
+	} else {
+
+	}
 #endif
 	pr_info("%s, is called\n", __func__);
 	return 0;

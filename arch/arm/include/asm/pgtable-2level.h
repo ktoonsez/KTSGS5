@@ -241,7 +241,7 @@ extern void cpu_v7_tima_iommu_opt(unsigned long start,
 #ifdef  CONFIG_TIMA_RKP_L1_TABLES
 static inline void pmd_clear(pmd_t *pmdp)
 {
-	unsigned long cmd_id = 0x3f80a221;
+	unsigned long cmd_id =  0x3f80a221;
 	unsigned long tima_wr_out;
 
 	cpu_dcache_clean_area(pmdp, 8);	
@@ -307,7 +307,7 @@ static inline void set_pte_ext(pte_t *ptep,pte_t pte,unsigned int ext)
 
 #ifdef CONFIG_TIMA_RKP_LAZY_MMU
 
-#define TIMA_LAZY_MMU_CMDID  0x3f825221
+#define TIMA_LAZY_MMU_CMDID  0x25
 #define TIMA_LAZY_MMU_START  0
 #define TIMA_LAZY_MMU_STOP   1
 

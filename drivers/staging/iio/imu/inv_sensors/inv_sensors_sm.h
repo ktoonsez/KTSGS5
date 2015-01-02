@@ -45,9 +45,10 @@
 
 
 #define INVSENS_DATA_BUFFER_MAX (16)
-#define INVSENS_DATA_ITEM_MAX (48)
+#define INVSENS_DATA_ITEM_MAX (64)
 #define INVSENS_PACKET_HEADER (0x4956) /*IV*/
 #define INVSENS_COPY_BUFFER_SIZE (2048)
+#define INVSENS_DMP_DATUM (8)
 
 
 enum invsens_chip_type {

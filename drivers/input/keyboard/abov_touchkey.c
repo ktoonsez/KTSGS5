@@ -79,12 +79,12 @@ struct device *sec_touchkey;
 #define TK_FW_PATH_SDCARD "/sdcard/abov_fw.bin"
 
 #else
-#define FW_VERSION 0x02
+#define FW_VERSION 0x06
 
 #define FW_CHECKSUM_H 0x94
 #define FW_CHECKSUM_L 0x86
-#define FW_CHECKSUM_H_REV4 0x0A
-#define FW_CHECKSUM_L_REV4 0xC0
+#define FW_CHECKSUM_H_REV4 0xE4
+#define FW_CHECKSUM_L_REV4 0x02
 #define TK_FW_PATH_BIN "abov/abov_tk_hestia.fw"
 #define TK_FW_PATH_SDCARD "/sdcard/abov_fw_hestia.bin"
 #define TK_FW_PATH_BIN_REV4 "abov/abov_tk_hestia_rev4.fw"
@@ -229,8 +229,8 @@ static int abov_tk_i2c_write(struct i2c_client *client,
 			mutex_unlock(&info->lock);
 			return 0;
 		}
-		dev_err(&client->dev, "%s fail(%d)\n",
-			__func__, retry);
+		dev_err(&client->dev, "%s fail(%d) and val is %d\n ",
+			__func__, retry,*val);
 		msleep(10);
 	}
 	mutex_unlock(&info->lock);
@@ -254,12 +254,19 @@ static void release_all_fingers(struct abov_tk_info *info)
 static int abov_tk_reset_for_bootmode(struct abov_tk_info *info)
 {
 	struct i2c_client *client = info->client;
-
-	if (!info->pdata->gpio_rst) {
-		dev_err(&client->dev, "%s fail (no reset pin)\n", __func__);
-		return -1;
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	if (system_rev < 6) {
+		if (!info->pdata->gpio_rst) {
+			dev_err(&client->dev, "%s fail (no reset pin)\n", __func__);
+			return -1;
+		}
 	}
-
+#else
+	if (!info->pdata->gpio_rst) {
+			dev_err(&client->dev, "%s fail (no reset pin)\n", __func__);
+			return -1;
+	}
+#endif
 	gpio_direction_input(info->pdata->gpio_int);
 	if (system_rev >=01)
 		gpio_tlmm_config(GPIO_CFG(info->pdata->gpio_int,0,GPIO_CFG_INPUT,GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
@@ -268,14 +275,22 @@ static int abov_tk_reset_for_bootmode(struct abov_tk_info *info)
 
 	gpio_direction_output(info->pdata->gpio_scl, 0);
 	gpio_direction_output(info->pdata->gpio_sda, 0);
-
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	if (system_rev < 6)
+		gpio_direction_output(info->pdata->gpio_rst, 0);
+#else
 	gpio_direction_output(info->pdata->gpio_rst, 0);
+#endif
 #if defined(CONFIG_SEC_HESTIA_PROJECT)
         gpio_direction_output(info->pdata->gpio_tkey_led_en,0);
 #endif
 	msleep(100);
-
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	if (system_rev < 6)
+		gpio_direction_output(info->pdata->gpio_rst, 1);
+#else
 	gpio_direction_output(info->pdata->gpio_rst, 1);
+#endif
 #if defined(CONFIG_SEC_HESTIA_PROJECT)
         gpio_direction_output(info->pdata->gpio_tkey_led_en,1);
 #endif
@@ -406,6 +421,7 @@ static ssize_t touchkey_led_control(struct device *dev,
 #if defined(CONFIG_SEC_ATLANTIC_PROJECT)
 	led_flag = data;
 #endif
+	dev_notice(&client->dev, "%s: ,info->enabled = %d \n", __func__,info->enabled);
 	if (!info->enabled)
 		return count;
 
@@ -1252,12 +1268,21 @@ int abov_gpio_reg_init(struct device *dev,
 {
 	int ret = 0;
 
-	ret = gpio_request(pdata->gpio_rst, "tkey_gpio_rst");
-	if(ret < 0){
-		dev_err(dev, "unable to request gpio_rst\n");
-		return ret;
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	if (system_rev < 6) {
+		ret = gpio_request(pdata->gpio_rst, "tkey_gpio_rst");
+		if(ret < 0){
+			dev_err(dev, "unable to request gpio_rst\n");
+			return ret;
+		}
 	}
-
+#else
+	ret = gpio_request(pdata->gpio_rst, "tkey_gpio_rst");
+		if(ret < 0){
+			dev_err(dev, "unable to request gpio_rst\n");
+			return ret;
+		}
+#endif
 	ret = gpio_request(pdata->gpio_int, "tkey_gpio_int");
 	if(ret < 0){
 		dev_err(dev, "unable to request gpio_int\n");
@@ -1302,7 +1327,12 @@ static int abov_parse_dt(struct device *dev,
 	pdata->gpio_rst = of_get_named_gpio(np, "abov,rst-gpio", 0);
 	if(pdata->gpio_rst < 0){
 		dev_err(dev, "unable to get gpio_rst\n");
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	if (system_rev < 6)
 		return pdata->gpio_rst;
+#else
+	return pdata->gpio_rst;
+#endif
 	}
 	#ifdef CONFIG_SEC_ATLANTICLTE_COMMON
         if (system_rev < 03) {
@@ -1565,14 +1595,26 @@ static int abov_tk_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct abov_tk_info *info = i2c_get_clientdata(client);
-
+#if defined(CONFIG_SEC_ATLANTIC_PROJECT)
+	u8 cmd;
+#endif
 	if (!info->enabled)
 		return 0;
-	printk("Inside abov_tk_suspend \n");
 	dev_notice(&info->client->dev, "%s: users=%d\n", __func__,
 		   info->input_dev->users);
 
 	disable_irq(info->irq);
+#if defined(CONFIG_SEC_ATLANTIC_PROJECT)
+	if(led_flag){
+		 cmd = CMD_LED_OFF;
+		 led_flag = 0;
+		dev_notice(&info->client->dev, "%s: led_flag=%d\n", __func__,
+		   led_flag);
+		if(info->pdata->gpio_tkey_led_en >= 0)
+		gpio_direction_output(info->pdata->gpio_tkey_led_en,led_flag);
+		abov_tk_i2c_write(client, ABOV_BTNSTATUS, &cmd , 1);
+	}
+#endif
 	info->enabled = false;
 	release_all_fingers(info);
 #if defined (CONFIG_SEC_HESTIA_PROJECT)
@@ -1580,8 +1622,15 @@ static int abov_tk_suspend(struct device *dev)
 		info->pdata->power(info->pdata, false);
 #else
 	abov_sleep_mode(client, CMD_STOP_MODE);
-        if (info->pdata->gpio_rst)
-	    gpio_direction_output(info->pdata->gpio_rst, 0);
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	if (system_rev < 6) {
+        	if (info->pdata->gpio_rst)
+	    		gpio_direction_output(info->pdata->gpio_rst, 0);
+	}
+#else
+	if (info->pdata->gpio_rst)
+	    		gpio_direction_output(info->pdata->gpio_rst, 0);
+#endif
 #endif
 
 
@@ -1614,6 +1663,8 @@ static int abov_tk_resume(struct device *dev)
 #endif
 	info->enabled = true;
 #if defined(CONFIG_SEC_ATLANTIC_PROJECT)
+	dev_notice(&info->client->dev, "%s: led_flag=%d\n", __func__,
+		   led_flag);
 	if(led_flag){
 		 cmd = CMD_LED_ON;
 		if(info->pdata->gpio_tkey_led_en >= 0)

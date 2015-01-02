@@ -1336,6 +1336,7 @@ static int mpu65xx_read(struct mpu65xx_ctrl_t *dctl,
 	u8 regs[2];
 	u8 int_stat[2];
 	u16 count = 0;
+	int max_buffer = INVSENS_DATA_ITEM_MAX - buffer->count;
 
 #define BUFFER_LEN  256
 #define DMP_INT (0)
@@ -1347,6 +1348,10 @@ static int mpu65xx_read(struct mpu65xx_ctrl_t *dctl,
 	INV_DBG_FUNC_NAME;
 
 	if (dctl->is_pm_suspended)
+		return SM_SUCCESS;
+
+	/*not enough buffer*/
+	if(max_buffer<=0)
 		return SM_SUCCESS;
 
 	res = i2c_read_reg(dctl, MPU65XX_DMP_INT_STATUS, 2, int_stat);
@@ -1369,7 +1374,11 @@ static int mpu65xx_read(struct mpu65xx_ctrl_t *dctl,
 		* transfer to fw driver of dmp.
 		* because, mpu can't know the fifo format.
 		*/
-		count -= count % 8;
+		count -= count % INVSENS_DMP_DATUM;
+
+		/*recalculate byte count to leave remain data into fifo*/
+		count = INV_MIN(count, max_buffer*INVSENS_DMP_DATUM);
+
 		if (count > 0 && buffer->copy_buffer) {
 			i2c_read(dctl, MPU65XX_FIFO_R_W, count,
 				buffer->copy_buffer, res, exit_i2c_error);
@@ -1389,6 +1398,9 @@ static int mpu65xx_read(struct mpu65xx_ctrl_t *dctl,
 	} else {
 		if (count > 0) {
 			int packet_num = count / dctl->packet_size;
+
+			/*reset packet number to consider the buffer size of data list*/
+			packet_num = INV_MIN(packet_num, max_buffer);
 
 			do {
 				i2c_read(dctl, MPU65XX_FIFO_R_W,
@@ -1415,7 +1427,7 @@ static int mpu65xx_read(struct mpu65xx_ctrl_t *dctl,
 				}
 
 				packet_num--;
-			} while (packet_num > 0 && (buffer->count< INVSENS_DATA_ITEM_MAX - 1)) ;
+			} while (packet_num > 0);
 		}
 	}
 

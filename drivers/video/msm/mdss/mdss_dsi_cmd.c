@@ -649,7 +649,6 @@ void mdss_dsi_set_tear_on(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
-	cmdreq.rbuf = ctrl->rx_buf.data;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
@@ -663,7 +662,6 @@ void mdss_dsi_set_tear_off(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
-	cmdreq.rbuf = ctrl->rx_buf.data;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }

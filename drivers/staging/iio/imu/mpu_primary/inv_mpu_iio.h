@@ -200,7 +200,7 @@
 #define MAX_READ_SIZE            64
 #define POWER_UP_TIME            100
 #define SENSOR_UP_TIME           30
-#define REG_UP_TIME              2
+#define REG_UP_TIME              10
 #define INV_MPU_SAMPLE_RATE_CHANGE_STABLE 50
 #define MPU_MEM_BANK_SIZE        256
 #define SELF_TEST_GYRO_FULL_SCALE 250

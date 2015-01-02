@@ -141,7 +141,7 @@ struct mdnie_lite_tun_type mdnie_tun_state = {
 #ifdef MDNIE_LITE_MODE
 	.background = 0,
 #else
-	.background = STANDARD_MODE,
+	.background = AUTO_MODE,
 #endif /* MDNIE_LITE_MODE */
 	.outdoor = OUTDOOR_OFF_MODE,
 	.accessibility = ACCESSIBILITY_OFF,
@@ -277,9 +277,9 @@ static struct dsi_cmd_desc mdni_tune_cmd[] = {
 	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(tune_data5)}, tune_data5},
 	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(cmd_disable)}, cmd_disable},
 #else
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	{{DTYPE_DCS_LWRITE, 0, 0, 0, 0,
 		sizeof(level1_key)}, level1_key},
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	{{DTYPE_DCS_LWRITE, 0, 0, 0, 0,
 		sizeof(level2_key)}, level2_key},
 
 	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
@@ -406,7 +406,11 @@ void sending_tuning_cmd(void)
 #if defined(CONFIG_FB_MSM_MDSS_MDP3)
 		mdss_dsi_cmds_send(ctrl_pdata, mdni_tune_cmd, ARRAY_SIZE(mdni_tune_cmd));
 #else
-		mdss_dsi_cmds_send(ctrl_pdata, mdni_tune_cmd, ARRAY_SIZE(mdni_tune_cmd),0);
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_WXGA_PT_DUAL_PANEL)
+	mdss_dsi_cmds_send(ctrl_pdata, mdni_tune_cmd, ARRAY_SIZE(mdni_tune_cmd), CMD_REQ_SINGLE_TX);
+#else
+	mdss_dsi_cmds_send(ctrl_pdata, mdni_tune_cmd, ARRAY_SIZE(mdni_tune_cmd), 0);
+#endif
 #endif
 
 		mutex_unlock(&mdnie_msd->lock);
@@ -1354,6 +1358,55 @@ static char coordinate_data[][coordinate_data_size] = {
 	{0xfb, 0x00, 0xff, 0x00, 0xff, 0x00}, /* Tune_9 */
 };
 
+#elif defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_WXGA_PT_DUAL_PANEL)
+extern int flip;
+
+#define scr_wr_addr 36
+
+#define F1(x,y) ((y)-((164*(x))/151)+8)
+#define F2(x,y) ((y)-((70*(x))/67)-7)
+#define F3(x,y) ((y)+((181*(x))/35)-18852)
+#define F4(x,y) ((y)+((157*(x))/52)-12055)
+
+static char coordinate_data_main[][coordinate_data_size] = {
+	{0xff, 0x00, 0xff, 0x00, 0xff, 0x00}, /* dummy */
+	{0xff, 0x00, 0xfa, 0x00, 0xfa, 0x00}, /* Tune_1 */
+	{0xff, 0x00, 0xfb, 0x00, 0xfe, 0x00}, /* Tune_2 */
+	{0xfc, 0x00, 0xfb, 0x00, 0xff, 0x00}, /* Tune_3 */
+	{0xff, 0x00, 0xfe, 0x00, 0xfb, 0x00}, /* Tune_4 */
+	{0xff, 0x00, 0xff, 0x00, 0xff, 0x00}, /* Tune_5 */
+	{0xfb, 0x00, 0xfc, 0x00, 0xff, 0x00}, /* Tune_6 */
+	{0xfc, 0x00, 0xff, 0x00, 0xfa, 0x00}, /* Tune_7 */
+	{0xfb, 0x00, 0xff, 0x00, 0xfb, 0x00}, /* Tune_8 */
+	{0xfa, 0x00, 0xff, 0x00, 0xff, 0x00}, /* Tune_9 */
+};
+
+static char coordinate_data_sub[][coordinate_data_size] = {
+	{0xff, 0x00, 0xff, 0x00, 0xff, 0x00}, /* dummy */
+	{0xff, 0x00, 0xfa, 0x00, 0xfa, 0x00}, /* Tune_1 */
+	{0xff, 0x00, 0xfb, 0x00, 0xfe, 0x00}, /* Tune_2 */
+	{0xfc, 0x00, 0xfb, 0x00, 0xff, 0x00}, /* Tune_3 */
+	{0xff, 0x00, 0xfe, 0x00, 0xfb, 0x00}, /* Tune_4 */
+	{0xff, 0x00, 0xff, 0x00, 0xff, 0x00}, /* Tune_5 */
+	{0xfb, 0x00, 0xfc, 0x00, 0xff, 0x00}, /* Tune_6 */
+	{0xfc, 0x00, 0xff, 0x00, 0xfa, 0x00}, /* Tune_7 */
+	{0xfb, 0x00, 0xff, 0x00, 0xfb, 0x00}, /* Tune_8 */
+	{0xfa, 0x00, 0xff, 0x00, 0xff, 0x00}, /* Tune_9 */
+};
+
+static char coordinate_data[][coordinate_data_size] = {
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* dummy */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_1 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_2 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_3 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_4 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_5 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_6 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_7 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_8 */
+	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, /* Tune_9 */
+};
+
 #else
 #if defined(CONFIG_FB_MSM_MDSS_SAMSUNG_OCTA_VIDEO_720P_PT_PANEL) \
 	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_WXGA_PT_DUAL_PANEL)
@@ -1382,8 +1435,19 @@ static char coordinate_data[][coordinate_data_size] = {
 void coordinate_tunning(int x, int y)
 {
 	int tune_number;
-
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_CMD_HD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQXGA_S6E3HA1_PT_PANEL)
+	int i, j;
+#endif
 	tune_number = 0;
+
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_WXGA_PT_DUAL_PANEL)
+	pr_info("%s : coordinate for %s panel\n", __func__, flip?"main":"sub");
+
+	if (flip)
+		memcpy(coordinate_data, coordinate_data_main, 60);
+	else
+		memcpy(coordinate_data, coordinate_data_sub, 60);
+#endif
 
 	if (F1(x,y) > 0) {
 		if (F3(x,y) > 0) {
@@ -1417,6 +1481,21 @@ void coordinate_tunning(int x, int y)
 	}
 
 	pr_info("%s x : %d, y : %d, tune_number : %d", __func__, x, y, tune_number);
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_CMD_HD_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQXGA_S6E3HA1_PT_PANEL)
+	for(i = 0; i < mDNIe_eBOOK_MODE; i++)
+	{
+		for(j = 0; j < AUTO_MODE; j++)
+		{
+			if(mdnie_tune_value[i][j][0][1] != NULL)
+			{
+				if((mdnie_tune_value[i][j][0][1][scr_wr_addr] == 0xff) && (mdnie_tune_value[i][j][0][1][scr_wr_addr+2] == 0xff) && (mdnie_tune_value[i][j][0][1][scr_wr_addr+4] == 0xff))
+				{
+					memcpy(&mdnie_tune_value[i][j][0][1][scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
+				}
+			}
+		}
+	}
+#else
 	memcpy(&DYNAMIC_BROWSER_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&DYNAMIC_GALLERY_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 	memcpy(&DYNAMIC_UI_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
@@ -1439,7 +1518,7 @@ void coordinate_tunning(int x, int y)
 	memcpy(&AUTO_VT_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
 
 	memcpy(&CAMERA_2[scr_wr_addr], &coordinate_data[tune_number][0], coordinate_data_size);
-
+#endif
 
 }
 #endif /* COORDINATE_DATA_NONE */

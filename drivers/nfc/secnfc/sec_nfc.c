@@ -46,6 +46,11 @@
 #include <linux/nfc/sec_nfc.h>
 #include <linux/of_gpio.h>
 
+// Security
+#include <mach/scm.h>
+// End of Security
+
+
 #ifndef BU80003GUL
 
 #define BU80003GUL
@@ -190,13 +195,16 @@ static const struct file_operations fops_felica_epc = {
 
 int felica_epc_setLockState(int state)
 {
-	int ret;
-	unsigned char write_buff[2];
+	char cen;
+        int ret;
+        unsigned char write_buff[2];
 
-	write_buff[0] = 0x02;
-	write_buff[1] = state;
+	cen =1;
+
 	gwrite_msgs[0].buf = &write_buff[0];
 	gwrite_msgs[0].addr = I2C_ADDR;
+	write_buff[0] = 0x02;
+	write_buff[1] = state;
 	ret = i2c_transfer(bu80003gul_i2c_client->adapter, gwrite_msgs, 1);
         if (ret < 0) {
                 EPC_ERR(" %s ERROR(i2c_transfer), ret=[%d]",
@@ -341,17 +349,17 @@ static ssize_t felica_epc_write(struct file *file, const char __user *data,
 		return -EIO;
 	}
 
+	gwrite_msgs[0].buf = &write_buff[0];
+	gwrite_msgs[0].addr = I2C_ADDR;
+	write_buff[0] = I2C_ANT_ADDR;
+
 	ret = copy_from_user(&ant, data, len);
 	if (ret != 0) {
 		EPC_ERR("[MFDD] %s ERROR(copy_from_user), ret=[%d]",
 			       __func__, ret);
 		return -EFAULT;
 	}
-	write_buff[0] = I2C_ANT_ADDR;
 	write_buff[1] = ant;
-	gwrite_msgs[0].buf = &write_buff[0];
-	gwrite_msgs[0].addr = I2C_ADDR;
-
 	ret = i2c_transfer(bu80003gul_i2c_client->adapter, gwrite_msgs, 1);
 	if (ret < 0) {
 		EPC_ERR("[MFDD] %s ERROR(i2c_transfer), ret=[%d]",
@@ -615,6 +623,7 @@ static long sec_nfc_ioctl(struct file *file, unsigned int cmd,
 						struct sec_nfc_info, miscdev);
 	unsigned int mode = (unsigned int)arg;
 	int ret = 0;
+        int firm;
 
 	dev_dbg(info->dev, "%s: info: %p, cmd: 0x%x\n",
 			__func__, info, cmd);
@@ -642,6 +651,28 @@ static long sec_nfc_ioctl(struct file *file, unsigned int cmd,
 
 		break;
 
+	case SEC_NFC_SET_UART_STATE:
+		if (mode >= SEC_NFC_ST_COUNT) {
+			dev_err(info->dev, "wrong state (%d)\n", mode);
+			ret = -EFAULT;
+		break;
+	}
+
+                firm = gpio_get_value(info->pdata->firm);
+                pr_info("%s: [NFC] Firm pin = %d\n", __func__, firm); 
+
+		if(mode == SEC_NFC_ST_UART_ON)
+			gpio_set_value(info->pdata->firm, STATE_FIRM_HIGH);
+		else if(mode == SEC_NFC_ST_UART_OFF)
+			gpio_set_value(info->pdata->firm, STATE_FIRM_LOW);
+		else
+			ret = -EFAULT;
+
+                firm = gpio_get_value(info->pdata->firm);
+                pr_info("%s: [NFC] Mode = %d, Firm pin = %d\n", __func__, mode, firm);
+
+		break;
+
 	default:
 		dev_err(info->dev, "Unknow ioctl 0x%x\n", cmd);
 		ret = -ENOIOCTLCMD;
@@ -652,6 +683,31 @@ static long sec_nfc_ioctl(struct file *file, unsigned int cmd,
 
 	return ret;
 }
+
+// Security
+uint8_t check_custom_kernel(void)
+{
+
+	uint32_t fuse_id = SEC_NFC_FUSE_ID;
+	void *cmd_buf;
+	size_t cmd_len;
+	size_t resp_len = 0;
+	uint8_t resp_buf;
+
+	pr_info(" %s START \n", __func__);
+
+	resp_len = sizeof(resp_buf);
+	cmd_buf = (void *)&fuse_id;
+	cmd_len = sizeof(fuse_id);
+
+	scm_call(SEC_NFC_SVC_FUSE, SEC_NFC_IS_SW_FUSE_BLOWN_ID, cmd_buf,
+						cmd_len, &resp_buf, resp_len);
+	pr_info(" %s END resp_buf = %d\n",__func__, resp_buf);
+	
+	return resp_buf;
+}
+// End of Security
+
 
 static int sec_nfc_parse_dt(struct device *dev,
 	struct sec_nfc_platform_data *pdata)
@@ -671,8 +727,18 @@ static int sec_nfc_open(struct inode *inode, struct file *file)
 	struct sec_nfc_info *info = container_of(file->private_data,
 						struct sec_nfc_info, miscdev);
 	int ret = 0;
-
+	uid_t uid;
+// Security
 	dev_dbg(info->dev, "%s: info : %p" , __func__, info);
+
+    // Check process
+	uid = __task_cred(current)->uid;
+
+	if (g_secnfc_uid != uid) {
+		dev_err(info->dev, "%s: Un-authorized process. No access to device\n", __func__);
+		return -EPERM;
+	}
+// End of Security
 
 	mutex_lock(&info->mutex);
 	if (info->state != SEC_NFC_ST_OFF) {
@@ -685,6 +751,7 @@ static int sec_nfc_open(struct inode *inode, struct file *file)
 	mutex_lock(&info->read_mutex);
 	info->read_irq = SEC_NFC_NONE;
 	mutex_unlock(&info->read_mutex);
+	ret = sec_nfc_set_state(info, SEC_NFC_ST_NORM);
 #endif
 out:
 	mutex_unlock(&info->mutex);
@@ -770,6 +837,13 @@ static int sec_nfc_probe(struct platform_device *pdev)
 
 	pr_info("%s: enter - sec-nfc probe start\n", __func__);
 
+    // Check tamper
+    if (check_custom_kernel() == 1)
+    {
+//        pr_info("%s: The kernel is tampered. Couldn't initialize NFC. \n", __func__);
+//        return -EPERM;
+    }
+
 	if(dev) {
 		pr_info("%s: alloc for platform data\n", __func__);
 		pdata = kzalloc(sizeof(struct sec_nfc_platform_data), GFP_KERNEL);
@@ -834,6 +908,7 @@ static int sec_nfc_probe(struct platform_device *pdev)
 	info->miscdev.fops = &sec_nfc_fops;
 	info->miscdev.parent = dev;
 	ret = misc_register(&info->miscdev);
+
 	if (ret < 0) {
 		dev_err(dev, "failed to register Device\n");
 		goto err_dev_reg;
@@ -856,6 +931,15 @@ static int sec_nfc_probe(struct platform_device *pdev)
 
 
 	dev_dbg(dev, "%s: info: %p, pdata %p\n", __func__, info, pdata);
+
+#ifdef BU80003GUL
+/*	ret = i2c_add_driver(&bu80003gul_i2c_driver);
+	if (ret) {
+		dev_err(dev,"%s Failed to add the i2c driver for the EEPROM chip. ret:%d \n",__func__, ret);
+		goto err_gpio_firm;
+	}
+*/
+#endif /* BU80003GUL */
 
 	pr_info("%s: exit - sec-nfc probe finish\n", __func__);
 
@@ -910,7 +994,7 @@ static int sec_nfc_remove(struct platform_device *pdev)
 
 #ifdef BU80003GUL
 	i2c_del_driver(&bu80003gul_i2c_driver);
-	felica_epc_deregister();
+	felica_epc_deregister(); /*Naveen : TODO*/
 	class_destroy(eeprom_class);
 #endif
 	return 0;

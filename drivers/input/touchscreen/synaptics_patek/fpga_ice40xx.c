@@ -129,10 +129,10 @@ static int ice40_fpga_fimrware_update_start(struct synaptics_rmi4_data *rmi4_dat
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 
 	gpio_set_value(rmi4_data->dt_data->cresetb, 1);
-	usleep_range(1500, 1700);
+	usleep_range(40 * 1000, 42 * 1000);
 
 	gpio_set_value(rmi4_data->dt_data->cresetb, 0);
-	usleep_range(30, 50);
+	usleep_range(60, 100);
 
 	gpio_set_value(rmi4_data->dt_data->cresetb, 1);
 	usleep_range(1000, 1300);

@@ -119,8 +119,8 @@
 #define CPASS_MTX_21            (34 * 16 + 4)
 #define CPASS_MTX_22            (34 * 16 + 8)
 #define D_EXT_GYRO_BIAS_X       (61 * 16)
-#define D_EXT_GYRO_BIAS_Y       (61 * 16 + 4) + 4
-#define D_EXT_GYRO_BIAS_Z       (61 * 16 + 8) + 8
+#define D_EXT_GYRO_BIAS_Y       (61 * 16) + 4
+#define D_EXT_GYRO_BIAS_Z       (61 * 16) + 8
 #define D_ACT0                  (40 * 16)
 #define D_ACSX                  (40 * 16 + 4)
 #define D_ACSY                  (40 * 16 + 8)

@@ -35,7 +35,8 @@ extern int check_sm5502_jig_state(void);
 
 //static struct qpnp_vadc_chip *adc_client;
 static enum qpnp_vadc_channels temp_channel;
-static struct sec_fuelgauge_info *sec_fuelgauge =  NULL;
+static enum qpnp_vadc_channels chg_temp_channel;
+static struct sec_fuelgauge_info *sec_fuelgauge = NULL;
 
 #if defined(CONFIG_BATTERY_SAMSUNG_DATA)
 #include CONFIG_BATTERY_SAMSUNG_DATA_FILE
@@ -156,6 +157,32 @@ static void * samsung_battery_data;
 #define TEMP_HIGH_RECOVERY_LPM     470
 #define TEMP_LOW_THRESHOLD_LPM     (-15)
 #define TEMP_LOW_RECOVERY_LPM      (-10)
+#elif defined(CONFIG_MACH_ATLANTICLTE_VZW)
+#define TEMP_HIGH_THRESHOLD_EVENT  610
+#define TEMP_HIGH_RECOVERY_EVENT   490
+#define TEMP_LOW_THRESHOLD_EVENT   (-40)
+#define TEMP_LOW_RECOVERY_EVENT    (-10)
+#define TEMP_HIGH_THRESHOLD_NORMAL 510
+#define TEMP_HIGH_RECOVERY_NORMAL  470
+#define TEMP_LOW_THRESHOLD_NORMAL  (-25)
+#define TEMP_LOW_RECOVERY_NORMAL    0
+#define TEMP_HIGH_THRESHOLD_LPM    510
+#define TEMP_HIGH_RECOVERY_LPM     470
+#define TEMP_LOW_THRESHOLD_LPM     (-15)
+#define TEMP_LOW_RECOVERY_LPM       5
+#elif defined(CONFIG_MACH_ATLANTICLTE_USC)
+#define TEMP_HIGH_THRESHOLD_EVENT  600
+#define TEMP_HIGH_RECOVERY_EVENT   490
+#define TEMP_LOW_THRESHOLD_EVENT   (-40)
+#define TEMP_LOW_RECOVERY_EVENT    (-10)
+#define TEMP_HIGH_THRESHOLD_NORMAL 530
+#define TEMP_HIGH_RECOVERY_NORMAL  470
+#define TEMP_LOW_THRESHOLD_NORMAL  (-25)
+#define TEMP_LOW_RECOVERY_NORMAL    0
+#define TEMP_HIGH_THRESHOLD_LPM    510
+#define TEMP_HIGH_RECOVERY_LPM     470
+#define TEMP_LOW_THRESHOLD_LPM     (-15)
+#define TEMP_LOW_RECOVERY_LPM       5
 #elif defined(CONFIG_MACH_HESTIALTE_EUR)
 #define TEMP_HIGH_THRESHOLD_EVENT  640
 #define TEMP_HIGH_RECOVERY_EVENT   490
@@ -407,6 +434,35 @@ static sec_bat_adc_table_data_t temp_table[] = {
   {41667, -200},
 };
 #elif defined(CONFIG_MACH_ATLANTICLTE_ATT)
+static sec_bat_adc_table_data_t temp_table[] = {
+  {26050, 900},
+  {26273, 850},
+  {26524, 800},
+  {26847, 750},
+  {27037, 700},
+  {27456, 650},
+  {27942, 600},
+  {28513, 550},
+  {28890, 520},
+  {29150, 500},
+  {29595, 470},
+  {29903, 450},
+  {30773, 400},
+  {31738, 350},
+  {32758, 300},
+  {33836, 250},
+  {34871, 200},
+  {36007, 150},
+  {37110, 100},
+  {38207, 50},
+  {39164, 0},
+  {39558, -20},
+  {40054, -50},
+  {40696, -100},
+  {41294, -150},
+  {41828, -200},
+};
+#elif defined(CONFIG_MACH_ATLANTICLTE_USC) || defined(CONFIG_MACH_ATLANTICLTE_VZW)
 static sec_bat_adc_table_data_t temp_table[] = {
   {26050, 900},
   {26273, 850},
@@ -827,6 +883,9 @@ static sec_bat_adc_table_data_t temp_table[] = {
   {41420, -200},
 };
 #endif
+static sec_bat_adc_table_data_t chg_temp_table[] = {
+	{0, 0},
+};
 #endif //CONFIG_BATTERY_SAMSUNG_DATA
 
 
@@ -835,6 +894,8 @@ static void sec_bat_adc_ap_init(struct platform_device *pdev,
 {
   temp_channel = LR_MUX1_BATT_THERM;
   pr_info("%s :  temp_channel = %d\n", __func__,temp_channel);
+	if (battery->pdata->chg_temp_check)
+		chg_temp_channel = LR_MUX9_PU1_AMUX_THM5;
 }
 
 static int sec_bat_adc_ap_read(struct sec_battery_info *battery, int channel)
@@ -867,9 +928,20 @@ static int sec_bat_adc_ap_read(struct sec_battery_info *battery, int channel)
     pr_debug("BAT_ID physical= %lld, raw = 0x%x\n", results.physical, results.adc_code);
     data = results.physical;
     break;
-  default :
-    break;
-  }
+	case SEC_BAT_ADC_CHANNEL_CHG_TEMP:
+		rc = qpnp_vadc_read(NULL, chg_temp_channel, &results);
+		if (rc) {
+			pr_err("%s: Unable to read chg temperature rc=%d\n",
+				__func__, rc);
+			return 33000;
+		}
+		data = results.adc_code;
+		break;
+	default :
+		break;
+	}
+
+	pr_debug("%s: data(%d)\n", __func__, data);
 
   return data;
 }
@@ -1005,10 +1077,9 @@ bool sec_bat_check_callback(struct sec_battery_info *battery)
   return true;
 }
 
-bool sec_bat_check_cable_result_callback(
-    int cable_type)
+void sec_bat_check_cable_result_callback(struct device *dev,
+		int cable_type)
 {
-  return true;
 }
 
 int sec_bat_check_cable_callback(struct sec_battery_info *battery)
@@ -1058,8 +1129,13 @@ void board_battery_init(struct platform_device *pdev, struct sec_battery_info *b
       battery->pdata->temp_adc_table_size = sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t);
       battery->pdata->temp_amb_adc_table_size = sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t);
   }
-	
-	  
+	if ((!battery->pdata->chg_temp_adc_table) &&
+		(battery->pdata->chg_temp_check)) {
+		pr_info("%s : assign chg temp adc table\n", __func__);
+		battery->pdata->chg_temp_adc_table = chg_temp_table;
+		battery->pdata->chg_temp_adc_table_size = sizeof(chg_temp_table)/sizeof(sec_bat_adc_table_data_t);
+	}
+
   battery->pdata->event_check = true;
   battery->pdata->temp_high_threshold_event = TEMP_HIGH_THRESHOLD_EVENT;
   battery->pdata->temp_high_recovery_event = TEMP_HIGH_RECOVERY_EVENT;
@@ -1085,7 +1161,16 @@ battery->pdata->thermal_source = SEC_BATTERY_THERMAL_SOURCE_FG;
 if(system_rev<=1)
   battery->pdata->temp_check_type = SEC_BATTERY_TEMP_CHECK_NONE;
 #endif
-  adc_init_type(pdev, battery);
+
+#if defined(CONFIG_BATTERY_SWELLING)
+	battery->pdata->swelling_high_temp_block = BATT_SWELLING_HIGH_TEMP_BLOCK;
+	battery->pdata->swelling_high_temp_recov = BATT_SWELLING_HIGH_TEMP_RECOV;
+	battery->pdata->swelling_low_temp_blck = BATT_SWELLING_LOW_TEMP_BLOCK;
+	battery->pdata->swelling_low_temp_recov = BATT_SWELLING_LOW_TEMP_RECOV;
+	battery->pdata->swelling_rechg_voltage = BATT_SWELLING_RECHG_VOLTAGE;
+	battery->pdata->swelling_block_time = BATT_SWELLING_BLOCK_TIME;
+#endif
+	adc_init_type(pdev, battery);
 }
 
 void board_fuelgauge_init(struct sec_fuelgauge_info *fuelgauge)

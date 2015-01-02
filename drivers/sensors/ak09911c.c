@@ -870,7 +870,7 @@ static void ak09911c_power_enable(int en)
 	}
 	return;
 }
-#elif defined(CONFIG_SEC_BERLUTI_PROJECT)
+#elif defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_CHAGALL_KDI)
 static void ak09911c_power_enable(struct device *dev, bool onoff)
 {
 	struct regulator *ak09911c_vcc, *ak09911c_lvs1;
@@ -940,8 +940,11 @@ static int ak09911c_probe(struct i2c_client *client,
 #if defined(CONFIG_MACH_FRESCONEOLTE_CTC)
 	ak09911c_power_enable(1);
 	mdelay(10);
-#elif defined(CONFIG_SEC_BERLUTI_PROJECT)
+#elif defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_MACH_CHAGALL_KDI)
 	ak09911c_power_enable(&client->dev, 1);
+#endif
+#if defined(CONFIG_MACH_CHAGALL_KDI)
+	mdelay(10);
 #endif
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("[SENSOR]: %s - i2c_check_functionality error\n",
@@ -1100,6 +1103,7 @@ static struct i2c_driver ak09911c_driver = {
 
 static int __init ak09911c_init(void)
 {
+	printk(KERN_INFO" ak0911c_init \n");
 	return i2c_add_driver(&ak09911c_driver);
 }
 

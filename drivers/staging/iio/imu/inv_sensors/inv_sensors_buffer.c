@@ -100,7 +100,7 @@ static int kfifo_store_to(struct iio_buffer *r,
 
 	INVSENS_LOGD("header = %x,\n", packet_header);
 
-	if (packet_header != INVSENS_PACKET_HEADER) {
+	if (unlikely(packet_header != INVSENS_PACKET_HEADER)) {
 		INVSENS_LOGE("%s : invalid header = %x\n",
 			__func__, packet_header);
 		return -EFAULT;
@@ -108,7 +108,7 @@ static int kfifo_store_to(struct iio_buffer *r,
 
 	/*put packet into fifo as much as packet size*/
 	ret = kfifo_in(&kf->kf, data, packet_size);
-	if (ret != packet_size)
+	if (unlikely(ret != packet_size))
 		return -EBUSY;
 
 	r->stufftoread = true;
@@ -122,30 +122,39 @@ static int kfifo_read_first_n_kfifo(struct iio_buffer *r,
 {
 	int ret, copied;
 	struct invsens_fifo_t *kf = iio_to_kfifo(r);
+	u16 header[2];
 	u16 packet_header;
 	u16 packet_size;
+	u16 data_size;
 
-	if (n < r->bytes_per_datum)
+	if (unlikely(n < r->bytes_per_datum))
 		return -EINVAL;
 
 	/*get the header of packet and read the packet size*/
-	ret = kfifo_out(&kf->kf, (void *)&packet_header, sizeof(packet_header));
-	if (!ret)
+	ret = kfifo_out(&kf->kf, (void *)header, sizeof(header));
+	if (unlikely(!ret))
 		return -EINVAL;
 
-	ret = kfifo_out(&kf->kf, (void *)&packet_size, sizeof(packet_size));
-	if (!ret)
-		return -EINVAL;
+	packet_header = header[0];
+	packet_size = header[1];
 
-	if (packet_header != INVSENS_PACKET_HEADER) {
+	if (unlikely(packet_header != INVSENS_PACKET_HEADER)) {
 		INVSENS_LOGE("%s : invalid header = %x\n",
 			__func__, packet_header);
-		kfifo_reset(&kf->kf);
+		kfifo_reset_out(&kf->kf);
 		return -EFAULT;
 	}
 
 	/*find data size*/
-	n = packet_size - sizeof(packet_header) - sizeof(packet_size);
+	data_size = packet_size - sizeof(header);
+
+	if(data_size > n) {
+		INVSENS_LOGE("Data overflow, reset!!, datasize=%d, buffer=%d\n", data_size, n);
+		kfifo_reset_out(&kf->kf);
+		return -EFAULT;
+	}
+
+	n = data_size;
 
 	INVSENS_LOGD("%s : n = %d\n", __func__, n);
 

@@ -2146,6 +2146,8 @@ EXPORT_SYMBOL(synaptics_rmi4_force_calibration);
  * in that case we skip update on booting time.
  * otherwise we forced run the update during UMS update..
  */
+
+extern int system_rev;
 static bool synaptics_skip_firmware_update(struct synaptics_rmi4_data *rmi4_data,
 		const struct firmware *fw_entry)
 {
@@ -2160,12 +2162,15 @@ static bool synaptics_skip_firmware_update(struct synaptics_rmi4_data *rmi4_data
 	dev_info(&rmi4_data->i2c_client->dev, "%s: [prog bit] [0x%02X]\n",
 		__func__, rmi4_data->flash_prog_mode);
 
-
-	/* Discard BF35 f/w, so this routine may be removed several weeks later */
-	if((rmi4_data->ic_revision_of_ic == 0xBF)&&(rmi4_data->fw_version_of_ic == 0x35)){
-		dev_err(&rmi4_data->i2c_client->dev, "%s: Force firmware update for old IC\n",
-			__func__);
-		return false;
+	if (system_rev < 6) {
+		/* If old HW has FW above B019 or BF17, then It's not a proper FW. do FW update */
+		if (((rmi4_data->ic_revision_of_ic == 0xB0) && (rmi4_data->fw_version_of_ic >= 0x19)) ||
+			((rmi4_data->ic_revision_of_ic == 0xBF) && (rmi4_data->fw_version_of_ic >= 0x17))) {
+			dev_info(&rmi4_data->i2c_client->dev,
+				"%s: new hw's FW is in old hw\n",
+				__func__);
+			return false;
+		}
 	}
 
 	if (rmi4_data->flash_prog_mode) {
@@ -2174,16 +2179,9 @@ static bool synaptics_skip_firmware_update(struct synaptics_rmi4_data *rmi4_data
 		return false;
 	}
 
-#ifdef CONFIG_SEC_TSP_FACTORY
-	if (rmi4_data->ic_revision_of_ic == 0xB0) {
-		dev_info(&rmi4_data->i2c_client->dev, "%s: Do not need to update factory FW\n",
-			__func__);
-		return true;
-	}
-#endif
-
 	if ((rmi4_data->ic_revision_of_bin == rmi4_data->ic_revision_of_ic)
-		&& (rmi4_data->fw_version_of_bin <= rmi4_data->fw_version_of_ic)) {
+		&& (rmi4_data->fw_version_of_bin <= rmi4_data->fw_version_of_ic)
+		&& (rmi4_data->fw_version_of_ic < rmi4_data->fw_version_of_bin + 0x10)) {
 		dev_info(&rmi4_data->i2c_client->dev, "%s: Do not need to update\n",
 			__func__);
 		return true;
@@ -2199,7 +2197,7 @@ int synaptics_rmi4_fw_update_on_probe(struct synaptics_rmi4_data *rmi4_data)
 	unsigned char *fw_data = NULL;
 	char fw_path[SYNAPTICS_MAX_FW_PATH];
 
-#ifdef CONFIG_SEC_TSP_FACTORY
+#ifdef CONFIG_SEC_FACTORY
 	snprintf(fw_path, SYNAPTICS_MAX_FW_PATH,
 		"%s", rmi4_data->fac_firmware_name);
 #else

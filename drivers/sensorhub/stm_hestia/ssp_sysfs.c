@@ -630,7 +630,7 @@ static ssize_t set_prox_delay(struct device *dev,
 	return size;
 }
 
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 static ssize_t show_uv_delay(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -757,7 +757,7 @@ static struct device_attribute dev_attr_prox_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_prox_delay, set_prox_delay);
 
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 static struct device_attribute dev_attr_uv_poll_delay
 	= __ATTR(poll_delay, S_IRUGO | S_IWUSR | S_IWGRP,
 	show_uv_delay, set_uv_delay);
@@ -919,7 +919,7 @@ int initialize_sysfs(struct ssp_data *data)
 		&dev_attr_prox_poll_delay))
 		goto err_prox_input_dev;
 
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	if (device_create_file(&data->uv_input_dev->dev,
 		&dev_attr_uv_poll_delay))
 		goto err_uv_input_dev;
@@ -964,6 +964,9 @@ int initialize_sysfs(struct ssp_data *data)
 	initialize_pressure_factorytest(data);
 #endif
 	initialize_magnetic_factorytest(data);
+#ifdef CONFIG_SENSORS_SSP_UVIS25
+	initialize_uv_factorytest(data);
+#endif
 	initialize_mcu_factorytest(data);
 #if defined(CONFIG_SENSORS_SSP_TMG399X) || defined(CONFIG_SENSORS_SSP_MAX88921) || \
 	defined(CONFIG_SENSORS_SSP_MAX88920)
@@ -1000,7 +1003,7 @@ err_mag_input_dev:
 		&dev_attr_temp_humi_poll_delay);
 err_temp_humi_input_dev:
 #endif
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	device_remove_file(&data->uv_input_dev->dev,
 		&dev_attr_uv_poll_delay);
 err_uv_input_dev:
@@ -1036,7 +1039,7 @@ void remove_sysfs(struct ssp_data *data)
 	device_remove_file(&data->temp_humi_input_dev->dev,
 		&dev_attr_temp_humi_poll_delay);
 #endif
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	device_remove_file(&data->uv_input_dev->dev,
 		&dev_attr_uv_poll_delay);
 #endif
@@ -1060,6 +1063,9 @@ void remove_sysfs(struct ssp_data *data)
 	remove_pressure_factorytest(data);
 #endif
 	remove_magnetic_factorytest(data);
+#ifdef CONFIG_SENSORS_SSP_UVIS25
+	remove_uv_factorytest(data);
+#endif
 	remove_mcu_factorytest(data);
 #if defined(CONFIG_SENSORS_SSP_TMG399X) || defined(CONFIG_SENSORS_SSP_MAX88921) || \
 	defined(CONFIG_SENSORS_SSP_MAX88920)

@@ -47,7 +47,7 @@
 #define REGS_OPMOD		0x4 /* Write Only */
 #define REGS_CON		0x6 /* Write Only */
 
-#if defined(CONFIG_MACH_AFYONLTE_TMO)
+#if defined(CONFIG_MACH_AFYONLTE_TMO) || defined(CONFIG_MACH_AFYONLTE_MTR)
 #define PROX_NONDETECT			0x40
 
 #define PROX_DETECT				0x20

@@ -80,10 +80,10 @@ static int	bl_low_brightness_level = 2;
 static int	bl_dim_brightness_level = 12;
 static int	bl_default_brightness = 110;
 #elif defined(CONFIG_SEC_RUBENS_PROJECT)
-static int	bl_min_brightness = 1;
+static int	bl_min_brightness = 3;
 static int	bl_max_brightness_level  = 230;
 static int	bl_mid_brightness_level = 107;
-static int	bl_low_brightness_level = 1;
+static int	bl_low_brightness_level = 3;
 static int	bl_dim_brightness_level = 12;
 static int	bl_default_brightness = 100;
 #else
@@ -307,7 +307,14 @@ static void mdss_dsi_panel_cabc_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int siop_s
 		printk("%s: LCD not connected!\n",__func__);
 		return;
 	}
+#if defined(CONFIG_SEC_RUBENS_PROJECT)
+	if(siop_status)
+		lcd_cabc[1] = 0x03;
+	else
+		lcd_cabc[1]  = (unsigned char)siop_status;
+#else
 	lcd_cabc[1] = (unsigned char)siop_status;
+#endif
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &cabc_cmd;
 	cmdreq.cmds_cnt = 1;
@@ -1400,6 +1407,10 @@ static ssize_t mdss_auto_brightness_store(struct device *dev,
 		msd.dstat.auto_brightness = 5;
 	else if (sysfs_streq(buf, "6"))
 		msd.dstat.auto_brightness = 6;
+	else if (sysfs_streq(buf, "7"))
+		msd.dstat.auto_brightness = 7;
+	else if (sysfs_streq(buf, "8"))
+		msd.dstat.auto_brightness = 8;
 	else
 		pr_info("%s: Invalid argument!!", __func__);
 
@@ -1444,6 +1455,10 @@ static ssize_t mdss_disp_lcdtype_show(struct device *dev,
 	char temp[20];
 #if defined(CONFIG_MACH_DEGASLTE_SPR)
 	snprintf(temp, 20, "BOE_BP070WX1-300");
+#elif defined(CONFIG_SEC_RUBENSWIFI_COMMON)
+	snprintf(temp, 20, "INH_%x\n",lcd_id);
+#elif defined(CONFIG_SEC_RUBENSLTE_COMMON)
+	snprintf(temp, 20, "%x\n",lcd_id);
 #else
 	snprintf(temp, 20, "SMD_LSL080AL03");
 #endif
@@ -1913,6 +1928,30 @@ static ssize_t tuning_store(struct device *dev,
 }
 static DEVICE_ATTR(tuning, S_IRUGO | S_IWUSR | S_IWGRP,tuning_show,tuning_store);
 #endif
+static int mdss_dsi_panel_registered(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	if (pdata == NULL) {
+			pr_err("%s: Invalid input data\n", __func__);
+			return -EINVAL;
+	}
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	msd.mfd = (struct msm_fb_data_type *)registered_fb[0]->par;
+	msd.mpd = pdata;
+
+	if(!msd.mfd) {
+		pr_info("%s msd.mfd is null!!\n",__func__);
+	} else {
+		pr_info("%s msd.mfd is ok!!\n",__func__);
+	}
+
+	msd.mfd->resume_state = MIPI_RESUME_STATE;
+	pr_info("%s:%d, Panel registered succesfully\n", __func__, __LINE__);
+	return 0;
+}
+
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
@@ -1998,6 +2037,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->panel_reset = mdss_dsi_sdc_panel_reset;
+	ctrl_pdata->registered = mdss_dsi_panel_registered;
 #if  !defined(CONFIG_MACH_DEGASLTE_SPR)
 	ctrl_pdata->event_handler = samsung_dsi_panel_event_handler;
 #endif

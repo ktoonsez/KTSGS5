@@ -22,10 +22,17 @@
 static struct battery_data_t samsung_battery_data[] = {
 	/* SDI battery data (High voltage 4.35V) */
 	{
-    .RCOMP0 = 0x74,
-    .RCOMP_charging = 0x8D,
-    .temp_cohot = -1000,
-    .temp_cocold = -4350,
+	#if defined(CONFIG_MACH_RUBENSWIFI_OPEN)
+    .RCOMP0 = 0x75,
+    .RCOMP_charging = 0x75,
+    .temp_cohot = -100,
+    .temp_cocold = -3600,
+    #else
+	.RCOMP0 = 0x91,
+    .RCOMP_charging = 0x91,
+    .temp_cohot = -100,
+    .temp_cocold = -3600,
+    #endif
     .is_using_model_data = true,
     .type_str = "SDI",
 	}
@@ -35,15 +42,15 @@ static struct battery_data_t samsung_battery_data[] = {
 #define CAPACITY_MAX_MARGIN 50
 #define CAPACITY_MIN      0
 
-#define TEMP_HIGH_THRESHOLD_EVENT  520
+#define TEMP_HIGH_THRESHOLD_EVENT  550
 #define TEMP_HIGH_RECOVERY_EVENT   460
 #define TEMP_LOW_THRESHOLD_EVENT   (-50)
 #define TEMP_LOW_RECOVERY_EVENT    0
-#define TEMP_HIGH_THRESHOLD_NORMAL 520
+#define TEMP_HIGH_THRESHOLD_NORMAL 550
 #define TEMP_HIGH_RECOVERY_NORMAL  460
 #define TEMP_LOW_THRESHOLD_NORMAL  (-50)
 #define TEMP_LOW_RECOVERY_NORMAL   0
-#define TEMP_HIGH_THRESHOLD_LPM    520
+#define TEMP_HIGH_THRESHOLD_LPM    550
 #define TEMP_HIGH_RECOVERY_LPM     460
 #define TEMP_LOW_THRESHOLD_LPM     (-50)
 #define TEMP_LOW_RECOVERY_LPM      0
@@ -72,6 +79,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
   {40669, -100},
   {41184, -150},
   {41686, -200},
+};
+
+static sec_bat_adc_table_data_t chg_temp_table[] = {
+	{0, 0},
 };
 
 #endif /* __SEC_BATTERY_DATA_H */

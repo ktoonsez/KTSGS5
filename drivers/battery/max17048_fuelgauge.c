@@ -387,7 +387,7 @@ static int max17048_get_soc(struct i2c_client *client)
 		soc = (data[0] * 100) + (data[1] * 100 / 256);
 	}
 
-	dev_dbg(&client->dev,
+	dev_info(&client->dev,
 		"%s : raw capacity (%d), data(0x%04x)\n",
 		__func__, soc, (data[0]<<8) | data[1]);
 
@@ -501,7 +501,7 @@ static bool max17048_check_fg_validity(struct i2c_client *client)
 	temp = max17048_read_word(client, 0x1A);
 	data = temp & 0xff;
 
-	if (data & 0x01) {
+	if (0/* data & 0x01 */) {
 		dev_err(&client->dev,
 			"%s : IC is not configured. init modeldata reg(0x%x)\n", __func__, data);
 		if (!max17048_set_modeldata(client)) {

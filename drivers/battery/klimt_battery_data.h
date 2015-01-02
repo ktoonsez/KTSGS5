@@ -74,6 +74,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 	{-350,  -400},
 };
 
+static sec_bat_adc_table_data_t chg_temp_table[] = {
+	{0, 0},
+};
+
 #define TEMP_HIGH_THRESHOLD_EVENT	540
 #define TEMP_HIGH_RECOVERY_EVENT	470
 #define TEMP_LOW_THRESHOLD_EVENT	-50

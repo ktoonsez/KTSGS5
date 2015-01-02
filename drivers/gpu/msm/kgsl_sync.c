@@ -118,6 +118,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	struct sync_pt *pt;
 	struct sync_fence *fence = NULL;
 	int ret = -EINVAL;
+	char fence_name[sizeof(fence->name)] = {};
 
 	priv.fence_fd = -1;
 
@@ -144,8 +145,13 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 		ret = -ENOMEM;
 		goto unlock;
 	}
+	snprintf(fence_name, sizeof(fence_name),
+		"%s-pid-%d-ctx-%d-ts-%d",
+		device->name, current->group_leader->pid,
+		context_id, timestamp);
 
-	fence = sync_fence_create("kgsl-fence", pt);
+
+	fence = sync_fence_create(fence_name, pt);
 	if (fence == NULL) {
 		/* only destroy pt when not added to fence */
 		kgsl_sync_pt_destroy(pt);
@@ -175,6 +181,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	 * Hold the context ref-count for the event - it will get released in
 	 * the callback
 	 */
+
 	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 	ret = kgsl_add_event(device, context_id, timestamp,
@@ -192,10 +199,10 @@ unlock:
 
 out:
 	if (priv.fence_fd >= 0)
-	put_unused_fd(priv.fence_fd);
+		put_unused_fd(priv.fence_fd);
 
 	if (fence)
-	sync_fence_put(fence);
+		sync_fence_put(fence);
 
 	kgsl_context_put(context);
 	kfree(event);

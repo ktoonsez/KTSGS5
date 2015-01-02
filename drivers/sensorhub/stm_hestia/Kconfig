@@ -159,12 +159,12 @@ config SENSORS_MLX90615
 	help
 	  bodytemp bodytemp bodytemp bodytemp bodytemp bodytemp
 
-config SENSORS_BGM
-	tristate "Blood glucuse sensor"
+config SENSORS_BIO
+	tristate "BIO sensor control"
 	depends on SYSFS
 	default n
 	help
-	  bgm sensor control
+	  bio sensor control
 
 config SENSORS_SSP_BOUNCE_FIRMWARE
 	tristate "Sensors ssp BOUNCE_FIRMWARE"
@@ -174,14 +174,5 @@ config SENSORS_SSP_BOUNCE_FIRMWARE
 	  This is for Bounce firmware support.
           If you say yes here you get bounce firmware support.
 	  If you say no here bounce firmware will not be supported.
-
-config SENSORS_SSP_UV
-	tristate "Sensors ssp UV"
-	default n
-	depends on SENSORS_SSP
-	help
-	  This is for UV Sensor device driver.
-          If you say yes here you get uv sensor support.
-	  If you say no here uv sensor will not be supported.
 
 source "drivers/sensorhub/stm_hestia/factory/Kconfig"

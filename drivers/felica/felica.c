@@ -42,6 +42,8 @@
  * log
  ******************************************************************************/
 #include <mach/sec_debug.h>
+#define NO_CHECK_TAMPER
+#define SRIB_DIAG_ENABLED
 
 /******************************************************************************
  * Board configuration
@@ -61,6 +63,7 @@ static struct platform_device *felica_gpio_pdev;
 #if defined(CONFIG_MACH_HLTEDCM)
 static int g_uicc_initrev = 7;		//HW Rev 0.9
 static int gfelica_sps_pin = 130;	//Select Power Supply
+static int gfelica_hsel_pin = GPIO_PINID_NFC_HSEL;
 #define HW_REV09_OR_10		7	// to fix hltedcm i2c h/w issue in REV 09/10.
 extern void of_sii8240_hw_poweron(bool enable);  // to fix hltedcm i2c h/w issue in REV 09/10.  Defined in driver/video/msm/mhl_v2/sii8240.c
 /* K MODEL */
@@ -82,9 +85,11 @@ static int gfelica_uim_mon = 0;
 #elif defined(CONFIG_MACH_HLTEKDI)
 static int g_uicc_initrev = 4;
 static int gfelica_sps_pin = -1;
+static int gfelica_hsel_pin = GPIO_PINID_NFC_HSEL;
 #elif defined(CONFIG_MACH_JS01LTEDCM)
 static int g_uicc_initrev = 8;      // HW Rev 0.4
 static int gfelica_sps_pin = 130;	// Select Power Supply
+static int gfelica_hsel_pin = GPIO_PINID_NFC_HSEL;
 #endif
 #endif /* CONFIG_ARCH_MSM8974 */
 
@@ -847,8 +852,10 @@ static void felica_nl_recv_msg(struct sk_buff *skb)
 			felica_uart_port = 1;
 #elif defined(CONFIG_ARCH_APQ8064)
 			felica_uart_port = 2;
-#elif defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
+#elif defined(CONFIG_MACH_KLTE_DCM) || defined(CONFIG_MACH_KLTE_KDI) || defined(CONFIG_MACH_KLTE_SBM)
 			felica_uart_port = 2;
+#elif defined(CONFIG_MACH_HLTEDCM)	|| defined(CONFIG_MACH_HLTEKDI) || defined(CONFIG_MACH_JS01LTEDCM)
+			felica_uart_port = 1;
 #endif
 
 			felica_set_felica_info();
@@ -913,9 +920,9 @@ static void felica_nl_recv_msg(struct sk_buff *skb)
 static void felica_set_felica_info(void)
 {
 	FELICA_PR_DBG(" %s START ", __func__);
-	memset(gdiag_name, '\0', DIAG_NAME_MAXSIZE + 1);
+	memset(gdiag_name, 0x00, DIAG_NAME_MAXSIZE + 1);
 #ifdef FELICA_UICC_FUNCTION
-	memset(gproc_name, '\0', PROC_NAME_MAXSIZE + 1);
+	memset(gproc_name, 0x00, PROC_NAME_MAXSIZE + 1);
 #endif
 	gread_msgs[0].flags = gfa_rcv_str[MSG_READ1_FLAGS_OFFSET];
 	gread_msgs[0].len = gfa_rcv_str[MSG_READ1_LEN_OFFSET];
@@ -2251,8 +2258,8 @@ static void felica_int_poll_init(void)
 		cdev_del(&cdev_felica_int_poll);
 		unregister_chrdev_region(devid_felica_int_poll,
 					 FELICA_MINOR_COUNT);
-		FELICA_PR_ERR(" %s ERROR(request_irq)= %d, ret=[%d]",
-			       __func__,GPIO_PINID_FELICA_INT,ret);
+		FELICA_PR_ERR(" %s ERROR(request_irq), ret=[%d]",
+			       __func__,ret);
 		return;
 	}
 #if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
@@ -3203,7 +3210,7 @@ static ssize_t hsel_read(struct file *file, char __user *buf, size_t len,
 	ret = ice_gpiox_get(GPIO_PINID_NFC_HSEL);
 #elif defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
 	ret = gpio_get_value(gfelica_hsel_pin);
-#endif
+	#endif
 	if (0 > ret) {
 		FELICA_PR_ERR(" %s ERROR(gpio_get_value), ret=[%d]",
 					__func__, ret);
@@ -3265,7 +3272,7 @@ static ssize_t hsel_write(struct file *file, const char __user *data,\
 	ice_gpiox_set(GPIO_PINID_NFC_HSEL , hsel_val);
 #elif defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
 	gpio_set_value(gfelica_hsel_pin , hsel_val);
-#endif
+    #endif
 
 	FELICA_PR_DBG(" %s END", __func__);
 	return 1;

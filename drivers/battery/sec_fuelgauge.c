@@ -32,6 +32,7 @@ static enum power_supply_property sec_fuelgauge_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TEMP_AMBIENT,
+	POWER_SUPPLY_PROP_ENERGY_FULL,
 };
 
 /* capacity is  0.1% unit */
@@ -43,7 +44,7 @@ static void sec_fg_get_scaled_capacity(
 		0 : ((val->intval - fuelgauge->pdata->capacity_min) * 1000 /
 		(fuelgauge->capacity_max - fuelgauge->pdata->capacity_min));
 
-	dev_dbg(&fuelgauge->client->dev,
+	dev_info(&fuelgauge->client->dev,
 		"%s: scaled capacity (%d.%d)\n",
 		__func__, val->intval/10, val->intval%10);
 
@@ -103,6 +104,7 @@ static int sec_fg_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY:
 	case POWER_SUPPLY_PROP_TEMP:
 	case POWER_SUPPLY_PROP_TEMP_AMBIENT:
+	case POWER_SUPPLY_PROP_ENERGY_FULL:
 		if (!sec_hal_fg_get_property(fuelgauge->client, psp, val))
 			return -EINVAL;
 		if (psp == POWER_SUPPLY_PROP_CAPACITY) {

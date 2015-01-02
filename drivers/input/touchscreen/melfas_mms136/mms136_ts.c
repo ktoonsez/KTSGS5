@@ -83,9 +83,6 @@
 struct device *sec_touchscreen;
 int touch_is_pressed;
 
-#define MAX_ANGLE		90
-#define MIN_ANGLE		-90
-
 #define MMS_CORE_VERSION	0xE1
 #define MMS_TSP_REVISION	0xF0
 #define MMS_HW_REVISION		0xF1

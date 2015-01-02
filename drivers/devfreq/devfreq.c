@@ -131,26 +131,9 @@ static int devfreq_update_status(struct devfreq *devfreq, unsigned long freq)
 		return 0;
 
 	prev_lev = devfreq_get_freq_level(devfreq, devfreq->previous_freq);
-
 	if(prev_lev < 0)
 		return 0;
 
-	/*
-	if (freq != devfreq->previous_freq) {
-		prev_lev = devfreq_get_freq_level(devfreq,
-						devfreq->previous_freq);
-		BUG_ON(prev_lev == -EINVAL);
-	*/
-
-
-	/* The previous_freq value for a device could be an invalid frequency
-	 * that results in an error value being returned from
-	 * devfreq_get_freq_level(). Check for an error value before using that
-	 * to index into the transition table.
-	 * 
-	 * Not doing this will result in memory corruption when previous_freq is
-	 * invalid.
-	 */
 	if(lev != prev_lev) {
 		devfreq->trans_table[(prev_lev *
 				devfreq->profile->max_state) + lev]++;

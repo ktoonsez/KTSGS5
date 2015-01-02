@@ -129,7 +129,7 @@ bool sec_get_param(enum sec_param_index index, void *value)
 				sizeof(unsigned int));
 		break;
 #endif
-#ifdef CONFIG_GSM_MODEM_SPRD6500
+#if defined(CONFIG_GSM_MODEM_SPRD6500) || defined(CONFIG_SGLTE_QSC_MODEM)
 	case param_update_cp_bin:
 		memcpy(value, &(param_data->update_cp_bin),
 				sizeof(unsigned int));
@@ -197,7 +197,7 @@ bool sec_set_param(enum sec_param_index index, void *value)
 				value, sizeof(unsigned int));
 		break;
 #endif
-#ifdef CONFIG_GSM_MODEM_SPRD6500
+#if defined(CONFIG_GSM_MODEM_SPRD6500) || defined(CONFIG_SGLTE_QSC_MODEM)
 	case param_update_cp_bin:
 		memcpy(&(param_data->update_cp_bin),
 				value, sizeof(unsigned int));
@@ -248,7 +248,7 @@ static ssize_t movinand_checksum_done_show
 		pr_err("checksum is not in valuable range.\n");
 		ret = 1;
 	}
-	return snprintf(buf, sizeof(buf), "%u\n", ret);
+	return snprintf(buf, PAGE_SIZE, "%u\n", ret);
 }
 static DEVICE_ATTR(movinand_checksum_done,
 				0664, movinand_checksum_done_show, NULL);
@@ -263,7 +263,7 @@ static ssize_t movinand_checksum_pass_show
 		pr_err("checksum is not in valuable range.\n");
 		ret = 1;
 	}
-	return snprintf(buf, sizeof(buf), "%u\n", ret);
+	return snprintf(buf, PAGE_SIZE, "%u\n", ret);
 }
 static DEVICE_ATTR(movinand_checksum_pass,
 				0664, movinand_checksum_pass_show, NULL);

@@ -44,3 +44,10 @@ config BMA250_FACTORY
 	depends on I2C
 	help
 	  bma250 file for factory test in adsp.
+
+config YAS532_FACTORY
+	tristate "factory test for adsp - yas532"
+	default n
+	depends on I2C
+	help
+	  yas532 file for factory test in adsp.

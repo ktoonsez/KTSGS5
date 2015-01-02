@@ -1565,7 +1565,7 @@ static struct rcg_clk pdm2_clk_src = {
 	},
 };
 
-/* This table is for MSM8974Pro AC SDCC1 */
+/* For MSM8974Pro SDCC1 */
 static struct clk_freq_tbl ftbl_gcc_sdcc1_apps_clk_ac[] = {
 	F(   144000,    cxo,  16,   3,  25),
 	F(   400000,    cxo,  12,   1,   4),
@@ -1578,11 +1578,7 @@ static struct clk_freq_tbl ftbl_gcc_sdcc1_apps_clk_ac[] = {
 	F_END
 };
 
-/*
- * This table is for:
- * 1) SDCC[1-4] on MSM8974Pro AB, MSM8974 v2 and before
- * 2) SDCC[2-4] on MSM8974Pro AC
- */
+/* For SDCC1 on MSM8974 v2 and SDCC[2-4] on all MSM8974 */
 static struct clk_freq_tbl ftbl_gcc_sdcc1_4_apps_clk[] = {
 	F(   144000,    cxo,  16,   3,  25),
 	F(   400000,    cxo,  12,   1,   4),
@@ -3244,6 +3240,9 @@ static struct rcg_clk edppixel_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_mdss_esc0_1_clk[] = {
+#if defined(CONFIG_SEC_PATEK_PROJECT)
+	F_MDSS(12000000, dsipll0_byte, 5, 0,0),
+#endif
 	F_MM(19200000,    cxo,   1,   0,   0),
 	F_MDSS(8920000,  dsipll0_byte,   7,   0,   0),
 	F_END
@@ -5010,6 +5009,12 @@ static struct clk_lookup msm_clocks_8974pro_only[] __initdata = {
 #else
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup5_spi_apps_clk.c, ""),
 #endif
+
+#if defined(CONFIG_NFC_PN547) && defined(CONFIG_SEC_LOCALE_JPN)
+	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f9965000.i2c"), /* BLSP#9 */
+	CLK_LOOKUP("core_clk", gcc_blsp2_qup3_i2c_apps_clk.c, "f9965000.i2c"), /* BLSP#9 */
+#endif
+
 #if defined (CONFIG_SENSORS_SSP_STM)
 	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f9967000.spi"),
 #else
@@ -5027,7 +5032,7 @@ static struct clk_lookup msm_clocks_8974pro_only[] __initdata = {
 #ifdef CONFIG_SND_SOC_ES705
 	CLK_LOOKUP("osr_clk", div_clk1.c, "es705_mclk_dev"),
 #endif
-#if defined(CONFIG_NFC_PN547_PMC8974_CLK_REQ) 
+#if defined(CONFIG_NFC_PN547_PMC8974_CLK_REQ)
 #ifdef CONFIG_MACH_PATEKLTE_CTC
 	CLK_LOOKUP("nfc_clk", cxo_d1_pin.c, "2-002b"),
 #else
@@ -5083,7 +5088,7 @@ static struct clk_lookup msm_clocks_8974_only[] __initdata = {
 	CLK_LOOKUP("core_clk", gcc_blsp2_qup2_i2c_apps_clk.c, "f9964000.i2c"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9925000.i2c"), /* BLSP#3 */
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"), /* BLSP#3 */
-	
+
 
 	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f995d000.uart"),
 	CLK_LOOKUP("core_clk", gcc_blsp2_uart1_apps_clk.c, "f995d000.uart"),
@@ -5182,7 +5187,7 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 #ifdef CONFIG_FELICA
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9922000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart6_apps_clk.c, "f9922000.serial"),
-	
+
 #else
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart6_apps_clk.c, ""),
 #endif
@@ -5316,6 +5321,7 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("core_clk", mdss_edpaux_clk.c, "fd923400.qcom,mdss_edp"),
 	CLK_LOOKUP("pixel_clk", mdss_edppixel_clk.c, "fd923400.qcom,mdss_edp"),
 	CLK_LOOKUP("link_clk", mdss_edplink_clk.c, "fd923400.qcom,mdss_edp"),
+	CLK_LOOKUP("mdp_core_clk", mdss_mdp_clk.c, "fd923400.qcom,mdss_edp"),
 	CLK_LOOKUP("byte_clk", mdss_byte0_clk.c, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP("byte_clk", mdss_byte1_clk.c, "fd922e00.qcom,mdss_dsi"),
 	CLK_LOOKUP("core_clk", mdss_esc0_clk.c, "fd922800.qcom,mdss_dsi"),
@@ -5328,6 +5334,10 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("pixel_clk", mdss_pclk1_clk.c, "fd922e00.qcom,mdss_dsi"),
 	CLK_LOOKUP("mdp_core_clk", mdss_mdp_clk.c, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP("mdp_core_clk", mdss_mdp_clk.c, "fd922e00.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922800.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922e00.qcom,mdss_dsi"),
 	CLK_LOOKUP("iface_clk", mdss_ahb_clk.c, "fd922100.qcom,hdmi_tx"),
 	CLK_LOOKUP("alt_iface_clk", mdss_hdmi_ahb_clk.c,"fd922100.qcom,hdmi_tx"),
 	CLK_LOOKUP("core_clk", mdss_hdmi_clk.c, "fd922100.qcom,hdmi_tx"),
@@ -6032,11 +6042,9 @@ static void __init msm8974_pro_clock_override(void)
 	ce2_clk_src.c.fmax[VDD_DIG_NOMINAL] = 150000000;
 	ce2_clk_src.freq_tbl = ftbl_gcc_ce2_pro_clk;
 
-	if (cpu_is_msm8974pro_ac()) {
-		sdcc1_apps_clk_src.c.fmax[VDD_DIG_LOW] = 200000000;
-		sdcc1_apps_clk_src.c.fmax[VDD_DIG_NOMINAL] = 400000000;
-		sdcc1_apps_clk_src.freq_tbl = ftbl_gcc_sdcc1_apps_clk_ac;
-	}
+	sdcc1_apps_clk_src.c.fmax[VDD_DIG_LOW] = 200000000;
+	sdcc1_apps_clk_src.c.fmax[VDD_DIG_NOMINAL] = 400000000;
+	sdcc1_apps_clk_src.freq_tbl = ftbl_gcc_sdcc1_apps_clk_ac;
 
 	vfe0_clk_src.c.fmax[VDD_DIG_LOW] = 150000000;
 	vfe0_clk_src.c.fmax[VDD_DIG_NOMINAL] = 320000000;

@@ -38,6 +38,8 @@
 #include <asm/uaccess.h>
 #include <linux/nfc/sec_nfc.h>
 #include <linux/of_gpio.h>
+#include <mach/kactive_felica_gpio.h>
+
 
 enum push_state {
 	PUSH_NONE,
@@ -100,35 +102,28 @@ static long sec_nfc_fn_ioctl(struct file *file, unsigned int cmd,
 {
 	struct sec_nfc_fn_info *info = container_of(file->private_data,
 						struct sec_nfc_fn_info, miscdev);
+
+        void __user *argp = (void __user *)arg;
 	int ret = 0;
+        int state = 0;
 
 	dev_dbg(info->dev, "%s: info: %p, cmd: 0x%x\n",
 			__func__, info, cmd);
 
 	switch (cmd) {
 	case SEC_NFC_GET_PUSH:
-		dev_dbg(info->dev, "%s: sec_nfc_fn_GET_PUSH\n", __func__);
-
 		mutex_lock(&info->push_mutex);
+        state = gpio_get_value(of_get_named_gpio(info->dev->of_node, "sec-nfc-fn,int-gpio", 0));
 
-		if (copy_to_user( (unsigned char *)arg, &info->push_irq,
-			sizeof(info->push_irq)) != 0) {
+        pr_info("%s: copy push pin value - state : %d\n", __func__, state);
+		if (copy_to_user(argp, &state,
+			sizeof(state)) != 0) {
 			dev_err(info->dev, "copy failed to user\n");
 		}
 		info->push_irq = PUSH_NONE;
 		mutex_unlock(&info->push_mutex);
 
 		break;
-    case SEC_NFC_READABLE:
-		ret = info->readable;
-
-		mutex_lock(&info->confirm_mutex);
-		if ((enum readable_state)arg != RDABLE_NULL)
-		{
-			info->readable = (enum readable_state)arg;
-		}
-		mutex_unlock(&info->confirm_mutex);
-        break;
 	default:
 		dev_err(info->dev, "Unknow ioctl 0x%x\n", cmd);
 		ret = -ENOIOCTLCMD;
@@ -154,8 +149,15 @@ static int sec_nfc_fn_open(struct inode *inode, struct file *file)
 	struct sec_nfc_fn_info *info = container_of(file->private_data,
 						struct sec_nfc_fn_info, miscdev);
 	int ret = 0;
+	uid_t uid;
 
 	dev_dbg(info->dev, "%s: info : %p" , __func__, info);
+	
+	uid = __task_cred(current)->uid;
+	if (g_secnfc_uid != uid) {
+		dev_err(info->dev, "%s: Un-authorized process. No access to device\n", __func__);
+		return -EPERM;
+	}
 
 	mutex_lock(&info->push_mutex);
 	info->push_irq = PUSH_NONE;
@@ -228,6 +230,13 @@ static int sec_nfc_fn_probe(struct platform_device *pdev)
 
 	printk("sec-nfc-fn probe start\n");
 
+    // Check tamper
+    if (check_custom_kernel() == 1)
+    {
+        pr_info("%s: The kernel is tampered. Couldn't initialize NFC. \n", __func__);
+        //return -EPERM;
+    }
+
 	if(dev) {
 		pr_info("%s: alloc for fn platform data\n", __func__);
 		pdata = kzalloc(sizeof(struct sec_nfc_fn_platform_data), GFP_KERNEL);
@@ -288,7 +297,7 @@ static int sec_nfc_fn_probe(struct platform_device *pdev)
 		goto err_dev_reg;
 	}
 
-	dev_dbg(dev, "%s: info: %p, pdata %p\n", __func__, info, pdata);
+	printk("sec-nfc-fn probe finish\n");
 
 	return 0;
 
@@ -298,8 +307,6 @@ err_push_req:
 err_info_alloc:
 	kfree(info);
 err_pdata:
-
-	printk("sec-nfc-fn probe finish\n");
 
 	return ret;
 }

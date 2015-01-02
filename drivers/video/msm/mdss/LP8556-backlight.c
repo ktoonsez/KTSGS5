@@ -180,13 +180,24 @@ static u8 channel_setting[][2] ={
 	{0xA3, 0x5E},
 	{0xA5, 0x34},
 };
+#elif defined(CONFIG_SEC_RUBENS_PROJECT)
+#if defined(CONFIG_SEC_RUBENSLTE_COMMON)
+static u8 channel_setting[][2] ={
+	{0x01, 0x85},
+	{0xA7, 0xC7},
+	{0xA3, 0x5E},
+	{0xA5, 0x34},
+};
+#endif /* CONFIG_SEC_RUBENSLTE_COMMON */
+static u8 channel_setting_rev1[][2] ={
+	{0x01, 0x80},
+	{0xA7, 0xC7},
+	{0xA3, 0x5E},
+	{0xA5, 0x34},
+};
 #else
 static u8 channel_setting[][2] ={
-#if defined(CONFIG_SEC_RUBENS_PROJECT)
-	{0x01, 0x85},
-#else
 	{0x01, 0x80},
-#endif
 	{0xA7, 0xC7},
 	{0xA3, 0x5E},
 	{0xA5, 0x34},
@@ -228,6 +239,19 @@ void pwm_backlight_enable(void)
 		for (i = 0; i < ARRAY_SIZE(channel_setting) ;i++)
 			backlight_i2c_write(info->client, channel_setting[i][0], channel_setting[i][1], 1);
 	}
+#elif defined(CONFIG_SEC_RUBENS_PROJECT)
+#if defined(CONFIG_SEC_RUBENSLTE_COMMON)
+	if(system_rev) {
+		for (i = 0; i < ARRAY_SIZE(channel_setting_rev1) ;i++)
+			backlight_i2c_write(info->client, channel_setting_rev1[i][0], channel_setting_rev1[i][1], 1);
+	} else {
+		for (i = 0; i < ARRAY_SIZE(channel_setting) ;i++)
+			backlight_i2c_write(info->client, channel_setting[i][0], channel_setting[i][1], 1);
+	}
+#else
+	for (i = 0; i < ARRAY_SIZE(channel_setting_rev1) ;i++)
+		backlight_i2c_write(info->client, channel_setting_rev1[i][0], channel_setting_rev1[i][1], 1);
+#endif /* !CONFIG_SEC_RUBENSLTE_COMMON */
 #else
 	for (i = 0; i < ARRAY_SIZE(channel_setting) ;i++)
 		backlight_i2c_write(info->client, channel_setting[i][0], channel_setting[i][1], 1);

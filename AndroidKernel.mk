@@ -1,6 +1,11 @@
 #Android makefile to build kernel as a part of Android Build
 PERL		= perl
 
+KERNEL_TARGET := $(strip $(INSTALLED_KERNEL_TARGET))
+ifeq ($(KERNEL_TARGET),)
+INSTALLED_KERNEL_TARGET := $(PRODUCT_OUT)/kernel
+endif
+
 ifeq ($(TARGET_PREBUILT_KERNEL),)
 
 ifeq ($(ENABLE_GRAPHITE),true)
@@ -79,6 +84,7 @@ KANAS3G_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH
 KANAS3G_CMCC_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_KANAS3G_CMCC=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 KANAS3G_CTC_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_KANAS3G_CTC=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 DEGASLTE_SPR_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_DEGASLTE_SPR=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
+DEGASLTE_VZW_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_DEGASLTE_VZW=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 MEGA23G_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_SEC_MEGA23G_COMMON=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 MEGA2LTE_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_SEC_MEGA2LTE_COMMON=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 GNOTELTEDS_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_GNOTELTEDS_OPEN=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
@@ -86,6 +92,8 @@ T10_3G_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_
 T8_3G_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_T8_3G_OPEN=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 T10_WIFI_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_T10_WIFI_OPEN=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 RUBENSLTE_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_RUBENSLTE_OPEN=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
+RUBENSWIFI_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_RUBENSWIFI_OPEN=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
+VASTALTE_PROJECT ?= $(shell $(PERL) -e '$$of = "n"; while (<>) { if (/CONFIG_MACH_VASTALTE_CHN_CMCC_DUOS=y/) { $$of = "y"; break; } } print $$of;' $(KERNEL_CONFIG))
 
 ifeq "$(KERNEL_USE_OF)" "y"
 ifeq "$(K_PROJECT)" "y"
@@ -134,6 +142,9 @@ DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/msm8926-sec-mille
 endif
 ifeq "$(MILLETWIFI_PROJECT)" "y"
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/$(DTS_NAME)-sec-milletwifieur*.dts)
+endif
+ifeq "$(RUBENSWIFI_PROJECT)" "y"
+DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/$(DTS_NAME)-sec-rubenswifieur*.dts)
 endif
 ifeq "$(MATISSE3G_PROJECT)" "y"
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/$(DTS_NAME)-sec-matisse3g-*.dts)
@@ -190,10 +201,13 @@ ifeq "$(VICTORLTE_PROJECT)" "y"
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/$(DTS_NAME)-sec-victorlte*.dts)
 endif
 ifeq "$(VASTALTE_PROJECT)" "y"
-DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/$(DTS_NAME)-sec-vastaltectc*.dts)
+DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/$(DTS_NAME)-sec-vastalteduos*.dts)
 endif
 ifeq "$(DEGASLTE_SPR_PROJECT)" "y"
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/msm8926-sec-degasltespr*.dts)
+endif
+ifeq "$(DEGASLTE_VZW_PROJECT)" "y"
+DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/msm8926-sec-degasltevzw*.dts)
 endif
 ifeq "$(RUBENSLTE_PROJECT)" "y"
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8226/msm8926-sec-rubenslteeur*.dts)
@@ -260,7 +274,11 @@ ifeq "$(PICASSO_PROJECT)" "y"
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-picasso*.dts)
 endif
 ifeq "$(CHAGALL_PROJECT)" "y"
+	ifeq "$(CONFIG_MACH_CHAGALL_KDI)" "y"
+		DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974pro/$(DTS_NAME)pro-ac-sec-chagall*.dts)
+	else
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-chagall*.dts)
+endif
 endif
 ifeq "$(KLIMT_PROJECT)" "y"
 DTS_FILES = $(wildcard $(TOP)/kernel/arch/arm/boot/dts/msm8974/$(DTS_NAME)-sec-klimt*.dts)

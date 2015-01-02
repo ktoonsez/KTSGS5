@@ -41,19 +41,13 @@
 #include "mdss_dsi.h"
 #include "mdss_samsung_dsi_panel_msm8x26.h"
 #include "mdnie_tft_msm8x26.h"
-#if defined(CONFIG_MACH_MS01_EUR_3G)
+#if defined(CONFIG_MACH_MS01_EUR_3G) || defined(CONFIG_MACH_MS01_EUR_LTE)
 #include "mdnie_lite_tuning_data_ms01.h"
-#elif defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
-#if defined(CONFIG_SEC_RUBENS_PROJECT)
-#include "mdnie_tft_data_rubens.h"
-#else
+#elif defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_DEGAS_PROJECT)
 #include "mdnie_tft_data_millet.h"
-#endif
 #elif defined(CONFIG_SEC_T10_PROJECT) || defined(CONFIG_SEC_T8_PROJECT)
 #include "mdnie_tft_data_t10_t8.h"
 #elif defined(CONFIG_MACH_MEGA23GEUR_OPEN)
-#include "mdnie_tft_data_mega23g.h"
-#elif defined(CONFIG_MACH_MEGA2LTE_KTT)
 #include "mdnie_tft_data_mega23g.h"
 #endif
 

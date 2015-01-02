@@ -42,6 +42,7 @@
 #include <linux/types.h>
 #include <linux/security.h>
 #include <linux/string.h>
+#include <linux/ratelimit.h>
 #include "multiuser.h"
 
 /* the file system name */
@@ -117,8 +118,20 @@ typedef enum {
 	PERM_ANDROID_DATA,
 	/* This node is "/Android/obb" */
 	PERM_ANDROID_OBB,
+	/* This node is "/Android/media" */
+	PERM_ANDROID_MEDIA,
 	/* This node is "/Android/user" */
 	PERM_ANDROID_USER,
+	/* knox folder */
+    PERM_ANDROID_KNOX,
+    /* knox user folder*/
+    PERM_ANDROID_KNOX_USER,
+    /* knox Android folder*/
+    PERM_ANDROID_KNOX_ANDROID,
+    /* knox shared folder */
+    PERM_ANDROID_KNOX_SHARED,
+    /* knox data folder */
+    PERM_ANDROID_KNOX_DATA
 } perm_t;
 
 /* Permissions structure to derive */
@@ -214,6 +227,13 @@ struct sdcardfs_sb_info {
 	char *devpath;
 };
 
+#ifdef SDCARD_FS_XATTR
+extern int sdcardfs_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags);
+extern ssize_t sdcardfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size);
+extern ssize_t sdcardfs_listxattr(struct dentry *dentry, char *list, size_t size);
+extern int sdcardfs_removexattr(struct dentry *dentry, const char *name);
+#endif // SDCARD_FS_XATTR
+
 /*
  * inode to private data
  *
@@ -255,6 +275,19 @@ static inline struct inode *sdcardfs_lower_inode(const struct inode *i)
 static inline void sdcardfs_set_lower_inode(struct inode *i, struct inode *val)
 {
 	SDCARDFS_I(i)->lower_inode = val;
+}
+
+/* copy the inode attrs from src to dest except uid and gid */
+static inline void sdcardfs_copy_inode_attr(struct inode *dest, const struct inode *src)
+{
+	dest->i_mode = src->i_mode;
+	dest->i_rdev = src->i_rdev;
+	dest->i_atime = src->i_atime;
+	dest->i_mtime = src->i_mtime;
+	dest->i_ctime = src->i_ctime;
+	dest->i_blkbits = src->i_blkbits;
+	dest->i_flags = src->i_flags;
+	set_nlink(dest, src->i_nlink);
 }
 
 /* superblock to lower superblock */
@@ -482,6 +515,7 @@ static inline int check_min_free_space(struct dentry *dentry, size_t size, int d
 		/* enough space */
 		if ((avail - size) > (sbi->options.reserved_mb * 1024 * 1024))
 			return 1;
+		goto out_nospc;
 	} else
 		return 1;
 
@@ -493,19 +527,20 @@ out_invalid:
 	printk(KERN_INFO "statfs.f_bfree       : %llu blocks\n", statfs.f_bfree);
 	printk(KERN_INFO "statfs.f_files       : %llu\n", statfs.f_files);
 	printk(KERN_INFO "statfs.f_ffree       : %llu\n", statfs.f_ffree);
-	printk(KERN_INFO "statfs.f_fsid.val[1] : 0x%X", (u32)statfs.f_fsid.val[1]);
-	printk(KERN_INFO "statfs.f_fsid.val[0] : 0x%X", (u32)statfs.f_fsid.val[0]);
+	printk(KERN_INFO "statfs.f_fsid.val[1] : 0x%X\n", (u32)statfs.f_fsid.val[1]);
+	printk(KERN_INFO "statfs.f_fsid.val[0] : 0x%X\n", (u32)statfs.f_fsid.val[0]);
 	printk(KERN_INFO "statfs.f_namelen     : %ld\n", statfs.f_namelen);
 	printk(KERN_INFO "statfs.f_frsize      : %ld\n", statfs.f_frsize);
 	printk(KERN_INFO "statfs.f_flags       : %ld\n", statfs.f_flags);
-
-out_nospc:
-	printk(KERN_INFO "statfs.f_bavail      : %llu blocks\n", statfs.f_bavail);
-	printk(KERN_INFO "statfs.f_bsize       : %ld bytes\n", statfs.f_bsize);
-	printk(KERN_INFO "required size        : %llu byte\n", (u64)size);
 	printk(KERN_INFO "sdcardfs reserved_mb : %u\n", sbi->options.reserved_mb);
 	if (sbi->devpath)
 		printk(KERN_INFO "sdcardfs source path : %s\n", sbi->devpath);
+
+out_nospc:
+	printk_ratelimited(KERN_INFO "statfs.f_bavail : %llu blocks / "
+				     "statfs.f_bsize : %ld bytes / "
+				     "required size : %llu byte\n"
+                                ,statfs.f_bavail, statfs.f_bsize, (u64)size);
 
 	return 0;
 }

@@ -141,7 +141,7 @@ struct es325_slim_ch {
 #define		ID(id)		(id)
 
 #define ES325_MAX_INVALID_VEQ 0xFFFF
-#define ES325_MAX_INVALID_BWE 0xFFFF
+#define ES325_MAX_INVALID_BWE 0x0000
 #define ES325_MAX_INVALID_TX_NS 0xFFFF
 
 static unsigned int es325_VEQ_enable = ES325_MAX_INVALID_VEQ;
@@ -152,6 +152,10 @@ static unsigned int es325_Tx_NS = ES325_MAX_INVALID_TX_NS;
 static unsigned int es325_Tx_NS_new = ES325_MAX_INVALID_TX_NS;
 #ifdef CONFIG_ARCH_MSM8226
 static struct regulator* es325_ldo;
+#endif
+
+#if defined(CONFIG_SND_SOC_ES325_ATLANTIC)
+extern void msm_slim_vote_func(struct slim_device *gen0_client);
 #endif
 
 enum es325_power_stage {
@@ -1311,7 +1315,7 @@ static int es325_build_algo_read_msg(char *msg, int *msg_len, unsigned int reg)
 	unsigned int index = reg & ES325_ADDR_MASK;
 	unsigned int paramid;
 
-	if (index > ARRAY_SIZE(es325_algo_paramid))
+	if (index >= ARRAY_SIZE(es325_algo_paramid))
 		return -EINVAL;
 
 	paramid = es325_algo_paramid[index];
@@ -1335,7 +1339,7 @@ static int es325_build_algo_write_msg(char *msg, int *msg_len,
 	unsigned int cmd;
 	unsigned int paramid;
 
-	if (index > ARRAY_SIZE(es325_algo_paramid))
+	if (index >= ARRAY_SIZE(es325_algo_paramid))
 		return -EINVAL;
 
 	paramid = es325_algo_paramid[index];
@@ -1371,7 +1375,7 @@ static int es325_build_dev_read_msg(char *msg, int *msg_len, unsigned int reg)
 	unsigned int index = reg & ES325_ADDR_MASK;
 	unsigned int paramid;
 
-	if (index > ARRAY_SIZE(es325_dev_paramid))
+	if (index >= ARRAY_SIZE(es325_dev_paramid))
 		return -EINVAL;
 
 	paramid = es325_dev_paramid[index];
@@ -1395,7 +1399,7 @@ static int es325_build_dev_write_msg(char *msg, int *msg_len,
 	unsigned int cmd;
 	unsigned int paramid;
 
-	if (index > ARRAY_SIZE(es325_dev_paramid))
+	if (index >= ARRAY_SIZE(es325_dev_paramid))
 		return -EINVAL;
 
 	paramid = es325_dev_paramid[index];
@@ -1431,7 +1435,7 @@ static int es325_build_cmd_read_msg(char *msg, int *msg_len, unsigned int reg)
 	unsigned int index = reg & ES325_ADDR_MASK;
 	struct es325_cmd_access *cmd_access;
 
-	if (index > ARRAY_SIZE(es325_cmd_access))
+	if (index >= ARRAY_SIZE(es325_cmd_access))
 		return -EINVAL;
 	cmd_access = es325_cmd_access + index;
 
@@ -1447,7 +1451,7 @@ static int es325_build_cmd_write_msg(char *msg, int *msg_len,
 	unsigned int index = reg & ES325_ADDR_MASK;
 	struct es325_cmd_access *cmd_access;
 
-	if (index > ARRAY_SIZE(es325_cmd_access))
+	if (index >= ARRAY_SIZE(es325_cmd_access))
 		return -EINVAL;
 	cmd_access = es325_cmd_access + index;
 
@@ -1793,7 +1797,7 @@ static ssize_t es325_fw_version_show(struct device *dev, struct device_attribute
 	if(es325_fw_downloaded) {
 		memset(verbuf,0,SIZE_OF_VERBUF);
 		memcpy(cmd, first_char_msg, 4);
-		ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET, ES325_WRITE_VE_WIDTH, cmd, 4, 1);
+		rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET, ES325_WRITE_VE_WIDTH, cmd, 4, 1);
 		while ((rc >= 0) && (idx < (SIZE_OF_VERBUF-1)) && (imsg & 0xFF)) {
 			memcpy(cmd, next_char_msg, 4);
 			rc = es325_request_response(es325, cmd, 4, 1, bmsg, 4, 1, 0, 0);
@@ -2046,6 +2050,12 @@ static int fw_download(void *arg)
 
 	pr_info("%s():es325 gen0 LA=%d\n", __func__, priv->gen0_client->laddr);
 #ifdef BUS_TRANSACTIONS
+
+#if defined(CONFIG_SND_SOC_ES325_ATLANTIC)
+	msm_slim_vote_func(priv->gen0_client);
+#endif
+
+	usleep_range(10000, 11000);
 	rc = es325_bootup(priv);
 #endif
 	pr_info("%s():bootup rc=%d\n", __func__, rc);
@@ -3667,7 +3677,7 @@ err:
 #ifdef CONFIG_ARCH_MSM8226
 static int es325_regulator_init(struct device *dev)
 {
-	int ret;
+	int ret =0;
 	struct device_node *reg_node = NULL;
 
 	reg_node = of_parse_phandle(dev->of_node, "vdd-2mic-core-supply", 0);

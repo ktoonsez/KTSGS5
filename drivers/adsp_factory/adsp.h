@@ -18,13 +18,18 @@
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/delay.h>
-
+#include <linux/fs.h>
+#include <linux/file.h>
+#include <linux/fcntl.h>
+#include <linux/mm.h>
+#include <linux/slab.h>
+#include <asm/uaccess.h>
 
 #define PID 20000
 #define NETLINK_ADSP_FAC 22
 
 #define PROX_READ_NUM	10
-
+#define SNS_REG_DATA_FILENAME "/persist/sensors/sns.reg"
 
 /* ENUMS for Selecting the current sensor being used */
 enum{
@@ -33,6 +38,8 @@ enum{
 	ADSP_FACTORY_MODE_MAG,
 	ADSP_FACTORY_MODE_LIGHT,
 	ADSP_FACTORY_MODE_PROX,
+	ADSP_FACTORY_MODE_MAG_POWERNOISE_ON,
+	ADSP_FACTORY_MODE_MAG_POWERNOISE_OFF,
 	ADSP_FACTORY_SENSOR_MAX
 };
 
@@ -76,6 +83,8 @@ enum {
 	NETLINK_MESSAGE_STOP_RAW_DATA,
 	NETLINK_MESSAGE_GYRO_TEMP,
 	NETLINK_MESSAGE_GYRO_TEMP_RCVD,
+	NETLINK_MESSAGE_MAG_POWERNOISE_ON,
+	NETLINK_MESSAGE_MAG_POWERNOISE_OFF,
 	NETLINK_MESSAGE_MAX
 };
 
@@ -109,9 +118,9 @@ struct sensor_calib_value {
 	unsigned int sensor_type;
 	union {
 		struct {
-			uint8_t x;
-			uint8_t y;
-			uint8_t z;
+			int x;
+			int y;
+			int z;
 		};
 	};
 	int result;
@@ -151,7 +160,22 @@ struct sensor_selftest_show_result{
 	int st_x;
 	int st_y;
 	int st_z;
-
+	/* FOR YAS532 */
+	/* DEV_ID */
+	int id;
+	/* DIRECTION */
+	int dir;
+	/* OFFSET */
+	int offset_x;
+	int offset_y;
+	int offset_z;
+	/* SENSITIVITY */
+	int sx;
+	int sy;
+	/* OFFSET H */
+	int ohx;
+	int ohy;
+	int ohz;
 };
 
 /* Main struct containing all the data */
@@ -172,7 +196,6 @@ struct adsp_data {
 	unsigned int calib_ready_flag;
 	unsigned int calib_store_ready_flag;
 	unsigned int selftest_ready_flag;
-	unsigned int raw_data_stream;
 	unsigned int data_ready;
 	struct timer_list	 command_timer;
 	int prox_average[PROX_READ_NUM];

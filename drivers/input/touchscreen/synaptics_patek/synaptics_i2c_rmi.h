@@ -37,6 +37,7 @@
 #include <linux/of_gpio.h>
 #include <linux/uaccess.h>
 #include <linux/cdev.h>
+#include <linux/extcon.h>
 
 #define PROXIMITY
 #define TYPE_B_PROTOCOL
@@ -46,9 +47,10 @@
 #define TSP_PATTERN_TRACKING_METHOD
 #define PATTERN_TRACKING_FOR_FULLSCREEN
 #define REPORT_2D_W
+#define CHARGER_NOTIFIER
 
-#ifdef CONFIG_DUAL_LCD
-#define HALL_SENSOR_INT_GPIO			426
+#ifdef CHARGER_NOTIFIER
+#define GPIO_TSP_TA	63
 #endif
 
 enum tsp_target{
@@ -200,10 +202,18 @@ enum tsp_target{
 #define SYNAPTICS_PRODUCT_ID_B0_SPAIR	"S5000B"
 
 #define FPGA_FW_PATH			"ice40xx/fpga_sdio_patek.fw"
+
+/* after B'd rev 06 */
 /* User firmware */
 #define FW_IMAGE_NAME_PATEK		"tsp_synaptics/synaptics_patek.fw"
 /* Factory firmware */
-#define FAC_FWIMAGE_NAME_PATEK		"tsp_synaptics/synaptics_patek.fw"
+#define FAC_FWIMAGE_NAME_PATEK		"tsp_synaptics/synaptics_patek_fac.fw"
+
+/* until B'd rev 05 */
+/* User firmware */
+#define FW_IMAGE_NAME_PATEK_OLD		"tsp_synaptics/synaptics_patek_old.fw"
+/* Factory firmware */
+#define FAC_FWIMAGE_NAME_PATEK_OLD	"tsp_synaptics/synaptics_patek_fac_old.fw"
 
 #define SYNAPTICS_MAX_FW_PATH		64
 
@@ -313,6 +323,7 @@ struct synaptics_rmi4_device_tree_data {
 	int tsp_sel;
 	int tsp_scl;
 	int tsp_sda;
+	int hall_ic;
 	int fpga_mainclk;
 	int cresetb;
 	int cdone;
@@ -365,6 +376,17 @@ struct pattern_tracking {
 	int touchby[TSP_PT_MAX_GHOSTCHECK_FINGER];
 	int ghosttouchcount;
 	bool is_working;
+};
+#endif
+
+#ifdef CHARGER_NOTIFIER
+struct synaptics_cable {
+	    struct work_struct work;
+	    struct notifier_block nb;
+	    struct extcon_specific_cable_nb extcon_nb;
+	    struct extcon_dev *edev;
+	    enum extcon_cable_name cable_type;
+	    unsigned long cable_state;
 };
 #endif
 
@@ -439,6 +461,9 @@ struct synaptics_rmi4_data {
 	bool stay_awake;
 	bool staying_awake;
 	bool tsp_probe;
+#ifdef CHARGER_NOTIFIER
+	bool cable_state;
+#endif
 
 	const char *firmware_name;
 	const char *fac_firmware_name;

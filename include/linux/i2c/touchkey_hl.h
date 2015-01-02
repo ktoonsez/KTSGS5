@@ -15,6 +15,7 @@
 #if defined(CONFIG_SEC_S_PROJECT)
 #define TK_USE_MAX_SUBPM_CONTROL
 #define TK_USE_LDO_CONTROL
+#define TK_LED_DIRECT_CONTORL		// 0x08 firmware over..
 #endif
 
 

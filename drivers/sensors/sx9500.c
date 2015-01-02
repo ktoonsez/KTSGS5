@@ -95,7 +95,6 @@ struct sx9500_p {
 	bool calSuccessed;
 	bool flagDataSkip;
 	u8 touchTh;
-	u8 releaseTh;
 	int initTh;
 	int calData[3];
 	int touchMode;
@@ -125,6 +124,13 @@ struct sx9500_p {
 #endif
 	atomic_t enable;
 };
+
+#if defined(CONFIG_MACH_CHAGALL)
+#ifndef CONFIG_MACH_CHAGALL_KDI
+#define SX9500_NORMAL_TOUCH_CABLE_THRESHOLD	22
+int msm8974_get_cable_type(void);
+#endif
+#endif
 
 static int sx9500_get_nirq_state(struct sx9500_p *data)
 {
@@ -229,14 +235,31 @@ static int sx9500_set_offset_calibration(struct sx9500_p *data)
 
 static void send_event(struct sx9500_p *data, int cnt, u8 state)
 {
+	u8 buf;
+#if defined(CONFIG_MACH_CHAGALL)
+#if defined(CONFIG_MACH_CHAGALL_KDI)
+	buf = data->touchTh;
+#else
+	if (msm8974_get_cable_type() > 1) {
+		buf = SX9500_NORMAL_TOUCH_CABLE_THRESHOLD;
+		pr_info("[SX9500]: %s - cable connected %d\n",
+			__func__, msm8974_get_cable_type());
+	} else {
+		buf = data->touchTh;
+	}
+#endif
+#else
+	buf = data->touchTh;
+#endif
+
 	if (state == ACTIVE) {
 		data->state[cnt] = ACTIVE;
-		sx9500_i2c_write(data, SX9500_CPS_CTRL6_REG, data->releaseTh);
+		sx9500_i2c_write(data, SX9500_CPS_CTRL6_REG, buf);
 		pr_info("[SX9500]: %s - %d button touched\n", __func__, cnt);
 	} else {
 		data->touchMode = NORMAL_TOUCH_MODE;
 		data->state[cnt] = IDLE;
-		sx9500_i2c_write(data, SX9500_CPS_CTRL6_REG, data->touchTh);
+		sx9500_i2c_write(data, SX9500_CPS_CTRL6_REG, buf);
 		pr_info("[SX9500]: %s - %d button released\n", __func__, cnt);
 	}
 
@@ -764,7 +787,7 @@ static ssize_t sx9500_threshold_store(struct device *dev,
 	}
 
 	pr_info("[SX9500]: %s - normal threshold %lu\n", __func__, val);
-	data->touchTh = data->releaseTh = (u8)val;
+	data->touchTh = (u8)val;
 
 	return count;
 }
@@ -1181,7 +1204,6 @@ static void sx9500_initialize_variable(struct sx9500_p *data)
 		__func__, data->initTh);
 
 	data->touchTh = (u8)CONFIG_SENSORS_SX9500_NORMAL_TOUCH_THRESHOLD;
-	data->releaseTh = (u8)CONFIG_SENSORS_SX9500_NORMAL_TOUCH_THRESHOLD;
 	pr_info("[SX9500]: %s - Normal Touch Threshold : %u\n",
 		__func__, data->touchTh);
 }

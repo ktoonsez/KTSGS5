@@ -799,10 +799,12 @@ static int msm_isp_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 	if (rc < 0) {
 		vfe_dev->error_info.
 		stream_framedrop_count[stream_idx]++;
+#if 0	//temp remove for kernel panic
 		pr_err("%s: VFE%d Get buf failed framedrop count %d source = %d,"
 		       "stream type = %d , stream idx = %d, ping pong status = %x\n",
 		       __func__, vfe_dev->pdev->id, vfe_dev->error_info.stream_framedrop_count[stream_idx],
 		       stream_info->stream_src, stream_info->stream_type, stream_idx, pingpong_status);
+#endif
 		return rc;
 	}
 

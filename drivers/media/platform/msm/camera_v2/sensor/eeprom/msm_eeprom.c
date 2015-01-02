@@ -540,6 +540,8 @@ static int eeprom_config_write_data(struct msm_eeprom_ctrl_t *e_ctrl,
 		pr_err("%s: failed to power on eeprom\n", __func__);
 		goto FREE;
 	}
+	usleep_range(10*1000, 11*1000);
+	
 	if (cdata->cfg.write_data.compress) {
 		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write_seq(
 			&(e_ctrl->i2c_client), cdata->cfg.write_data.addr,
@@ -581,6 +583,7 @@ static int eeprom_config_erase(struct msm_eeprom_ctrl_t *e_ctrl,
 		pr_err("%s: failed to power on eeprom\n", __func__);
 		return rc;
 	}
+	usleep_range(10*1000, 11*1000);
 	rc = msm_camera_spi_erase(&e_ctrl->i2c_client,
 				  cdata->cfg.erase_data.addr, cdata->cfg.erase_data.num_bytes);
 	if (rc < 0)

@@ -790,7 +790,6 @@ struct cyttsp5_sfd_idac {
 struct cyttsp5_samsung_factory_data {
 	struct device *dev;
 	struct device *factory_dev;
-        struct device *sec_dev;
 	struct cyttsp5_core_commands* corecmd;
 	struct cyttsp5_sysinfo *si;
 	struct list_head factory_cmd_list_head;

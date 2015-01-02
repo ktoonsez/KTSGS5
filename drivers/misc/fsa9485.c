@@ -198,12 +198,24 @@ void FSA9485_CheckAndHookAudioDock(int value)
 {
 	struct i2c_client *client = local_usbsw->client;
 	struct fsa9485_platform_data *pdata = local_usbsw->pdata;
+	unsigned int dev3;
 	int ret = 0;
+
+	dev3 = i2c_smbus_read_byte_data(client,
+			FSA9485_REG_RESERVED_1D);
+	if(dev3 < 0) {
+		dev_err(&client->dev, "%s: err %d\n", __func__, dev3);
+		return ;
+	}
 
 	if (value) {
 		pr_info("FSA9485_CheckAndHookAudioDock ON\n");
-			if (pdata->dock_cb)
-				pdata->dock_cb(FSA9485_ATTACHED_DESK_DOCK);
+			if (pdata->dock_cb) {
+				if(dev3 & 0x02)			// check vbus valid
+					pdata->dock_cb(FSA9485_ATTACHED_DESK_DOCK);
+				else
+					pdata->dock_cb(FSA9485_ATTACHED_DESK_DOCK_NO_VBUS);
+			}
 
 			ret = i2c_smbus_write_byte_data(client,
 					FSA9485_REG_MANSW1, SW_AUDIO);
@@ -1400,6 +1412,7 @@ static void fsa9485_mhl_detect(struct work_struct *work)
 	if (local_usbsw->mhl_ready == 0) {
 		fsa9485_set_mhl_cable(isMhlAttached);
 		dev_info(&usbsw->client->dev, "%s: ignore mhl-detection in booting time\n", __func__);
+		isMhlAttached = MHL_DETACHED;
 		return;
 	}
 

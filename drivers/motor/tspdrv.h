@@ -108,9 +108,11 @@ int32_t g_nforce_32;
 #define MOTOR_STRENGTH			91
 #elif defined(CONFIG_MACH_HLTEUSC) || defined(CONFIG_MACH_HLTEVZW)
 #define MOTOR_STRENGTH			99/*MOTOR_STRENGTH 99 %*/
-#elif defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_SEC_KSPORTS_PROJECT) ||\
-	defined(CONFIG_SEC_S_PROJECT) || defined(CONFIG_SEC_PATEK_PROJECT)
+#elif defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_SEC_KSPORTS_PROJECT) \
+	|| defined(CONFIG_SEC_PATEK_PROJECT)
 #define MOTOR_STRENGTH			98/*MOTOR_STRENGTH 98 %*/
+#elif defined(CONFIG_SEC_S_PROJECT)
+#define MOTOR_STRENGTH			87/*MOTOR_STRENGTH 87 %*/
 #else
 #define MOTOR_STRENGTH			98/*MOTOR_STRENGTH 98 %*/
 #endif
@@ -150,10 +152,10 @@ int32_t g_nforce_32;
 	#define IMM_PWM_MULTIPLIER			121
 #endif
 #elif defined(CONFIG_SEC_S_PROJECT)
-	#define GP_CLK_M_DEFAULT			2
-	#define GP_CLK_N_DEFAULT                        81
-	#define GP_CLK_D_DEFAULT			40  /* 50% duty cycle */
-	#define IMM_PWM_MULTIPLIER			81
+	#define GP_CLK_M_DEFAULT			3
+	#define GP_CLK_N_DEFAULT                        121
+	#define GP_CLK_D_DEFAULT			61  /* 50% duty cycle */
+	#define IMM_PWM_MULTIPLIER			121
 #elif defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
 	#define GP_CLK_M_DEFAULT			3
 	#define GP_CLK_N_DEFAULT                        120
@@ -164,6 +166,11 @@ int32_t g_nforce_32;
 	#define GP_CLK_N_DEFAULT			61
 	#define GP_CLK_D_DEFAULT			31  /* 50% duty cycle */
 	#define IMM_PWM_MULTIPLIER			61
+#elif defined(CONFIG_MACH_HESTIALTE_EUR)
+	#define GP_CLK_M_DEFAULT			1
+	#define GP_CLK_N_DEFAULT			40
+	#define GP_CLK_D_DEFAULT			20
+	#define IMM_PWM_MULTIPLIER			40
 #else
 	#define GP_CLK_M_DEFAULT			2
 	#define GP_CLK_N_DEFAULT                        91

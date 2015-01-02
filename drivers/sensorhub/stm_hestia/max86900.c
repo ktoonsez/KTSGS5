@@ -125,8 +125,16 @@ static int max86900_read_reg(struct max86900_device_data *data,
 void max86900_led_ldo_onoff(struct max86900_device_data *data, int onoff)
 {
 	/* from hestia rev0.3, this func enable 1.8V & 3.3V */
+	if(onoff) {
+		gpio_set_value_cansleep(data->vdd_en, onoff);
+		msleep(100);
+	}
 	gpio_set_value_cansleep(data->ldo_en, onoff);
-	pr_info("%s - hrm power onoff = %d(ldo_en = %d)\n", __func__, onoff, data->ldo_en);
+	if(!onoff) {
+		msleep(100);
+		gpio_set_value_cansleep(data->vdd_en, onoff);
+	}
+	pr_info("%s - hrm power onoff = %d\n", __func__, onoff);
 }
 #else
 static int max86900_regulator_onoff(struct max86900_device_data *data, int onoff)
@@ -751,6 +759,153 @@ static void max86900_eol_test_onoff(struct max86900_device_data *data, int onoff
 	pr_info("%s - onoff = %d\n", __func__, onoff);
 }
 
+static int max86900_get_device_id(struct max86900_device_data *data, unsigned long long *device_id)
+{
+	u8 recvData;
+	int err;
+	int low = 0;
+	int high = 0;
+	int clock_code = 0;
+	int VREF_trim_code = 0;
+	int IREF_trim_code = 0;
+	int UVL_trim_code = 0;
+	int SPO2_trim_code = 0;
+	int ir_led_code = 0;
+	int red_led_code = 0;
+	int TS_trim_code = 0;
+
+	if (!atomic_read(&data->is_enable)) {
+		pr_info("%s - regulator on\n", __func__);
+#if defined(CONFIG_SENSORS_SSP_STM_HESTIA)
+		max86900_led_ldo_onoff(data, HRM_LDO_ON);
+#else
+		err = max86900_regulator_onoff(data, HRM_LDO_ON);
+		if (err < 0) {
+			pr_err("%s max86900_regulator_on fail err = %d\n",
+				__func__, err);
+			return -EIO;
+		}
+#endif
+		usleep_range(1000, 1100);
+	}
+
+	*device_id = 0;
+
+	err = max86900_write_reg(data, 0xFF, 0x54);
+	if (err != 0) {
+		pr_err("%s - error initializing MAX86900_MODE_TEST0!\n",
+			__func__);
+		return -EIO;
+	}
+
+	err = max86900_write_reg(data, 0xFF, 0x4d);
+	if (err != 0) {
+		pr_err("%s - error initializing MAX86900_MODE_TEST1!\n",
+			__func__);
+		return -EIO;
+	}
+
+	recvData = 0x8B;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	high = recvData;
+
+	recvData = 0x8C;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	low = recvData;
+
+	recvData = 0x88;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	clock_code = recvData;
+
+	recvData = 0x89;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	VREF_trim_code = recvData & 0x0F;
+
+	recvData = 0x8A;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	IREF_trim_code = (recvData >> 4) & 0x0F;
+	UVL_trim_code = recvData & 0x0F;
+
+	recvData = 0x90;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	SPO2_trim_code = recvData & 0x7F;
+
+	recvData = 0x98;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	ir_led_code = (recvData >> 4) & 0x0F;
+	red_led_code = recvData & 0x0F;
+
+	recvData = 0x9D;
+	if ((err = max86900_read_reg(data, &recvData, 1)) != 0) {
+		pr_err("%s - max86900_read_reg err:%d, address:0x%02x\n",
+			__func__, err, recvData);
+		return -EIO;
+	}
+	TS_trim_code = recvData;
+
+	err = max86900_write_reg(data, 0xFF, 0x00);
+	if (err != 0) {
+		pr_err("%s - error initializing MAX86900_MODE_TEST0!\n",
+			__func__);
+		return -EIO;
+	}
+
+
+	if (!atomic_read(&data->is_enable)) {
+		pr_info("%s - regulator off\n", __func__);
+#if defined(CONFIG_SENSORS_SSP_STM_HESTIA)
+		max86900_led_ldo_onoff(data, HRM_LDO_OFF);
+#else
+		err = max86900_regulator_onoff(data, HRM_LDO_OFF);
+		if (err < 0) {
+			pr_err("%s max86900_regulator_off fail err = %d\n",
+				__func__, err);
+			return -EIO;
+		}
+#endif
+	}
+
+	*device_id = clock_code * 16 + VREF_trim_code;
+	*device_id = *device_id * 16 + IREF_trim_code;
+	*device_id = *device_id * 16 + UVL_trim_code;
+	*device_id = *device_id * 128 + SPO2_trim_code;
+	*device_id = *device_id * 64 + ir_led_code;
+	*device_id = *device_id * 64 + red_led_code;
+	*device_id = *device_id * 16 + TS_trim_code;
+
+	pr_info("%s - Device ID = %lld\n", __func__, *device_id);
+
+	return 0;
+}
+
 static ssize_t max86900_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -1084,6 +1239,15 @@ static ssize_t max86900_lib_ver_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%s\n", data->lib_ver);
 }
 
+static ssize_t device_id_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct max86900_device_data *data = dev_get_drvdata(dev);
+	unsigned long long device_id = 0;
+	max86900_get_device_id(data, &device_id);
+	return snprintf(buf, PAGE_SIZE, "%lld\n", device_id);
+}
+
 static DEVICE_ATTR(name, S_IRUGO, max86900_name_show, NULL);
 static DEVICE_ATTR(vendor, S_IRUGO, max86900_vendor_show, NULL);
 static DEVICE_ATTR(led_current, S_IRUGO | S_IWUSR | S_IWGRP,
@@ -1104,6 +1268,7 @@ static DEVICE_ATTR(eol_test_status, S_IRUGO, eol_test_status_show, NULL);
 static DEVICE_ATTR(int_pin_check, S_IRUGO, int_pin_check, NULL);
 static DEVICE_ATTR(lib_ver, S_IRUGO | S_IWUSR | S_IWGRP,
 	max86900_lib_ver_show, max86900_lib_ver_store);
+static DEVICE_ATTR(device_id, S_IRUGO, device_id_show, NULL);
 
 static struct device_attribute *hrm_sensor_attrs[] = {
 	&dev_attr_name,
@@ -1118,6 +1283,7 @@ static struct device_attribute *hrm_sensor_attrs[] = {
 	&dev_attr_eol_test_status,
 	&dev_attr_int_pin_check,
 	&dev_attr_lib_ver,
+	&dev_attr_device_id,
 	NULL,
 };
 
@@ -1175,6 +1341,11 @@ static int max86900_parse_dt(struct max86900_device_data *data,
 		"max86900,led_en-gpio", 0, &flags);
 	gpio_request(data->ldo_en, "HRM_LDO_EN");
 	gpio_direction_output(data->ldo_en, 0);
+
+	data->vdd_en = of_get_named_gpio_flags(dNode,
+		"max86900,hrm_vdd-gpio", 0, &flags);
+	gpio_request(data->vdd_en, "HRM_VDD_EN");
+	gpio_direction_output(data->vdd_en, 0);
 #else
 	if (of_property_read_string(dNode, "max86900,sub_ldo4", &data->sub_ldo4) < 0)
 		pr_err("%s - get sub_ldo4 error\n", __func__);

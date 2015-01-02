@@ -1773,7 +1773,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		}
 
 		if ((ioctl_ptr->len == 0) ||
-		    (ioctl_ptr->len > sizeof(uint32_t))) {
+			(ioctl_ptr->len > sizeof(uint32_t))) {
 			mutex_unlock(&cpp_dev->mutex);
 			return -EINVAL;
 		}
@@ -1907,7 +1907,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 	}
 	}
 	mutex_unlock(&cpp_dev->mutex);
-mutex_unlock_free_ret:
+	mutex_unlock_free_ret:
 	CPP_DBG("X\n");
 	return rc;
 }

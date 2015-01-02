@@ -327,15 +327,58 @@ void tc300k_power(struct tc300k_data *data, int onoff)
 
 	dev_info(&data->client->dev, "%s: power %s\n",__func__, onoff ? "on" : "off");
 
-	if (data->pdata->gpio_en > 0) {
+	if ((s32)data->pdata->gpio_en > 0) {
 		ret = gpio_direction_output(data->pdata->gpio_en, onoff);
 		if (ret) {
 			dev_err(&data->client->dev,
-					"%s: unable to set_direction for vdd_led [%d]\n",
+					"%s: unable to set_direction for gpio_en [%d]\n",
 					__func__, data->pdata->gpio_en);
 		}
 	}
+	else{
+		//check for SUB PMIC ldo
+		if (!data->vcc_en) {
+			if (data->pdata->vcc_en_ldo_name){
+				data->vcc_en = regulator_get(NULL, data->pdata->vcc_en_ldo_name);
+				if (IS_ERR(data->vcc_en)) {
+					dev_err(&data->client->dev,"Regulator(vcc_en) get failed rc = %ld\n", PTR_ERR(data->vcc_en));
+					return;
+				}
+				ret = regulator_set_voltage(data->vcc_en,1800000, 1800000);
+				if (ret) {
+					dev_err(&data->client->dev,"regulator(vcc_en) set_vtg failed rc=%d\n", ret);
+					return;
+				}
+			} else {
+				dev_err(&data->client->dev,"vcc_en_ldo_name is not read from dtsi");
+				return;
+			}
+		}
 
+		if (onoff) {
+			if (!regulator_is_enabled(data->vcc_en)) {
+				ret = regulator_enable(data->vcc_en);
+				if (ret) {
+					pr_err("%s: enable vcc_en failed, rc=%d\n",__func__, ret);
+					return;
+				}
+				pr_info("%senable vcc_en success.\n",__func__);
+			} else {
+				pr_info("%svcc_en is already enabled.\n",__func__);
+			}
+		} else {
+			if (regulator_is_enabled(data->vcc_en)) {
+				ret = regulator_disable(data->vcc_en);
+				if (ret) {
+					pr_err("%s: disable vcc_en failed, rc=%d\n", __func__, ret);
+					return;
+				}
+				pr_info("%sdisable vcc_en success.\n",__func__);
+			} else {
+				pr_info("%svcc_en is already disabled.\n",__func__);
+			}
+		}
+	}
 }
 
 void tc300k_led_power(struct tc300k_data *data, bool onoff)
@@ -347,10 +390,21 @@ void tc300k_led_power(struct tc300k_data *data, bool onoff)
 	if (!data->vdd_led) {
 		data->vdd_led = regulator_get(&data->client->dev,"vdd_led");
 		if (IS_ERR(data->vdd_led)) {
-			dev_err(&data->client->dev,"Regulator(vdd_led) get failed rc = %ld\n", PTR_ERR(data->vdd_led));
-			return;
+			dev_err(&data->client->dev,"Regulator(vdd_led) get failed for PMIC. rc = %ld\n", PTR_ERR(data->vdd_led));
+
+			//check for SUB PMIC ldo
+			if (data->pdata->vdd_led_ldo_name){
+                                data->vdd_led = regulator_get(NULL, data->pdata->vdd_led_ldo_name);
+                                if (IS_ERR(data->vdd_led)) {
+                                        dev_err(&data->client->dev,"Regulator(vdd_led) get failed for SUB PMIC. rc = %ld\n", PTR_ERR(data->vdd_led));
+                                        return;
+                                }
+                        } else {
+                                dev_err(&data->client->dev,"vdd_led_ldo_name is not read from dtsi");
+                                return;
+                        }
 		}
-			ret = regulator_set_voltage(data->vdd_led,3300000, 3300000);
+		ret = regulator_set_voltage(data->vdd_led,3300000, 3300000);
 		if (ret) {
 			dev_err(&data->client->dev,
 				"regulator(vdd_led) set_vtg failed rc=%d\n", ret);
@@ -387,6 +441,7 @@ static int tc300k_parse_dt(struct device *dev,
 			struct tc300k_platform_data *pdata)
 {
 	struct device_node *np = dev->of_node;
+	int rc;
 
 	pdata->num_key =ARRAY_SIZE(tc300k_keycodes);
 	pdata->keycodes = tc300k_keycodes;
@@ -396,6 +451,15 @@ static int tc300k_parse_dt(struct device *dev,
 	pdata->gpio_sda = of_get_named_gpio_flags(np, "coreriver,sda-gpio", 0, &pdata->sda_gpio_flags);
 	pdata->gpio_int = of_get_named_gpio_flags(np, "coreriver,irq-gpio", 0, &pdata->irq_gpio_flags);
 
+	//raed SUB PMIC ldo names from dtsi
+	rc = of_property_read_string(np, "coreriver,vcc_en_ldo_name", &pdata->vcc_en_ldo_name);
+	if (rc < 0) {
+                pr_err("[%s]: Unable to read vcc_en_ldo_name rc = %d\n", __func__, rc);
+        }
+        rc = of_property_read_string(np, "coreriver,vdd_led_ldo_name", &pdata->vdd_led_ldo_name);
+        if (rc < 0) {
+                pr_err("[%s]: Unable to read vdd_led_ldo_name rc = %d\n", __func__, rc);
+        }
 	
 	pr_err("%s: gpio_en = %d, tkey_scl= %d, tkey_sda= %d, tkey_int= %d",
 				__func__, pdata->gpio_en, pdata->gpio_scl, pdata->gpio_sda, pdata->gpio_int);

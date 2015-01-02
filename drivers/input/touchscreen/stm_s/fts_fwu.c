@@ -307,19 +307,25 @@ int fts_fw_update_on_probe(struct fts_ts_info *info)
 					info->fw_main_version_of_bin);
 
 	if ((info->fw_main_version_of_ic < info->fw_main_version_of_bin)
-		|| ((info->config_version_of_ic < info->config_version_of_bin)))
+		|| (info->config_version_of_ic < info->config_version_of_bin)
+		|| (info->fw_version_of_ic < info->fw_version_of_bin))
 		retval = fts_fw_updater(info, fw_data);
 	else
 		retval = -2;
+
+	if (GetSystemStatus(info, &SYS_STAT[0], &SYS_STAT[1]) >= 0) {
+		if (SYS_STAT[0] != SYS_STAT[1]) {
+			info->fts_systemreset(info);
+			msleep(20);
+			info->fts_wait_for_ready(info);
+			fts_fw_init(info);
+		}
+	}
+
 done:
 	if (fw_entry)
 		release_firmware(fw_entry);
-	if (retval < 0) {
-		if (GetSystemStatus(info, &SYS_STAT[0], &SYS_STAT[1]) >= 0) {
-			if (SYS_STAT[0] != SYS_STAT[1])
-				fts_fw_init(info);
-		}
-	}
+
 	return retval;
 }
 EXPORT_SYMBOL(fts_fw_update_on_probe);

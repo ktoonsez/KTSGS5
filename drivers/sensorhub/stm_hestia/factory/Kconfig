@@ -142,3 +142,13 @@ config SENSORS_SSP_MOBEAM
           If you say yes here you get mobeam support using TMG399x.
 	  To compile this driver as a module, choose M here: the
 	  module will be called ssp.
+
+config SENSORS_SSP_UVIS25
+	tristate "Sensors ssp UV"
+	default n
+	depends on SENSORS_SSP
+	help
+	  This is for UV Sensor device driver.
+          If you say yes here you get uv sensor support.
+	  If you say no here uv sensor will not be supported.
+

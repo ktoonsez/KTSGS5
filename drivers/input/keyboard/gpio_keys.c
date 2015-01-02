@@ -715,6 +715,7 @@ fail:
 int samsung_switching_lcd(int flip);
 int samsung_switching_tsp(int flip);
 int samsung_switching_tkey(int flip);
+int samsung_switching_ssp(int flip);
 #endif
 
 #ifdef CONFIG_SENSORS_HALL
@@ -760,6 +761,17 @@ static void flip_cover_work(struct work_struct *work)
 		input_report_switch(ddata->input,
 			ddata->flip_code, ddata->flip_cover);
 		input_sync(ddata->input);
+
+		if (ddata->flip_cover != flip_status_before) {
+#if defined(CONFIG_DUAL_LCD)
+			samsung_switching_lcd(ddata->flip_cover);
+			samsung_switching_tsp(ddata->flip_cover);
+			samsung_switching_tkey(ddata->flip_cover);
+			samsung_switching_ssp(ddata->flip_cover);
+#endif
+		}
+
+		flip_status_before = ddata->flip_cover;
 	} else {
 		printk(KERN_DEBUG "%s : Value is not same!\n", __func__);
 	}
@@ -779,17 +791,18 @@ static void flip_cover_work(struct work_struct *work)
 	printk(KERN_DEBUG "[keys] %s : %d code 0x%x\n",
 		__func__, ddata->flip_cover, ddata->flip_code);
 
+	input_report_switch(ddata->input,
+			ddata->flip_code, ddata->flip_cover);
+	input_sync(ddata->input);
+
 	if (ddata->flip_cover != flip_status_before) {
 #if defined(CONFIG_DUAL_LCD)
 		samsung_switching_lcd(ddata->flip_cover);
 		samsung_switching_tsp(ddata->flip_cover);
 		samsung_switching_tkey(ddata->flip_cover);
+		samsung_switching_ssp(ddata->flip_cover);
 #endif
 	}
-
-	input_report_switch(ddata->input,
-			ddata->flip_code, ddata->flip_cover);
-	input_sync(ddata->input);
 
 	flip_status_before = ddata->flip_cover;
 }
@@ -1024,7 +1037,7 @@ static ssize_t sysfs_hall_debounce_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(hall_irq_ctrl, S_IRUGO | S_IWUGO, 
+static DEVICE_ATTR(hall_irq_ctrl, S_IRUGO | S_IWUGO,
 			sysfs_hall_debounce_show,
 			sysfs_hall_debounce_store);
 #endif
@@ -1235,7 +1248,7 @@ static ssize_t  sysfs_key_onoff_show(struct device *dev,
 }
 static DEVICE_ATTR(sec_key_pressed, 0664 , sysfs_key_onoff_show, NULL);
 
-#if defined(CONFIG_SEC_S_PROJECT) 
+#if defined(CONFIG_SEC_S_PROJECT)
 static ssize_t sysfs_key_code_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -1245,12 +1258,12 @@ static ssize_t sysfs_key_code_show(struct device *dev,
 
 	for (i = 0; i < ddata->n_buttons; i++) {
 		struct gpio_button_data *bdata = &ddata->data[i];
-		
+
 		if(bdata->button->code==KEY_VOLUMEUP)
 			volume_up = (gpio_get_value_cansleep(bdata->button->gpio) ? 1 : 0) ^ bdata->button->active_low;
 		else if(bdata->button->code==KEY_VOLUMEDOWN)
 			volume_down = (gpio_get_value_cansleep(bdata->button->gpio) ? 1 : 0) ^ bdata->button->active_low;
-		
+
 		//pr_info("%s, code=%d %d/%d\n",  __func__,bdata->button->code, i,ddata->n_buttons );
 	}
 	power = check_short_pkey();
@@ -1300,7 +1313,7 @@ out:
 
 static DEVICE_ATTR(wakeup_keys, 0664, NULL, wakeup_enable);
 
-#if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined (CONFIG_SEC_T8_PROJECT) || defined (CONFIG_SEC_RUBENS_PROJECT)
+#if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined (CONFIG_SEC_T8_PROJECT)
 struct regulator *lvs1_1p8 = NULL;
 #endif
 
@@ -1363,6 +1376,21 @@ static int keypadled_poweron(struct device *dev, struct device_attribute *attr, 
 
 static DEVICE_ATTR(brightness, 0664, NULL, keypadled_poweron);
 
+static ssize_t sysfs_flip_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
+
+	if (ddata->flip_cover)
+		snprintf(buf, 3, "0\n");
+	else
+		snprintf(buf, 3, "1\n");
+
+	return strlen(buf);
+}
+
+static DEVICE_ATTR(flipStatus, 0444, sysfs_flip_status_show, NULL);
+
 #endif
 
 static int __devinit gpio_keys_probe(struct platform_device *pdev)
@@ -1380,6 +1408,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	struct device *sec_key;
 #ifdef CONFIG_SEC_PATEK_PROJECT
 	struct device *sec_keypad;
+	struct device *sec_flip;
 #endif
 
 	if (!pdata) {
@@ -1410,7 +1439,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 
 #if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT)\
 	|| defined (CONFIG_SEC_MATISSE_PROJECT)	|| defined (CONFIG_SEC_ATLANTIC_PROJECT)\
-    || defined (CONFIG_SEC_MEGA2_PROJECT) || defined (CONFIG_SEC_T8_PROJECT) || defined (CONFIG_SEC_T10_PROJECT) || defined (CONFIG_SEC_RUBENS_PROJECT)
+    || defined (CONFIG_SEC_MEGA2_PROJECT) || defined (CONFIG_SEC_T8_PROJECT) || defined (CONFIG_SEC_T10_PROJECT) || defined(CONFIG_SEC_HESTIA_PROJECT)
 	ret = gpio_request(pdata->gpio_flip_cover,"HALL");
 	if(ret)
 		printk(KERN_CRIT "[HALL IC] gpio Request FAIL\n");
@@ -1511,6 +1540,10 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	sec_keypad=device_create(sec_class, NULL, 0, NULL, "sec_keypad");
 	if (device_create_file(sec_keypad, &dev_attr_brightness) < 0)
 		pr_err("Failed to create device file(%s)!\n", dev_attr_brightness.attr.name);
+
+	sec_flip = device_create(sec_class, NULL, 0, NULL, "sec_flip");
+	if (device_create_file(sec_flip, &dev_attr_flipStatus) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_flipStatus.attr.name);
 #endif
 
 	ret = device_create_file(sec_key, &dev_attr_sec_key_pressed);
@@ -1518,14 +1551,14 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		pr_err("Failed to create device file in sysfs entries(%s)!\n",
 				dev_attr_sec_key_pressed.attr.name);
 	}
-#if defined(CONFIG_SEC_S_PROJECT) 	
+#if defined(CONFIG_SEC_S_PROJECT)
 	ret = device_create_file(sec_key, &dev_attr_sec_key_pressed_code);
 	if (ret) {
 		pr_err("Failed to create device file in sysfs entries(%s)!\n",
 				dev_attr_sec_key_pressed_code.attr.name);
 	}
 #endif
-	
+
 #ifdef CONFIG_SENSORS_HALL_IRQ_CTRL
 	if(ddata->gpio_flip_cover != 0) {
 		ret = device_create_file(sec_key, &dev_attr_hall_irq_ctrl);
@@ -1552,7 +1585,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		}
 	}
 #endif
-#if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) ||  defined (CONFIG_SEC_T8_PROJECT) || defined (CONFIG_SEC_RUBENS_PROJECT)
+#if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) ||  defined (CONFIG_SEC_T8_PROJECT)
 	if (!lvs1_1p8) {
 		lvs1_1p8 = regulator_get(dev, "8226_lvs1");
 		if(!lvs1_1p8)
@@ -1588,6 +1621,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 
 #if defined(CONFIG_SEC_PATEK_PROJECT)
 	keypadled_powerset(&pdev->dev);
+	dev_set_drvdata(sec_flip, ddata);
 #endif
 
 #ifdef PERIODIC_CHECK_GPIOS
@@ -1636,7 +1670,7 @@ static int __devexit gpio_keys_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_SENSORS_HALL
 	wake_lock_destroy(&ddata->flip_wake_lock);
-#if defined CONFIG_SEC_MILLET_PROJECT || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined (CONFIG_SEC_T8_PROJECT) || defined (CONFIG_SEC_RUBENS_PROJECT)
+#if defined CONFIG_SEC_MILLET_PROJECT || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined (CONFIG_SEC_T8_PROJECT)
 	regulator_disable(lvs1_1p8);
 	regulator_put(lvs1_1p8);
 #endif

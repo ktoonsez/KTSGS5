@@ -517,6 +517,173 @@ static ssize_t earjack_state_onoff_show(struct device *dev,
 static DEVICE_ATTR(state, 0664 , earjack_state_onoff_show,
 	NULL);
 
+#if defined (CONFIG_EARJACK_ADC_SYSFS)
+static ssize_t jack_adc_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	int val[4] = {0,};
+
+	val[0] = hi->pdata->jack_zones[0].adc_high;
+	val[1] = hi->pdata->jack_zones[1].adc_high;
+	val[2] = hi->pdata->jack_zones[2].adc_high;
+	val[3] = hi->pdata->jack_zones[3].adc_high;
+
+	return sprintf(buf, "%d %d %d %d\n",val[0],val[1],val[2],val[3]);
+
+}
+
+static ssize_t jack_adc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	char *buffer = (char*)buf;
+	char *token;
+	int val[4] = {0,};
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[0]) != 0)
+		return -EINVAL;
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[1]) != 0)
+		return -EINVAL;
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[2]) != 0)
+		return -EINVAL;
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[3]) != 0)
+		return -EINVAL;
+
+	hi->pdata->jack_zones[0].adc_high = val[0];
+	hi->pdata->jack_zones[1].adc_high = val[1];
+	hi->pdata->jack_zones[2].adc_high = val[2];
+	hi->pdata->jack_zones[3].adc_high = val[3];
+
+
+	return count;
+}
+
+
+static DEVICE_ATTR(jack_adc, 0666, jack_adc_show,
+	jack_adc_store);
+
+static ssize_t send_end_btn_adc_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	int val[2]  = {0,};
+
+	val[0] = hi->pdata->jack_buttons_zones[0].adc_low;
+	val[1] = hi->pdata->jack_buttons_zones[0].adc_high;
+
+	return sprintf(buf, "%d %d\n",val[0],val[1]);
+}
+
+static ssize_t send_end_btn_adc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	char *buffer = (char*)buf;
+	char *token;
+	int val[2] = {0,};
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[0]) != 0)
+		return -EINVAL;
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[1]) != 0)
+		return -EINVAL;
+
+	hi->pdata->jack_buttons_zones[0].adc_low = val[0];
+	hi->pdata->jack_buttons_zones[0].adc_high = val[1];
+
+	return count;
+}
+
+
+static DEVICE_ATTR(send_end_btn_adc, 0666, send_end_btn_adc_show,
+	send_end_btn_adc_store);
+
+static ssize_t vol_up_btn_adc_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	int val[2]  = {0,};
+
+	val[0] = hi->pdata->jack_buttons_zones[1].adc_low;
+	val[1] = hi->pdata->jack_buttons_zones[1].adc_high;
+
+	return sprintf(buf, "%d %d\n",val[0],val[1]);
+}
+
+static ssize_t vol_up_btn_adc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	char *buffer = (char*)buf;
+	char *token;
+	int val[2] = {0,};
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[0]) != 0)
+		return -EINVAL;
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[1]) != 0)
+		return -EINVAL;
+
+	hi->pdata->jack_buttons_zones[1].adc_low = val[0];
+	hi->pdata->jack_buttons_zones[1].adc_high = val[1];
+
+	return count;
+}
+
+
+static DEVICE_ATTR(vol_up_btn_adc, 0666, vol_up_btn_adc_show,
+	vol_up_btn_adc_store);
+
+static ssize_t vol_down_btn_adc_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	int val[2]  = {0,};
+
+	val[0] = hi->pdata->jack_buttons_zones[2].adc_low;
+	val[1] = hi->pdata->jack_buttons_zones[2].adc_high;
+
+	return sprintf(buf, "%d %d\n",val[0],val[1]);
+}
+
+static ssize_t vol_down_btn_adc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sec_jack_info *hi = dev_get_drvdata(dev);
+	char *buffer = (char*)buf;
+	char *token;
+	int val[2] = {0,};
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[0]) != 0)
+		return -EINVAL;
+
+	token = strsep(&buffer, " ");
+	if(kstrtoint(token,0,&val[1]) != 0)
+		return -EINVAL;
+
+	hi->pdata->jack_buttons_zones[2].adc_low = val[0];
+	hi->pdata->jack_buttons_zones[2].adc_high = val[1];
+
+	return count;
+}
+
+static DEVICE_ATTR(vol_down_btn_adc, 0666, vol_down_btn_adc_show,
+	vol_down_btn_adc_store);
+#endif
 static void sec_jack_timer_handler(unsigned long data)
 {
 	struct sec_jack_info *hi = (struct sec_jack_info *)data;
@@ -864,7 +1031,27 @@ static int sec_jack_probe(struct platform_device *pdev)
 	if (ret)
 		pr_err("Failed to create device file in sysfs entries(%s)!\n",
 			dev_attr_state.attr.name);
+#if defined (CONFIG_EARJACK_ADC_SYSFS)
+	ret = device_create_file(earjack, &dev_attr_jack_adc);
+	if (ret)
+		pr_err("Failed to create device file in sysfs entries(%s)!\n",
+			dev_attr_jack_adc.attr.name);
 
+	ret = device_create_file(earjack, &dev_attr_send_end_btn_adc);
+	if (ret)
+		pr_err("Failed to create device file in sysfs entries(%s)!\n",
+			dev_attr_send_end_btn_adc.attr.name);
+
+	ret = device_create_file(earjack, &dev_attr_vol_up_btn_adc);
+	if (ret)
+		pr_err("Failed to create device file in sysfs entries(%s)!\n",
+			dev_attr_vol_up_btn_adc.attr.name);
+
+	ret = device_create_file(earjack, &dev_attr_vol_down_btn_adc);
+	if (ret)
+		pr_err("Failed to create device file in sysfs entries(%s)!\n",
+			dev_attr_vol_down_btn_adc.attr.name);
+#endif
 	setup_timer(&hi->timer, sec_jack_timer_handler, (unsigned long)hi);
 
 	INIT_WORK(&hi->buttons_work, sec_jack_buttons_work);
@@ -938,8 +1125,14 @@ err_create_buttons_wq_failed:
 err_create_wq_failed:
 	device_remove_file(earjack, &dev_attr_state);
 	device_remove_file(earjack, &dev_attr_key_state);
+#if defined (CONFIG_EARJACK_ADC_SYSFS)
+	device_remove_file(earjack, &dev_attr_jack_adc);
+	device_remove_file(earjack, &dev_attr_send_end_btn_adc);
+	device_remove_file(earjack, &dev_attr_vol_up_btn_adc);
+	device_remove_file(earjack, &dev_attr_vol_down_btn_adc);
+#endif
 	device_destroy(audio, 0);
-	class_destroy(audio);	
+	class_destroy(audio);
 	wake_lock_destroy(&hi->det_wake_lock);
 	switch_dev_unregister(&switch_jack_detection);
 	switch_dev_unregister(&switch_sendend);

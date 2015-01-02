@@ -1057,8 +1057,9 @@ again:
 	if (tima_l2group_flag) {
 		/*First: Flush the cache of the buffer to be read by the TZ side
 		 */
-		flush_dcache_page(virt_to_page(tima_l2group_buffer1));
-		if (tima_l2group_buffer2)
+		if(tima_l2group_buffer1)
+			flush_dcache_page(virt_to_page(tima_l2group_buffer1));
+		if(tima_l2group_buffer2)
 			flush_dcache_page(virt_to_page(tima_l2group_buffer2));
 
 		/*Second: Pass the buffer pointer and length to TIMA to commit the changes

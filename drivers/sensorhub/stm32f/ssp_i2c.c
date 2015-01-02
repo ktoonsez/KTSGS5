@@ -417,15 +417,15 @@ int flush(struct ssp_data *data, u8 uSensorType) {
 	msg->buffer = &buffer;
 	msg->free_buffer = 0;
 
+	ssp_dbg("[SSP]: %s Sensor Type = 0x%x, data = %u\n", __func__,
+		uSensorType, buffer);
+
 	iRet = ssp_spi_sync(data, msg, 1000);
 
 	if (iRet != SUCCESS) {
 		pr_err("[SSP]: %s - fail %d\n", __func__, iRet);
 		return ERROR;
 	}
-
-	ssp_dbg("[SSP]: %s Sensor Type = 0x%x, data = %u\n", __func__, uSensorType,
-			buffer);
 
 	return buffer ? 0 : -1;
 }

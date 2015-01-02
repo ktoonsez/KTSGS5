@@ -371,7 +371,7 @@ struct sensor_value {
 		u8 step_det;
 		u8 sig_motion;
 		u32 step_diff;
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 		u8 uv;
 #endif
 #if defined(CONFIG_SENSORS_SSP_STM_HESTIA)
@@ -425,12 +425,12 @@ struct hw_offset_data {
 #define WHITE_HIGH_THRESHOLD	110
 #define WHITE_LOW_THRESHOLD	85
 #elif defined(CONFIG_SENSORS_SSP_STM_HESTIA)
-#define DEFUALT_HIGH_THRESHOLD	750
-#define DEFUALT_LOW_THRESHOLD	650
-#define TBD_HIGH_THRESHOLD	750
-#define TBD_LOW_THRESHOLD	650
-#define WHITE_HIGH_THRESHOLD	750
-#define WHITE_LOW_THRESHOLD	650
+#define DEFUALT_HIGH_THRESHOLD	480
+#define DEFUALT_LOW_THRESHOLD	340
+#define TBD_HIGH_THRESHOLD	480
+#define TBD_LOW_THRESHOLD	340
+#define WHITE_HIGH_THRESHOLD	480
+#define WHITE_LOW_THRESHOLD	340
 #else
 #define DEFUALT_HIGH_THRESHOLD	130
 #define DEFUALT_LOW_THRESHOLD	90
@@ -438,6 +438,11 @@ struct hw_offset_data {
 #define TBD_LOW_THRESHOLD	90
 #define WHITE_HIGH_THRESHOLD	130
 #define WHITE_LOW_THRESHOLD	90
+#endif
+#if defined(CONFIG_SENSORS_SSP_STM_HESTIA)
+#define PROX_TRIM	130
+#else
+#define PROX_TRIM	0
 #endif
 
 struct ssp_msg {
@@ -500,7 +505,7 @@ struct ssp_data {
 	defined(CONFIG_SENSORS_SSP_MAX88920)
 	struct input_dev *gesture_input_dev;
 #endif
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	struct input_dev *uv_input_dev;
 #endif
 	struct input_dev *sig_motion_input_dev;
@@ -533,7 +538,7 @@ struct ssp_data {
 #ifdef CONFIG_SENSORS_SSP_SHTC1
 	struct device *temphumidity_device;
 #endif
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	struct device *uv_device;
 #endif
 	struct delayed_work work_firmware;
@@ -704,6 +709,10 @@ void remove_gesture_factorytest(struct ssp_data *data);
 #ifdef CONFIG_SENSORS_SSP_SHTC1
 void remove_temphumidity_factorytest(struct ssp_data *data);
 #endif
+#ifdef CONFIG_SENSORS_SSP_UVIS25
+void	initialize_uv_factorytest(struct ssp_data *);
+void	remove_uv_factorytest(struct ssp_data *);
+#endif
 #ifdef CONFIG_SENSORS_SSP_MOBEAM
 void initialize_mobeam(struct ssp_data *data);
 void remove_mobeam(struct ssp_data *data);
@@ -772,7 +781,7 @@ void report_pressure_data(struct ssp_data *, struct sensor_value *);
 #endif
 void report_light_data(struct ssp_data *, struct sensor_value *);
 void report_prox_data(struct ssp_data *, struct sensor_value *);
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 void report_uv_data(struct ssp_data *, struct sensor_value *);
 #endif
 void report_prox_raw_data(struct ssp_data *, struct sensor_value *);

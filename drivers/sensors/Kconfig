@@ -311,4 +311,11 @@ config SENSORS_MAX86900
 	  This driver can also be built as a module.  If so, the module
 	  will be called max86900.
 
+config SENSORS_K303C
+	depends on I2C
+	tristate "ST K303C accel,magnetic combo"
+	default n
+	help
+	  This option enables st k303c accel and mag driver
+
 source "drivers/sensors/yas532/Kconfig"

@@ -3323,6 +3323,10 @@ static ssize_t inv_mpu_acc_selftest_show(struct device *dev,
 	st = dev_get_drvdata(dev);
 
 	result = mpu6500_hw_self_check(st, gyro_ratio, accel_ratio, MPU6500_HWST_ACCEL) + 1;
+	if( result != 1)
+	{
+		result = mpu6500_hw_self_check(st, gyro_ratio, accel_ratio, MPU6500_HWST_ACCEL) + 1;
+	}
 
 	if(result == 1)
 		pr_info("%s : selftest success. ret:%d\n", __func__, result);

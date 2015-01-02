@@ -507,7 +507,7 @@ static ssize_t cypress_touchkey_brightness_level_show(struct device *dev,
 	struct cypress_touchkey_info *info = dev_get_drvdata(dev);
 	int count;
 
-	count = snprintf(buf, sizeof(buf), "%d\n", vol_mv_level);
+	count = snprintf(buf, 20, "%d\n", vol_mv_level);
 
 	dev_info(&info->client->dev,
 			"%s: Touch LED voltage = %d\n",

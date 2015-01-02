@@ -20,9 +20,7 @@
 
 #ifndef _SM5502_H_
 #define _SM5502_H_
-
-//#include "fsa880.h"
-#include "tsu6721.h"
+#include <linux/i2c/muic.h>
 
 enum {
 	SM5502_NONE = -1,
@@ -30,10 +28,6 @@ enum {
 	SM5502_ATTACHED = 1
 };
 
-enum {
-	LANHUB = 0,
-	LANHUB_TA = 1,
-};
 extern struct switch_dev switch_dock;
 struct sm5502_platform_data {
 	void (*callback)(enum cable_type_t cable_type, int attached);

@@ -1611,94 +1611,6 @@ static struct attribute_group sec_touch_factory_attr_group = {
 };
 
 /************************************************************************
- * input method
- ************************************************************************/
-static ssize_t set_tsp_for_inputmethod_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct cyttsp5_samsung_factory_data *sfd = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n", sfd->is_inputmethod);
-}
-
-#define PARAM_ID_SEPERATE_VELOCITY_MODE 0xD4
-static int inputmethod_set_param(struct cyttsp5_samsung_factory_data* sfd)
-{
-	int rc;
-
-	dev_dbg(sfd->dev, "%s: intputmethod=%d\n", __func__,
-		sfd->is_inputmethod);
-	rc = sfd->corecmd->cmd->set_param(sfd->dev, 0,
-		PARAM_ID_SEPERATE_VELOCITY_MODE, sfd->is_inputmethod);
-	if (rc)
-		dev_err(sfd->dev, "%s: error on set_param\n", __func__);
-
-	return rc;
-}
-
-static ssize_t set_tsp_for_inputmethod_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct cyttsp5_samsung_factory_data *sfd = dev_get_drvdata(dev);
-	int scan_buffer;
-	int ret;
-	int rc;
-
-	ret = sscanf(buf, "%d", &scan_buffer);
-	if (ret != 1) {
-		dev_err(sfd->dev, "%s: cmd read err(%d)\n",
-			__func__, ret);
-		return count;
-	}
-
-	if (!(scan_buffer == 0 || scan_buffer == 1)) {
-		dev_err(sfd->dev, "%s: wrong command(%d)\n",
-			__func__, scan_buffer);
-		return count;
-	}
-
-	if ((scan_buffer == 1) && (!sfd->is_inputmethod)) {
-		dev_info(sfd->dev,
-			"%s: Set TSP inputmethod IN\n", __func__);
-		sfd->is_inputmethod = true;
-	} else if ((scan_buffer == 0) && (sfd->is_inputmethod)) {
-		dev_info(sfd->dev,
-			"%s: Set TSP inputmethod OUT\n", __func__);
-		sfd->is_inputmethod = false;
-	} else {
-		dev_dbg(sfd->dev,
-			"%s: do not excute(same command,%d)\n", __func__, scan_buffer);
-		return count;
-	}
-
-	if (sfd->suspended) {
-		dev_err(sfd->dev, "%s: device is suspended\n", __func__);
-		return count;
-	}
-
-	rc = cyttsp5_request_exclusive(sfd->dev, CY_REQUEST_EXCLUSIVE_TIMEOUT_SET_PARAM);
-	if (rc < 0) {
-		dev_err(sfd->dev, "%s: request exclusive failed(%d)\n",
-			__func__, rc);
-		return count;
-	}
-
-	rc = inputmethod_set_param(sfd);
-	if (rc) {
-		dev_err(sfd->dev, "%s: error on set input method rc=%d\n",
-			__func__, rc);
-	}
-	if (cyttsp5_release_exclusive(sfd->dev) < 0)
-		dev_err(sfd->dev, "%s: release_exclusive failed\n",
-			__func__);
-
-	return count;
-}
-
-static DEVICE_ATTR(set_tsp_for_inputmethod, S_IRUGO | S_IWUSR | S_IWGRP,
-	set_tsp_for_inputmethod_show, set_tsp_for_inputmethod_store);
-
-/************************************************************************
  * suspend/resume
  ************************************************************************/
 /************************************************************************
@@ -1791,21 +1703,6 @@ int cyttsp5_samsung_factory_startup_attention(struct device *dev)
 		}
 		dev_info(sfd->dev, "%s: report rate=%d\n",
 			__func__, sfd->report_rate);
-	}
-
-//-- input method
-	if (sfd->is_inputmethod == PARAM_ID_SEPERATE_VELOCITY_MODE_DEFAULT)
-		dev_dbg(sfd->dev,
-			"%s: input method %x is default value, bypass set param\n",
-			__func__, sfd->is_inputmethod);
-	else {
-		rc = inputmethod_set_param(sfd);
-		if (rc) {
-			dev_err(sfd->dev, "%s: error on set input method rc=%d\n",
-				__func__, rc);
-		}
-		dev_info(sfd->dev, "%s: input method=%d\n",
-			__func__, sfd->is_inputmethod);
 	}
 
 exit:
@@ -1905,21 +1802,6 @@ int cyttsp5_samsung_factory_probe(struct device *dev)
 	mutex_init(&sfd->factory_cmd_lock);
 	sfd->factory_cmd_is_running = false;
 
-	sfd->sec_dev = device_create(sec_class, NULL,
-		MKDEV(SEC_DEV_TOUCH_MAJOR, SEC_DEV_TSP_MINOR + 1), sfd, "sec_touchscreen");
-	if (IS_ERR(sfd->sec_dev)) {
-		dev_err(sfd->dev, "Failed to create device sec_touchscreen\n");
-		goto error_device_create_sec_dev;
-	}
-	dev_dbg(dev, "%s sfd->sec_dev->devt=%d\n",
-		__func__, sfd->sec_dev->devt);
-
-	if (device_create_file(sfd->sec_dev, &dev_attr_set_tsp_for_inputmethod) < 0) {
-		dev_err(sfd->dev, "Failed to create device file(%s)\n",
-			dev_attr_set_tsp_for_inputmethod.attr.name);
-		goto error_device_create_file;
-	}
-
 	sfd->factory_dev = device_create(sec_class, NULL,
 		MKDEV(SEC_DEV_TOUCH_MAJOR, SEC_DEV_TSP_MINOR), sfd, "tsp");
 	if (IS_ERR(sfd->factory_dev)) {
@@ -1960,10 +1842,6 @@ int cyttsp5_samsung_factory_probe(struct device *dev)
 error_sysfs_create_group:
 	device_destroy(sec_class, sfd->factory_dev->devt);
 error_device_create_factory_dev:
-	device_remove_file(sfd->sec_dev, &dev_attr_set_tsp_for_inputmethod);
-error_device_create_file:
-	device_destroy(sec_class, sfd->sec_dev->devt);
-error_device_create_sec_dev:
 	kfree(sfd->mutual_idac.buf);
 error_alloc_idac_buf:
 	kfree(sfd->diff.buf);
@@ -1985,10 +1863,6 @@ int cyttsp5_samsung_factory_release(struct device *dev)
 		dev_dbg(dev, "%s sfd->factory_dev->devt=%d\n",
 			__func__, sfd->factory_dev->devt);
 		device_destroy(sec_class, sfd->factory_dev->devt);
-		device_remove_file(sfd->sec_dev, &dev_attr_set_tsp_for_inputmethod);
-		dev_dbg(dev, "%s sfd->sec_dev->devt=%d\n",
-			__func__, sfd->sec_dev->devt);
-		device_destroy(sec_class, sfd->sec_dev->devt);
 
 		kfree(sfd->mutual_idac.buf);
 		kfree(sfd->diff.buf);

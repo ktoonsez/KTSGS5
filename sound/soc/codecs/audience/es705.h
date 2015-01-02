@@ -376,7 +376,11 @@ enum {
  * RX => 0,1:FE_IN1 2,3:FE_IN2 4,5,6,7:BE_IN
  * TX => 0,1:FE_OUT 3,4:BE_OUT
  */
+#ifdef CONFIG_WCD9306_CODEC
+#define ES705_SLIM_RX_PORTS		6
+#else
 #define ES705_SLIM_RX_PORTS		8
+#endif /* CONFIG_WCD9306_CODEC */
 #else
 #define ES705_SLIM_RX_PORTS		6
 #endif

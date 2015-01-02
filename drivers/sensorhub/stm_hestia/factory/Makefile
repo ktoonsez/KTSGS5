@@ -16,3 +16,4 @@ obj-$(CONFIG_SENSORS_SSP_AT32UC3L0128)	+= mcu_at32uc3l0128.o
 obj-$(CONFIG_SENSORS_SSP_ATUC128L5HAR)	+= mcu_atuc128l5har.o
 obj-$(CONFIG_SENSORS_SSP_SHTC1)	+= temphumidity_shtc1.o
 obj-$(CONFIG_SENSORS_SSP_MOBEAM) += barcode_emul_tmg3992.o
+obj-$(CONFIG_SENSORS_SSP_UVIS25) += uv_uvis25.o

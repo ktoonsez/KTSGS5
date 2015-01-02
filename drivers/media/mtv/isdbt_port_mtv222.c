@@ -372,7 +372,7 @@ static void mtv222_power_off(void)
 
 	if (mtv222_cb_ptr->is_power_on) {
 		mtv222_on_air = false;
-		isdbt_control_irq(false);
+//		isdbt_control_irq(false);
 		isdbt_control_gpio(false);
 
 		mtv222_cb_ptr->is_power_on = false;
@@ -444,7 +444,7 @@ static int mtv222_power_on(unsigned long arg)
 
 			return ret;
 		} else {
-			isdbt_control_irq(true);
+//			isdbt_control_irq(true);
 			mtv222_cb_ptr->is_power_on = true;
 			return 0;
 		}

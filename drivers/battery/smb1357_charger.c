@@ -40,12 +40,11 @@
 #define CHG_THEM_THEM_CHANNEL LR_MUX8_PU2_AMUX_THM4
 #endif
 
-#if defined(CONFIG_MACH_KLTE_JPN) || defined(CONFIG_MACH_KACTIVELTE_DCM)
+#if defined(CONFIG_MACH_KLTE_JPN) || defined(CONFIG_MACH_KACTIVELTE_DCM) || defined(CONFIG_MACH_CHAGALL_KDI)
 #define DT_NODE_NAME	"charger"
 #define DEV_CHG_NAME	"sec-charger"
 #define ENABLE_MAX77804K_CHG_IRQ
 #define SMB_OTG_NOTIFY_OVERCURRENT
-#define POWER_SUPPLY_TYPE_HV_MAINS POWER_SUPPLY_TYPE_MAINS_HV
 #define OVP_MSM_GPIO_CONTROL
 #endif
 
@@ -65,6 +64,7 @@
 //#define ENABLE_DCIN_5VOR9V
 //#define ENABLE_SYSON_TRIGGER
 //#define ENABLE_SMBCHG_BATT_DET
+//#define ENABLE_SHUTDOWN_MODE
 //#define USE_SYSFS_CURRENT_CTRL
 //#define TIMER_FORCE_BLOCK
 //#define CHECK_VF_BY_IRQ
@@ -1178,7 +1178,7 @@ static int smb1357_get_charging_health(struct i2c_client *client)
 	u8 chg_en;
 	u8 chg_cur;
 	int temp;
-	u8 gpio;
+	u8 gpio = false;
 
 	smb1357_charger_i2c_read(client, STATUS_1_REG, &status_1);
 	smb1357_charger_i2c_read(client, STATUS_4_REG, &status_4);
@@ -1187,8 +1187,10 @@ static int smb1357_get_charging_health(struct i2c_client *client)
 	smb1357_charger_i2c_read(client, CMD_CHG_REG, &chg_en);
 	smb1357_charger_i2c_read(client, CFG_1C_REG, &chg_cur);
 
-	gpio = gpio_get_value(smb1357data->pogo_det_gpio);
-	dev_info(&client->dev,"health: pogo gpio %d\n",gpio);
+	if (smb1357data->pogo_det_gpio)	{
+		gpio = gpio_get_value(smb1357data->pogo_det_gpio);
+		dev_info(&client->dev,"health: pogo gpio %d\n",gpio);
+	}
 
 	if (charger->is_charging == true) {
 #if defined(CHECK_VF_BY_IRQ)
@@ -1950,6 +1952,10 @@ ssize_t smb1357_hal_chg_show_attrs(struct device *dev,
 	char *str = NULL;
 
 	switch (offset) {
+	case CHG_REG:
+		i += scnprintf(buf + i, PAGE_SIZE - i, "%x\n",
+			chg->reg_addr);
+		break;
 	case CHG_DATA:
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%x\n",
 			chg->reg_data);
@@ -2021,6 +2027,7 @@ static struct device_attribute smb1357_charger_attrs[] = {
 	POGO_ATTR(pogo),
 	CHIP_ID_CHECK_ATTR(chip_id),
 	CHG_THERM_ATTR(chg_therm),
+	CHG_THERM_ADC_ATTR(chg_therm_adc),
 	CHG_CURRENT_ATTR(cur_mode),
 	CHG_CURRENT_ATTR(cur_set),
 };
@@ -2289,7 +2296,7 @@ static bool smb1357_is_pogo_event(struct i2c_client *client)
 						i2c_get_clientdata(client);
 	u8 data_f, data_e, status;
 	bool ret = false;
-	u8 gpio;
+	u8 gpio = false;
 
 	msleep(1);
 	/* Check Inserted Pogo  */
@@ -2306,12 +2313,14 @@ static bool smb1357_is_pogo_event(struct i2c_client *client)
 			ret = true;
 	}
 
-	gpio = gpio_get_value(smb1357data->pogo_det_gpio);
-	if ((smb1357data->pogo_status != DCIN_NONE) && (gpio == true))
-	{
-		ret = true;
-		dev_info(&client->dev,"%s, pogo status[%d],gpio[%d]",
-			__func__, smb1357data->pogo_status, gpio);
+	if (smb1357data->pogo_det_gpio)	{
+		gpio = gpio_get_value(smb1357data->pogo_det_gpio);
+		if ((smb1357data->pogo_status != DCIN_NONE) && (gpio == true))
+		{
+			ret = true;
+			dev_info(&client->dev,"%s, pogo status[%d],gpio[%d]",
+				__func__, smb1357data->pogo_status, gpio);
+		}
 	}
 
 	dev_info(&client->dev,
@@ -2837,6 +2846,32 @@ ssize_t chg_therm_store_attrs(struct device *dev,
 		smb1357data->chg_high_temp,smb1357data->chg_high_temp_recovery);
 
 	return ret;
+}
+
+ssize_t chg_therm_adc_show_attrs(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct power_supply *psy = dev_get_drvdata(dev);
+	struct sec_charger_info *charger =
+		container_of(psy, struct sec_charger_info, psy_chg);
+	struct qpnp_vadc_result results;
+	int temp_adc = -1;
+	int err = 0;
+
+	err = qpnp_vadc_read(NULL, CHG_THEM_THEM_CHANNEL, &results);
+
+	if (err < 0) {
+		dev_err(&charger->client->dev,"%s : therm read fail rc = %d\n",
+			__func__, err);
+	}
+	else {
+		temp_adc = results.adc_code;
+	}
+
+	dev_info(&charger->client->dev,
+		"%s: chg_threm_adc [ %d ]\n", __func__, temp_adc);
+
+	return snprintf(buf, 8, "%d\n",temp_adc);
 }
 
 static int sec_pogo_get_property(struct power_supply *psy,

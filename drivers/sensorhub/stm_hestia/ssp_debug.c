@@ -316,7 +316,7 @@ static void print_sensordata(struct ssp_data *data, unsigned int uSensor)
 			data->buf[uSensor].z, get_msdelay(data->adDelayBuf[uSensor]));
 		break;
 #endif
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	case UV_SENSOR:
 		ssp_dbg("[SSP] %u : %u(%ums)\n", uSensor, data->buf[uSensor].uv,
 			get_msdelay(data->adDelayBuf[uSensor]));

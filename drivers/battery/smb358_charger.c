@@ -238,6 +238,8 @@ static int smb358_get_charging_status(struct i2c_client *client)
 	u8 data_c = 0;
 	u8 data_d = 0;
 	u8 data_e = 0;
+	u8 therm_control_a = 0;
+	u8 other_control_a = 0;
 
 
 	/*smb358_test_read(client);*/
@@ -257,6 +259,12 @@ static int smb358_get_charging_status(struct i2c_client *client)
 	smb358_i2c_read(client, SMB358_STATUS_E, &data_e);
 	dev_dbg(&client->dev,
 		"%s : charger status E(0x%02x)\n", __func__, data_e);
+	smb358_i2c_read(client, SMB358_THERM_CONTROL_A, &therm_control_a);
+	dev_dbg(&client->dev,
+		"%s : THERM_CONTROL_A(0x%02x)\n", __func__, therm_control_a);
+	smb358_i2c_read(client, SMB358_OTHER_CONTROL_A, &other_control_a);
+	dev_dbg(&client->dev,
+		"%s : OTHER_CONTROL_A(0x%02x)\n", __func__, other_control_a);
 	/* At least one charge cycle terminated,
 	 * Charge current < Termination Current
 	 */
@@ -921,19 +929,19 @@ static void smb358_charger_function_control(
 		 */
 		smb358_set_command(client,
 			SMB358_OTHER_CONTROL_A, 0x11);
-#elif defined(CONFIG_MACH_CHAGALL_VZW)
+#elif defined(CONFIG_MACH_CHAGALL)
 		/* [STEP - 10] =================================================
-		 * Mininum System Voltage(bit 6) - 3.45v(0)
+		 * Mininum System Voltage(bit 6) - 3.60v(0)
 		 * Therm monitor(bit 4) - Disabled(1)
 		 * Soft Cold/Hot Temp Limit Behavior(bit 3:2, bit 1:0) -
 		 *   Charger Current + Float voltage Compensation(11)
 		*/
 		smb358_set_command(client,
-			SMB358_THERM_CONTROL_A, 0xB0);
+			SMB358_THERM_CONTROL_A, 0xF0);
 
 		/* [STEP - 11] ================================================
 		 * OTG/ID Pin Control(bit 7:6) - RID Disabled, OTG I2c(00)
-		 * Minimum System Voltage(bit 4) - 3.45V(0)
+		 * Minimum System Voltage(bit 4) - 3.60V(0)
 		 * Low-Battery/SYSOK Voltage threshold(bit 3:0) - 2.5V(0001)
 		 *    if this bit is disabled,
 		 *    input current for system will be disabled
@@ -1563,8 +1571,12 @@ static void smb358_chg_isr_work(struct work_struct *work)
 		case POWER_SUPPLY_HEALTH_UNDERVOLTAGE:
 			dev_info(&charger->client->dev,
 				"%s: Interrupted by OVP/UVLO\n", __func__);
+			/* Do not set POWER_SUPPLY_PROP_HEALTH
+			* excute monitor work again.
+			* ovp/uvlo is checked by polling
+			*/
 			psy_do_property("battery", set,
-				POWER_SUPPLY_PROP_HEALTH, val);
+				POWER_SUPPLY_PROP_CHARGE_TYPE, val);
 			break;
 
 		case POWER_SUPPLY_HEALTH_UNSPEC_FAILURE:
@@ -1575,8 +1587,12 @@ static void smb358_chg_isr_work(struct work_struct *work)
 		case POWER_SUPPLY_HEALTH_GOOD:
 			dev_err(&charger->client->dev,
 				"%s: Interrupted but Good\n", __func__);
+			/* Do not set POWER_SUPPLY_PROP_HEALTH
+			* excute monitor work again.
+			* ovp/uvlo is checked by polling
+			*/
 			psy_do_property("battery", set,
-				POWER_SUPPLY_PROP_HEALTH, val);
+				POWER_SUPPLY_PROP_CHARGE_TYPE, val);
 			break;
 
 		case POWER_SUPPLY_HEALTH_UNKNOWN:

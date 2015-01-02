@@ -28,11 +28,11 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
-#include <linux/i2c/abov_touchkey.h>
 #include <linux/io.h>
 #include <mach/gpio.h>
 #include <asm/unaligned.h>
 #include <linux/regulator/consumer.h>
+#include <linux/wakelock.h>
 
 #ifdef CONFIG_OF
 #include <linux/of_gpio.h>
@@ -57,6 +57,7 @@
 #define CMD_DATA_UPDATE		0x40
 #define CMD_LED_CTRL_ON		0x60
 #define CMD_LED_CTRL_OFF	0x70
+#define CMD_STOP_MODE		0x80
 #define CMD_GLOVE_ON		0x20
 #define CMD_GLOVE_OFF		0x10
 
@@ -64,11 +65,12 @@
 #define ABOV_RESET_DELAY	150
 
 struct device *sec_touchkey;
-#define FW_VERSION 0x02
-#define FW_CHECKSUM_H 0x74
-#define FW_CHECKSUM_L 0x9C
-#define TK_FW_PATH_BIN "abov/abov_tk_patek.fw"
-#define TK_FW_PATH_SDCARD "/sdcard/abov_fw.bin"
+#define ABOV_TK_NAME		"abov-touchkey"
+#define FW_VERSION		0x07
+#define FW_CHECKSUM_H		0xA2
+#define FW_CHECKSUM_L		0xD2
+#define TK_FW_PATH_BIN		"abov/abov_tk_patek.fw"
+#define TK_FW_PATH_SDCARD	"/sdcard/abov_fw.bin"
 
 #define I2C_M_WR 0		/* for i2c */
 
@@ -95,7 +97,24 @@ extern unsigned int system_rev;
 extern struct class *sec_class;
 
 static int touchkey_keycode[] = { 0,
-	KEY_RECENT, KEY_BACK, KEY_HOMEPAGE,
+	KEY_RECENT, KEY_BACK, KEY_HOMEPAGE, KEY_TKEY_WAKEUP,
+};
+
+struct abov_touchkey_platform_data {
+	unsigned long irq_flag;
+	int gpio_int;
+	int gpio_sda;
+	int gpio_scl;
+	int gpio_rst;
+	int gpio_hall;
+	int gpio_tkey_led_en;
+	struct regulator *vdd_io_vreg;
+	struct regulator *avdd_vreg;
+	const char *supply_name;
+	struct regulator *vtouch_3p3;
+	void (*input_event) (void *data);
+	int (*power) (struct abov_touchkey_platform_data *pdata, bool on);
+	int (*keyled) (bool on);
 };
 
 struct abov_tk_info {
@@ -124,6 +143,9 @@ struct abov_tk_info {
 	bool enabled;
 	bool fw_update_possible;
 	bool glovemode;
+	bool wakeup_mode;
+	bool wakeup_state;
+	struct wake_lock report_wake_lock;
 #ifdef CONFIG_DUAL_LCD
 	int flip_status;
 #endif
@@ -133,6 +155,7 @@ struct abov_tk_info {
 static int abov_touchkey_led_status;
 static int abov_touchled_cmd_reserved;
 
+static int abov_tk_suspend(struct device *dev);
 static int abov_tk_input_open(struct input_dev *dev);
 static void abov_tk_input_close(struct input_dev *dev);
 int abov_power(struct abov_touchkey_platform_data *pdata, bool on);
@@ -256,14 +279,17 @@ static int abov_tk_reset_for_bootmode(struct abov_tk_info *info)
 		if(regulator_is_enabled(info->pdata->vtouch_3p3)){
 			rc = regulator_disable(info->pdata->vtouch_3p3);
 			if(rc)
-				dev_err(&client->dev, "%s: failed to disable vtouch_3p3[%d]\n",__func__,rc);
+				dev_err(&client->dev,
+					"%s: failed to disable vtouch_3p3[%d]\n",__func__,rc);
 		} else {
-			dev_err(&client->dev, "%s: vtouch_3p3 is already disabled\n",__func__);
+			dev_err(&client->dev,
+				"%s: vtouch_3p3 is already disabled\n",__func__);
 		}
 		msleep(50);
 		rc = regulator_enable(info->pdata->vtouch_3p3);
 		if(rc)
-			dev_err(&client->dev, "%s: failed to enable vtouch_3p3[%d]\n",__func__,rc);
+			dev_err(&client->dev,
+				"%s: failed to enable vtouch_3p3[%d]\n",__func__,rc);
 	}
 	return rc;
 }
@@ -320,7 +346,7 @@ static irqreturn_t abov_tk_interrupt(int irq, void *dev_id)
 		}
 	}
 
-	button = buf & 0x03;
+	button = buf & 0x07;
 	press = !!(buf & 0x8);
 
 	if (press) {
@@ -347,6 +373,10 @@ static irqreturn_t abov_tk_interrupt(int irq, void *dev_id)
 #endif
 	}
 	input_sync(info->input_dev);
+	if (button == 4 && press){
+		dev_info(&client->dev, "Double tab wakeup\n");
+		wake_lock_timeout(&info->report_wake_lock, 3 * HZ);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -981,6 +1011,40 @@ static ssize_t abov_glove_mode_show(struct device *dev,
 	return sprintf(buf, "%d\n", info->glovemode);
 }
 
+static ssize_t abov_wakeup_mode(struct device *dev,
+	 struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct abov_tk_info *info = dev_get_drvdata(dev);
+	int scan_buffer;
+	int ret;
+
+	ret = sscanf(buf, "%d", &scan_buffer);
+	if (ret != 1)
+		goto err;
+
+	if (!(scan_buffer == 0 || scan_buffer == 1))
+		goto err;
+
+	if(scan_buffer == 1)
+		info->wakeup_mode = true;
+	else
+		info->wakeup_mode = false;
+
+	dev_info(dev, "%s : Set to %s mode\n",
+		__func__, info->wakeup_mode ? "wakeup" : "normal");
+err:
+	return count;
+}
+
+static ssize_t abov_wakeup_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct abov_tk_info *info = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", info->wakeup_mode);
+}
+
+
 static DEVICE_ATTR(touchkey_threshold, S_IRUGO, touchkey_threshold_show, NULL);
 static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR | S_IWGRP, NULL,
 			touchkey_led_control);
@@ -998,6 +1062,9 @@ static DEVICE_ATTR(touchkey_firm_update_status, S_IRUGO | S_IWUSR | S_IWGRP,
 			touchkey_fw_update_status, NULL);
 static DEVICE_ATTR(glove_mode, S_IRUGO | S_IWUSR | S_IWGRP,
 			abov_glove_mode_show, abov_glove_mode);
+static DEVICE_ATTR(two_touch_wakeup_mode, S_IRUGO | S_IWUSR | S_IWGRP,
+			abov_wakeup_mode_show, abov_wakeup_mode);
+
 
 static struct attribute *sec_touchkey_attributes[] = {
 	&dev_attr_touchkey_threshold.attr,
@@ -1013,6 +1080,7 @@ static struct attribute *sec_touchkey_attributes[] = {
 	&dev_attr_touchkey_firm_update.attr,
 	&dev_attr_touchkey_firm_update_status.attr,
 	&dev_attr_glove_mode.attr,
+	&dev_attr_two_touch_wakeup_mode.attr,
 	NULL,
 };
 
@@ -1034,8 +1102,7 @@ static int abov_tk_fw_check(struct abov_tk_info *info)
 	if (!info->fw_update_possible)
 		return ret;
 
-	if (ret || info->fw_ver < FW_VERSION || info->fw_ver > 0xf0 \
-		|| info->fw_ver == 0x11) { /* This line must be removed after several weeks later 14.06.30 */
+	if (ret || info->fw_ver < FW_VERSION || info->fw_ver > 0xf0) {
 		dev_err(&client->dev, "excute tk firmware update (0x%x -> 0x%x\n",
 			info->fw_ver, FW_VERSION);
 		ret = abov_flash_fw(info, true, BUILT_IN);
@@ -1141,6 +1208,11 @@ static int abov_parse_dt(struct device *dev,
 		return pdata->gpio_sda;
 	}
 
+	pdata->gpio_hall = of_get_named_gpio(np, "abov,hall_flip-gpio", 0);
+	if(pdata->gpio_hall < 0){
+		dev_err(dev, "unable to get gpio_hall\n");
+	}
+
 	retval = of_property_read_string(np, "abov,vtouch_3p3", &pdata->supply_name);
 	if (retval)
 		dev_err(dev, "unable to get name of vtouch_3p3, %d\n", retval);
@@ -1194,6 +1266,7 @@ static int __devinit abov_tk_probe(struct i2c_client *client,
 #endif
 	info->client = client;
 	info->input_dev = input_dev;
+	info->wakeup_mode = false;
 
 	if (client->dev.of_node) {
 		struct abov_touchkey_platform_data *pdata;
@@ -1228,9 +1301,10 @@ static int __devinit abov_tk_probe(struct i2c_client *client,
 
 	client->irq = gpio_to_irq(info->pdata->gpio_int);
 	pr_info("%s irq = %d\n",__func__,client->irq);
-	
+
 	info->irq = -1;
 	mutex_init(&info->lock);
+	wake_lock_init(&info->report_wake_lock, WAKE_LOCK_SUSPEND, "report_wake_lock");
 
 	info->fw_update_possible = true;
 	abov_tk_reset_for_bootmode(info);
@@ -1258,6 +1332,7 @@ static int __devinit abov_tk_probe(struct i2c_client *client,
 	set_bit(KEY_RECENT, input_dev->keybit);
 	set_bit(KEY_BACK, input_dev->keybit);
 	set_bit(KEY_HOMEPAGE, input_dev->keybit);
+	set_bit(KEY_TKEY_WAKEUP, input_dev->keybit);
 	set_bit(EV_LED, input_dev->evbit);
 	set_bit(LED_MISC, input_dev->ledbit);
 	input_set_drvdata(input_dev, info);
@@ -1305,6 +1380,17 @@ static int __devinit abov_tk_probe(struct i2c_client *client,
 			__func__);
 	}
 
+#ifdef CONFIG_DUAL_LCD
+	if(info->pdata->gpio_hall < 0)
+		/* default set : tkey enable */
+		info->flip_status = FLIP_CLOSE;
+	else
+		info->flip_status = !(gpio_get_value(info->pdata->gpio_hall));
+	dev_info(&client->dev, "%s: Folder is %sed now.\n",
+		__func__, info->flip_status ? "clos":"open");
+	if (!info->flip_status)
+		abov_tk_suspend(&client->dev);
+#endif
 	info->probe_done = true;
 	pr_info("%s done\n", __func__);
 	return 0;
@@ -1357,20 +1443,43 @@ static int abov_tk_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct abov_tk_info *info = i2c_get_clientdata(client);
+	u8 cmd;
+	int ret;
 
 	if (!info->enabled)
 		return 0;
+
 	printk("Inside abov_tk_suspend \n");
-	dev_notice(&info->client->dev, "%s: users=%d\n", __func__,
+	dev_dbg(&info->client->dev, "%s: users=%d\n", __func__,
 		   info->input_dev->users);
 
-	disable_irq(info->irq);
-	info->enabled = false;
-	release_all_fingers(info);
+	if (info->wakeup_mode && info->flip_status == FLIP_CLOSE){
+		/*Enter WAKEUP mode*/
+		cmd = CMD_STOP_MODE;
+		ret = abov_tk_i2c_write(client, ABOV_BTNSTATUS, &cmd, 1);
+		if (ret < 0){
+			dev_err(dev,
+				"%s : failed to write wakeup mode(%d)\n",
+				__func__, ret);
+			return 0;
+		}
+		dev_info(dev,
+			"%s : success to enter tkey wakeup state\n",
+			__func__);
+		release_all_fingers(info);
+		enable_irq_wake(info->irq);
+		info->enabled = false;
+		info->wakeup_state = true;
+	}
+	else {
+		disable_irq(info->irq);
+		info->enabled = false;
+		info->wakeup_state = false;
+		release_all_fingers(info);
 
-	if (info->pdata->power)
-		info->pdata->power(info->pdata, false);
-
+		if (info->pdata->power)
+			info->pdata->power(info->pdata, false);
+	}
 	return 0;
 }
 
@@ -1394,6 +1503,17 @@ static int abov_tk_resume(struct device *dev)
 	dev_dbg(&info->client->dev, "%s: users=%d\n", __func__,
 		   info->input_dev->users);
 
+	if (info->wakeup_state){
+		dev_info(dev, "%s: tkey wakeup\n", __func__);
+		disable_irq_wake(info->irq);
+		info->wakeup_state = false;
+		disable_irq(info->irq);
+
+		if(info->pdata->power)
+			info->pdata->power(info->pdata, false);
+		usleep(5 * 1000);
+	}
+
 #if 0
 	abov_tk_reset_for_bootmode(info);
 	msleep(ABOV_RESET_DELAY);
@@ -1408,10 +1528,11 @@ static int abov_tk_resume(struct device *dev)
 		get_tk_fw_version(info, true);
 #endif
 	info->enabled = true;
-	if (abov_touchled_cmd_reserved) {
+	if (abov_touchled_cmd_reserved && \
+		abov_touchkey_led_status == CMD_LED_ON) {
 		abov_touchled_cmd_reserved = 0;
 		led_data = abov_touchkey_led_status;
-		
+
 		abov_tk_i2c_write(client, ABOV_BTNSTATUS, &led_data, 1);
 
 		dev_info(&info->client->dev, "%s: LED reserved on\n", __func__);
@@ -1537,7 +1658,7 @@ static void __exit touchkey_exit(void)
 	i2c_del_driver(&abov_tk_driver);
 }
 
-late_initcall(touchkey_init);
+module_init(touchkey_init);
 module_exit(touchkey_exit);
 
 /* Module information */

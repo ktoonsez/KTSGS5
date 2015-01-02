@@ -549,6 +549,9 @@ void set_proximity_threshold(struct ssp_data *data,
 	//msg->buffer[2] = ((char) (uData2 >> 8) & 0x07);
 	//msg->buffer[3] = (char) uData2;
 
+	uData1 += PROX_TRIM;
+	uData2 += PROX_TRIM;
+
 	if (uData1 < uData2) {
 		pr_info("[SSP] %s - invalid threshold (%u, %u)\n",
 			__func__, uData1, uData2);

@@ -44,7 +44,12 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 #define AID_OPERATION
 
 /* EA8061V ldi id3 */
-#define EA8061V_REV_B 0x20
+#define EA8061V_REV_A 0x40
+#define EA8061V_REV_B 0x40
+#define EA8061V_REV_C 0x41
+#define EA8061V_REV_D 0x42
+#define EA8061V_REV_E 0x42
+#define EA8061V_REV_F 0x43
 
 enum {
 	GAMMA_CURVE_1P9 = 0,
@@ -53,7 +58,7 @@ enum {
 };
 
 #define MTP_START_ADDR 0xC8
-#define LUMINANCE_MAX 65
+#define LUMINANCE_MAX 62
 #define GAMMA_SET_MAX 33
 #define BIT_SHIFT 22
 /*
@@ -73,8 +78,8 @@ enum {
 #define TP_MAX 10
 
 /* PANEL DEPENDENT THINGS */
-#define MAX_CANDELA 350
-#define MIN_CANDELA	2
+#define MAX_CANDELA 360
+#define MIN_CANDELA	5
 
 /*
 *	ID 0x20

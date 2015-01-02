@@ -36,10 +36,13 @@
 		qcom,mdss-vsync-enable=<1>;
 		qcom,mdss-hw-vsync-mode=<1>;
 		qcom,mdss-pan-insert-dcs-cmd=<1>;
-		qcom,mdss-pan-wr-mem-continue=<0x3c>;
-		qcom,mdss-pan-wr-mem-start=<0x2c>;
+		qcom,mdss-dsi-wr-mem-start = <0x2c>;
+		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
+
 		qcom,mdss-pan-te-sel=<1>;
 		qcom,mdss-pan-clk-rate=<448000000>;
+		qcom,panel-roi-alignment = <4 4 1 1 1 1>;
+		qcom,partial-update-enabled;
 
 		qcom,mdss-pan-porch-values = <96 46 96 8 2 10>; /* <HBP> <HPW> <HFP> <VBP> <VPW> <VFP> */
 		qcom,mdss-pan-underflow-clr = <0xff>;
@@ -249,7 +252,7 @@
 								29 01 00 00 00 00 02 12 00 ];
 			samsung,panel-ldi-partial-disp-off = [29 01 00 00 00 00 02 13 00];
 
-			qcom,panel-display-on-cmds = [05 01 00 00 00 00 02 29 00];
+			qcom,panel-display-on-cmds = [05 01 00 00 00 00 02 29 00]; /*DISPLAY_ON*/
 			qcom,panel-display-off-cmds = [05 01 00 00 00 00 02 28 00];
 
 			samsung,panel-elvss-lowtemp-cmds-list = [
@@ -273,7 +276,8 @@
 
 			samsung,panel-etc-hbm-cmds	 = [
 					29 01 00 00 00 00 02 B5 29		/* 32 frame averaging*/
-					29 01 00 00 00 00 02 53 D0		/* HBM on*/
+					29 01 00 00 00 00 02 55 02		/*acl on 15%*/
+					29 01 00 00 00 00 03 B6 4C 84	/*elvss*/
 					29 01 00 00 00 00 22            /* Brightness Condition Set - Gamma 2.2 Setting*/
 						CA 01 00 01 00 01 00 80
 						80 80 80 80 80 80 80 80
@@ -281,8 +285,7 @@
 						80 80 80 80 80 80 80 00
 						00 00
 					29 01 00 00 00 00 02 F7 01		/* Gamma, LTPS(AID) update */
-
-
+					29 01 00 00 00 00 02 53 D0		/* HBM on*/
 				];
 			samsung,panel-hbm-off-enable-cmds = [
 					29 01 00 00 00 00 02 53 00		/* HBM off*/

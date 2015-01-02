@@ -30,8 +30,12 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#if defined(CONFIG_INPUT_BOOSTER)
+//to enabled common touch booster. This must be included.
+#include <linux/input/input_booster.h>
+#endif
 /* To support suface touch, firmware should support data
- * which is required related app ex) MT_ANGLE, MT_PALM ...
+ * which is required related app ex) MT_PALM ...
  * Synpatics IC report those data through F51's edge swipe
  * fucntionality.
  */
@@ -126,7 +130,6 @@
 #define USE_HOVER_REZERO
 #define GLOVE_MODE
 #define READ_LCD_ID
-#define REPORT_ANGLE
 #define SYNAPTICS_DEVICE_NAME	"N9005"
 #define USE_PALM_REJECTION_KERNEL
 #define USE_EDGE_EXCLUSION
@@ -145,7 +148,6 @@
 #define USE_EDGE_SWIPE_WIDTH_MAJOR
 
 #elif defined(CONFIG_SEC_GNOTE_PROJECT)
-#define REPORT_ANGLE
 #define SYNAPTICS_DEVICE_NAME	"S5006"
 #define USE_PALM_REJECTION_KERNEL
 #define USE_EDGE_EXCLUSION
@@ -156,17 +158,27 @@
 #define PROXIMITY
 #define EDGE_SWIPE
 #define GLOVE_MODE
+#define USE_EDGE_SWIPE_WIDTH_MAJOR
+#define EDGE_SWIPE_SCALE
+#define USE_PALM_REJECTION_KERNEL
 #undef CONFIG_HAS_EARLYSUSPEND
 
 #elif defined(CONFIG_SEC_RUBENS_PROJECT)
+#if defined(CONFIG_SEC_RUBENSLTE_COMMON)
+#define SYNAPTICS_DEVICE_NAME	"T365"
+#else
+#define SYNAPTICS_DEVICE_NAME	"T360"
+#endif
 #undef CONFIG_HAS_EARLYSUSPEND
 #undef TSP_BOOSTER
+/* changes to fix PLM P140707-06422(PALM TOUCH) issue in RUBEN */
+#define PROXIMITY
+#define EDGE_SWIPE
 
 #else /* default undefine all */
 #undef PROXIMITY			/* Use F51 - edge_swipe, hover, side_touch, stylus, hand_grip */
 #undef EDGE_SWIPE			/* Screen Caputure, and Palm pause */
 #undef EDGE_SWIPE_SCALE			/* Recalculate edge_swipe data */
-#undef REPORT_ANGLE			/* Report angle data when surface touch */
 #undef USE_PALM_REJECTION_KERNEL	/* Fix Firmware bug.(Finger_status, PALM flag) */
 #undef SIDE_TOUCH			/* Side Touch */
 #undef USE_HOVER_REZERO			/* Use hover rezero */
@@ -254,6 +266,7 @@
 #define FW_IMAGE_NAME_S5050_H		"tsp_synaptics/synaptics_s5050_h.fw"
 #define FW_IMAGE_NAME_S5100_K_A2_FHD	"tsp_synaptics/synaptics_s5100_k_a2_fhd.fw"
 #define FW_IMAGE_NAME_S5100_K_A3	"tsp_synaptics/synaptics_s5100_k_a3.fw"
+#define FW_IMAGE_NAME_S5100_K_A3_KOR	"tsp_synaptics/synaptics_s5100_kkor_a3.fw"
 #define FW_IMAGE_NAME_S5100_K_ACTIVE	"tsp_synaptics/synaptics_s5100_k_active.fw"
 #define FW_IMAGE_NAME_S5100_HESTIA	"tsp_synaptics/synaptics_s5100_hestia.fw"
 #define FW_IMAGE_NAME_S5707		"tsp_synaptics/synaptics_s5707.fw"
@@ -423,15 +436,13 @@
 #ifdef EDGE_SWIPE
 
 #if defined(CONFIG_SEC_MONDRIAN_PROJECT) || defined(CONFIG_SEC_CHAGALL_PROJECT)\
-	|| defined(CONFIG_SEC_KLIMT_PROJECT)
+	|| defined(CONFIG_SEC_KLIMT_PROJECT) || defined(CONFIG_SEC_RUBENS_PROJECT)
 #define EDGE_SWIPE_DATA_OFFSET	3
 #else
 #define EDGE_SWIPE_DATA_OFFSET	9
 #endif
 
 #define EDGE_SWIPE_WIDTH_MAX	255
-#define EDGE_SWIPE_ANGLE_MIN	(-90)
-#define EDGE_SWIPE_ANGLE_MAX	90
 #define EDGE_SWIPE_PALM_MAX		1
 #endif
 
@@ -1223,6 +1234,9 @@ struct synaptics_rmi4_data {
 	int tkey_dvfs_freq;
 #endif
 
+#ifdef COMMON_INPUT_BOOSTER
+	struct input_booster *tsp_booster;
+#endif
 #ifdef USE_HOVER_REZERO
 	struct delayed_work rezero_work;
 #endif

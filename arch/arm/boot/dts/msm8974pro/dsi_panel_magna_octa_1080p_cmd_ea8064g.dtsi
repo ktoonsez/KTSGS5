@@ -23,6 +23,9 @@
 		qcom,rst-gpio = <&pma8084_gpios 17 0>;
 		qcom,te-gpio = <&msmgpio 12 0>;
 
+		qcom,panel-roi-alignment = <4 4 1 1 1 1>;
+		qcom,partial-update-enabled;
+
 		mdss-pan-broadcast-mode=<0>;
 
 		qcom,mdss-pan-res = <1080 1920>;

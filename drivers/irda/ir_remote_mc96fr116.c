@@ -337,8 +337,8 @@ static void irda_remocon_work(struct ir_remocon_data *ir_data, int count)
 
 	int buf_size = count+2;
 	int ret, retry, ng_retry;
-	int sleep_timing;
-	int end_data;
+//	int sleep_timing;
+//	int end_data;
 	int emission_time;
 	int ack_pin_onoff;
 
@@ -399,26 +399,9 @@ resend_data:
 
 	mutex_unlock(&data->mutex);
 
-#if 0
-	for (i = 0; i < buf_size; i++) {
-		printk(KERN_INFO "%s: data[%d] : 0x%02x\n", __func__, i,
-					data->signal[i]);
-
-	}
-#endif
 	data->count = 2;
-
-	end_data = data->signal[count-2] << 8 | data->signal[count-1];
 	emission_time = \
-		(1000 * (data->ir_sum - end_data) / (data->ir_freq)) + 10;
-	sleep_timing = emission_time - 130;
-	if (sleep_timing > 0)
-		msleep(sleep_timing);
-/*
-	printk(KERN_INFO "%s: sleep_timing = %d\n", __func__, sleep_timing);
-*/
-	emission_time = \
-		(1000 * (data->ir_sum) / (data->ir_freq)) + 50;
+		(1000 * (data->ir_sum) / (data->ir_freq));
 	if (emission_time > 0)
 		msleep(emission_time);
 		pr_info("%s: emission_time = %d\n",

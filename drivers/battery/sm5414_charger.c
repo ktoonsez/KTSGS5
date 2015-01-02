@@ -28,7 +28,6 @@
 #include <linux/of_irq.h>
 
 static int charger_health = POWER_SUPPLY_HEALTH_GOOD;
-static bool run_suspended = false;
 
 static int SM5414_i2c_write(struct i2c_client *client,
 		int reg, u8 *buf)
@@ -308,19 +307,17 @@ static void SM5414_charger_function_control(
 		gpio_direction_output((charger->pdata->chg_gpio_en), 1);
 		SM5414_set_toggle_charger(client, 0);
 	} else {
-		if (!run_suspended) {
-			psy_do_property(charger->pdata->fuelgauge_name, get,
-					POWER_SUPPLY_PROP_CAPACITY, value);
-			if (value.intval > 0) {
-				/* Suspend enable for register reset */
-				ctrl = 0x44;
-				SM5414_i2c_write(client, SM5414_CTRL, &ctrl);
-				msleep(20);
 
-				ctrl = 0x40;
-				SM5414_i2c_write(client, SM5414_CTRL, &ctrl);
-				run_suspended = true;
-			}
+		psy_do_property(charger->pdata->fuelgauge_name, get,
+				POWER_SUPPLY_PROP_CAPACITY, value);
+		if (value.intval > 0) {
+			/* Suspend enable for register reset */
+			ctrl = 0x44;
+			SM5414_i2c_write(client, SM5414_CTRL, &ctrl);
+			msleep(20);
+
+			ctrl = 0x40;
+			SM5414_i2c_write(client, SM5414_CTRL, &ctrl);
 		}
 
 		dev_info(&client->dev, "%s : float voltage (%dmV)\n",
@@ -468,6 +465,8 @@ bool SM5414_hal_chg_get_property(struct i2c_client *client,
 	struct sec_charger_info *charger = i2c_get_clientdata(client);
 	u8 data;
 	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		if (charger->is_fullcharged)
 			val->intval = POWER_SUPPLY_STATUS_FULL;

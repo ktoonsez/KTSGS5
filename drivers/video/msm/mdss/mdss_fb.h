@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,6 +21,7 @@
 #include <linux/notifier.h>
 
 #include "mdss_panel.h"
+#include "mdss_mdp_splash_logo.h"
 
 #define MSM_FB_DEFAULT_PAGE_SIZE 2
 #define MFD_KEY  0x11161126
@@ -89,6 +90,8 @@ struct disp_info_notify {
 	struct completion comp;
 	struct mutex lock;
 	int value;
+	int is_suspend;
+	int ref_count;
 };
 
 struct msm_sync_pt_data {
@@ -99,13 +102,16 @@ struct msm_sync_pt_data {
 	struct sw_sync_timeline *timeline;
 	int timeline_value;
 	u32 threshold;
-
+	u32 retire_threshold;
 	atomic_t commit_cnt;
 	bool flushed;
 	bool async_wait_fences;
 
 	struct mutex sync_mutex;
 	struct notifier_block notifier;
+
+	struct sync_fence *(*get_retire_fence)
+		(struct msm_sync_pt_data *sync_pt_data);
 };
 
 struct msm_fb_data_type;
@@ -128,10 +134,15 @@ struct msm_mdp_interface {
 	int (*do_histogram)(struct msm_fb_data_type *mfd,
 				struct mdp_histogram *hist);
 	int (*update_ad_input)(struct msm_fb_data_type *mfd);
+	int (*ad_attenuate_bl)(u32 bl, u32 *bl_out,
+			struct msm_fb_data_type *mfd);
 	int (*panel_register_done)(struct mdss_panel_data *pdata);
 	u32 (*fb_stride)(u32 fb_index, u32 xres, int bpp);
+	int (*splash_init_fnc)(struct msm_fb_data_type *mfd);
 	struct msm_sync_pt_data *(*get_sync_fnc)(struct msm_fb_data_type *mfd,
 				const struct mdp_buf_sync *buf_sync);
+	void (*check_dsi_status)(struct work_struct *work, uint32_t interval);
+	int (*configure_panel)(struct msm_fb_data_type *mfd, int mode);
 	void *private1;
 };
 
@@ -167,6 +178,9 @@ struct msm_fb_data_type {
 	u32 dest;
 	struct fb_info *fbi;
 
+	int idle_time;
+	struct delayed_work idle_notify_work;
+
 	int op_enable;
 	u32 fb_imgType;
 	int panel_reconfig;
@@ -191,9 +205,9 @@ struct msm_fb_data_type {
 	u32 bl_min_lvl;
 	u32 unset_bl_level;
 	u32 bl_updated;
-	u32 bl_level_old;
+	u32 bl_level_scaled;
+	u32 bl_level_prev_scaled;
 	struct mutex bl_lock;
-	struct mutex lock;
 	struct mutex power_state;
 	struct mutex ctx_lock;
 
@@ -228,6 +242,11 @@ struct msm_fb_data_type {
 	wait_queue_head_t idle_wait_q;
 	wait_queue_head_t kickoff_wait_q;
 	bool shutdown_pending;
+
+	struct msm_fb_splash_info splash_info;
+
+	wait_queue_head_t ioctl_q;
+	atomic_t ioctl_ref_cnt;
 
 	struct msm_fb_backup_type msm_fb_backup;
 	struct completion power_set_comp;
@@ -300,13 +319,17 @@ enum TE_SETTING {
 
 extern int boot_mode_lpm, boot_mode_recovery;
 int mdss_fb_get_phys_info(unsigned long *start, unsigned long *len, int fb_num);
+int mdss_fb_get_first_cmt_flag(void);
 void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl);
 void mdss_fb_update_backlight(struct msm_fb_data_type *mfd);
 void mdss_fb_wait_for_fence(struct msm_sync_pt_data *sync_pt_data);
 void mdss_fb_signal_timeline(struct msm_sync_pt_data *sync_pt_data);
+struct sync_fence *mdss_fb_sync_get_fence(struct sw_sync_timeline *timeline,
+				const char *fence_name, int val);
 int mdss_fb_register_mdp_instance(struct msm_mdp_interface *mdp);
 #if defined(CONFIG_MDNIE_TFT_MSM8X26) || defined (CONFIG_FB_MSM_MDSS_S6E8AA0A_HD_PANEL) || defined(CONFIG_MDNIE_VIDEO_ENHANCED)
 void mdss_negative_color(int is_negative_on);
 #endif
 int mdss_fb_dcm(struct msm_fb_data_type *mfd, int req_state);
+int mdss_fb_suspres_panel(struct device *dev, void *data);
 #endif /* MDSS_FB_H */

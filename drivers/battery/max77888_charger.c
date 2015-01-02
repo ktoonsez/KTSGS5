@@ -652,7 +652,7 @@ static int sec_chg_get_property(struct power_supply *psy,
 		val->intval = max77888_get_health_state(charger);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		val->intval = charger->charging_current_max;
+		val->intval = max77888_get_input_current(charger);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		val->intval = charger->charging_current;
@@ -1102,7 +1102,9 @@ static void max77888_chgin_isr_work(struct work_struct *work)
 					value.intval = POWER_SUPPLY_HEALTH_UNDERVOLTAGE;
 					psy_do_property("battery", set,
 							POWER_SUPPLY_PROP_HEALTH, value);
-				} else if ((battery_health == \
+				}
+			} else {
+				if ((battery_health == \
 							POWER_SUPPLY_HEALTH_OVERVOLTAGE) &&
 						(chgin_dtls != 0x02)) {
 					pr_info("%s: vbus_state : 0x%d, chg_state : 0x%d\n", __func__, chgin_dtls, chg_dtls);
@@ -1276,6 +1278,19 @@ static int sec_charger_parse_dt(struct max77888_charger_data *charger)
 				pr_err("%s error reading battery,full_check_current_2nd %d\n", __func__, ret);
 
 		}
+
+#if defined(CONFIG_MACH_MONDRIAN)
+		/* check battery company*/
+		if(sec_bat_check_battery_company() == BATT_TYPE_SDI) {
+			for(i = 0; i < len; i++) {
+				ret = sec_charger_read_u32_index_dt(np,
+						"battery,full_check_current_1st_sdi", i,
+						&pdata->charging_current[i].full_check_current_1st);
+				if (ret < 0)
+					pr_err("%s error reading battery,full_check_current_1st %d\n", __func__, ret);
+			}
+		}
+#endif
 	}
 
 	return ret;

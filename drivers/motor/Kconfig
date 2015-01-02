@@ -56,6 +56,10 @@ config DRV2604_VIBRATOR
 	help
 	Say Y to enable DRV2604_VIBRATOR support.
 
+config MOTOR_ISA1000
+	tristate "ISA1000 motor"
+	default n
+	depends on VIBETONZ
 #
 # Immersion TouchSense Player driver configuration
 #

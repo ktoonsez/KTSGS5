@@ -55,6 +55,7 @@
 
 #include "irda_fw_version202.h"
 #include "irda_fw_version103.h"
+#include "irda_fw_version104.h"
 
 #include <mach/gpio.h>
 #include <linux/ir_remote_con_mc96.h>
@@ -204,8 +205,8 @@ static int irda_fw_update(struct ir_remocon_data *ir_data)
 	u8 buf_ir_test[8];
 	const u8 *IRDA_fw;
 	const u8 calc_chksum[] = {0x3A, 0x02, 0x10, 0x00, 0xF0, 0x20, 0xFF, 0xDF};
-	IRDA_fw     = IRDA_binary_103;
-	frame_count = FRAME_COUNT_103;
+	IRDA_fw     = IRDA_binary_104;
+	frame_count = FRAME_COUNT_104;
 
 	/* Switch on chip in Bootloader mode, wake low */
 	irda_led_onoff(1);
@@ -262,7 +263,7 @@ static int irda_fw_update(struct ir_remocon_data *ir_data)
 	print_hex_dump(KERN_CRIT, "IRDA Master Rx: ", 16, 1,
 					DUMP_PREFIX_ADDRESS, buf_ir_test, 8, 1);
 #endif
-	if((buf_ir_test[0] << 8 | buf_ir_test[1]) == 0x6EBA) {
+	if((buf_ir_test[0] << 8 | buf_ir_test[1]) == 0x6E93) {
 		printk(KERN_CRIT "%s: irda fw fine, exit now\n", __func__);
 		download_pass = 1;
 		goto powerdown_dev;
@@ -302,8 +303,8 @@ static int irda_fw_update(struct ir_remocon_data *ir_data)
 #endif
 
 	ret = buf_ir_test[0] << 8 | buf_ir_test[1];
-	if (ret == 0x6EBA) {
-		printk(KERN_INFO "1. %s: boot down complete\n", __func__);
+	if (ret == 0x6E93) {
+		printk(KERN_INFO " IrDA new firmware downloaded\n");
 		download_pass = 1;
 		goto powerdown_dev;
 	} else {
@@ -397,11 +398,14 @@ static void irda_remocon_work(struct ir_remocon_data *ir_data, int count)
 
 	int buf_size = count+2;
 	int ret, retry, ng_retry, sng_retry;
-	int sleep_timing;
-	int end_data;
 	int emission_time;
 	int ack_pin_onoff;
+#if defined(CONFIG_MACH_ATLANTICLTE_ATT) || defined(CONFIG_MACH_ATLANTICLTE_USC)
+	int sleep_timing;
+	int end_data;
+#endif
 #ifdef DEBUG
+	int i;
 	u8 buf[8];
 #endif
 	if (count_number >= 100)
@@ -420,6 +424,11 @@ static void irda_remocon_work(struct ir_remocon_data *ir_data, int count)
 
 	print_hex_dump(KERN_CRIT, "irda: IRDA Master Rx: ", 16, 1,
 				DUMP_PREFIX_ADDRESS, buf, 8, 1);
+	printk("%s: print stored bytes\n", __func__);
+	for (i = 0; i < buf_size; i++)
+		printk(KERN_INFO "0x%02x, ", data->signal[i]);
+	printk("\n");
+
 #endif
 	irda_add_checksum_length(data, count);
 
@@ -458,31 +467,22 @@ resend_data:
 	}
 	ack_number = ack_pin_onoff;
 
-	mutex_unlock(&data->mutex);
-
-#if 0
-	for (i = 0; i < buf_size; i++) {
-		printk(KERN_INFO "%s: data[%d] : 0x%02x\n", __func__, i,
-					data->signal[i]);
-	}
-#endif
 	data->count = 2;
-
+#if defined(CONFIG_MACH_ATLANTICLTE_ATT) || defined(CONFIG_MACH_ATLANTICLTE_USC)
 	end_data = data->signal[count-2] << 8 | data->signal[count-1];
-	emission_time = \
-		(1000 * (data->ir_sum - end_data) / (data->ir_freq)) + 10;
+	emission_time = (1000 * (data->ir_sum - end_data) / (data->ir_freq)) + 10;
 	sleep_timing = emission_time - 130;
 	if (sleep_timing > 0)
-		msleep(sleep_timing);
-/*
-	printk(KERN_INFO "%s: sleep_timing = %d\n", __func__, sleep_timing);
-*/
+		usleep(sleep_timing);
+#endif
+
 	emission_time = \
-		(1000 * (data->ir_sum) / (data->ir_freq)) + 50;
+		(1000 * (data->ir_sum) / (data->ir_freq));
 	if (emission_time > 0)
-		msleep(emission_time);
-		printk(KERN_INFO "%s: emission_time = %d\n",
-					__func__, emission_time);
+		usleep(emission_time);
+	printk(KERN_INFO "%s: emission_time = %d\n",
+				__func__, emission_time);
+
 	for(retry = 0; retry < 3; retry++) {
 		if (gpio_get_value(data->pdata->irda_irq_gpio)) {
 			printk(KERN_INFO "%s : %d Sending IR OK!\n",
@@ -503,6 +503,8 @@ resend_data:
 			msleep(65);
 		}
 	}
+
+	mutex_unlock(&data->mutex);
 
 	ack_number += ack_pin_onoff;
 #ifndef USE_STOP_MODE
@@ -526,6 +528,9 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 	unsigned int _data;
 	int count, i, ret;
 
+#ifdef DEBUG
+	printk(KERN_CRIT "%s irda -- %s\n", __func__, buf);
+#endif
 	ret = 0;
 	for (i = 0; i < MAX_SIZE; i++) {
 		if (sscanf(buf++, "%u", &_data) == 1) {
@@ -534,22 +539,25 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 
 			if (data->count == 2) {
 				data->ir_freq = _data;
-				if (data->on_off) {
-					data->pdata->ir_wake_en(data->pdata,0);
-					udelay(200);
-					data->pdata->ir_wake_en(data->pdata,1);
-					msleep(30);
-				}
-				data->signal[2] = _data >> 16;
-				data->signal[3] = (_data >> 8) & 0xFF;
-				data->signal[4] = _data & 0xFF;
-				data->count += 3;
+				data->signal[2] = 0x40; // Mode
+				data->signal[3] = _data >> 16;
+				data->signal[4] = (_data >> 8) & 0xFF;
+				data->signal[5] = _data & 0xFF;
+				data->count += 4;
 			} else {
 				data->ir_sum += _data;
 				count = data->count;
-				data->signal[count] = _data >> 8;
-				data->signal[count+1] = _data & 0xFF;
-				data->count += 2;
+				if(_data > 0x7FFF) {
+					data->signal[count] = _data >> 24;
+					data->signal[count+1] = _data >> 16;
+					data->signal[count+2] = _data >> 8;
+					data->signal[count+3] = _data & 0xFF;
+					data->count += 4;
+				} else {
+					data->signal[count] = _data >> 8;
+					data->signal[count+1] = _data & 0xFF;
+					data->count += 2;
+				}
 			}
 
 			while (_data > 0) {

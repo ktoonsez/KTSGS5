@@ -401,4 +401,8 @@ config GPIO_MAINMIC_BIAS
 		To add support if the main-mic bias is
 		supplied using external LDO
 
+config DSDA_VIA_UART
+	tristate "DualStandbyDualActive function via UART"
+	help
+	 To add support dsda via uart
 endmenu

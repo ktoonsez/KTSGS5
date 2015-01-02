@@ -19,6 +19,7 @@
 #define CHIP_ID		"HSCDTD008A"
 
 static struct work_struct timer_stop_data_work;
+extern unsigned int raw_data_stream;
 
 static ssize_t mag_vendor_show(struct device *dev,
 struct device_attribute *attr, char *buf)
@@ -38,9 +39,9 @@ struct device_attribute *attr, char *buf)
 	struct msg_data message;
 	unsigned long timeout = jiffies + (2*HZ);
 	struct adsp_data *data = dev_get_drvdata(dev);
-	if( !(data->raw_data_stream &  ADSP_RAW_MAG) ){
+	if( !(raw_data_stream &  ADSP_RAW_MAG) ){
 		pr_err("Starting raw data  \n");
-		data->raw_data_stream |= ADSP_RAW_MAG;
+		raw_data_stream |= ADSP_RAW_MAG;
 		message.sensor_type = ADSP_FACTORY_MODE_MAG;
 		adsp_unicast(message,NETLINK_MESSAGE_GET_RAW_DATA,0,0);
 	}
@@ -136,9 +137,9 @@ int mag_factory_receive_data(struct adsp_data *data,int cmd)
 			pr_info("[SENSOR] %s: mpu6515 registration success \n", __func__);
 			break;
 		case CALLBACK_TIMER_EXPIRED:
-			pr_err("Raw data flag = %d\n",data->raw_data_stream);
-			if( (data->raw_data_stream &  ADSP_RAW_MAG) ){
-				data->raw_data_stream &= ~ADSP_RAW_MAG;
+			pr_err("Raw data flag = %d\n", raw_data_stream);
+			if( (raw_data_stream &  ADSP_RAW_MAG) ){
+				raw_data_stream &= ~ADSP_RAW_MAG;
 				schedule_work(&timer_stop_data_work);
 			}
 			break;

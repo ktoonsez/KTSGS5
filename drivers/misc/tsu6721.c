@@ -685,22 +685,7 @@ static DEVICE_ATTR(uart_sel, S_IRUGO | S_IWUSR ,
 static ssize_t usbsel_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct tsu6721_usbsw *usbsw = dev_get_drvdata(dev);
-
-	if (usbsw->attached_dev == ATTACHED_DEV_JIG_UART_OFF_MUIC
-		|| usbsw->attached_dev == ATTACHED_DEV_JIG_UART_OFF_VB_MUIC
-		|| usbsw->attached_dev == ATTACHED_DEV_JIG_UART_ON_MUIC)
-		return snprintf(buf, 5, "UART\n");
-	else if (usbsw->attached_dev == ATTACHED_DEV_DESKDOCK_MUIC
-		|| usbsw->attached_dev == ATTACHED_DEV_AUDIODOCK_MUIC)
-		return snprintf(buf, 6, "AUDIO\n");
-	else if (usbsw->attached_dev == ATTACHED_DEV_USB_MUIC
-		|| usbsw->attached_dev == ATTACHED_DEV_CDP_MUIC
-		|| usbsw->attached_dev == ATTACHED_DEV_JIG_USB_OFF_MUIC
-		|| usbsw->attached_dev == ATTACHED_DEV_JIG_USB_ON_MUIC)
-		return snprintf(buf, 4, "PDA\n");
-	else
-		return snprintf(buf, 9, "UNKNOWN\n");
+	return snprintf(buf, 4, "PDA\n");
 }
 
 static ssize_t usbsel_store(struct device *dev,
@@ -1398,17 +1383,30 @@ static int __devinit tsu6721_probe(struct i2c_client *client,
 				return -ENOMEM;
 		}
 		ret = tsu6721_parse_dt(&client->dev, pdata);
-		if (ret < 0)
-			return ret;
+		if (ret < 0) {
+			dev_err(&client->dev, "sm5502_parse_dt failed\n");
+			goto fail;
+		}
 
 		pdata->callback = tsu6721_callback;
 		pdata->dock_init = tsu6721_dock_init;
 		pdata->oxp_callback = tsu6721_oxp_callback;
 		pdata->mhl_sel = NULL;
+
 		gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda,  0, GPIO_CFG_INPUT,
 			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 		gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl,  0, GPIO_CFG_INPUT,
 			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+		if (system_rev == 6) {
+			gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda,  0, GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_UP, GPIO_CFG_4MA), GPIO_CFG_ENABLE);
+			gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl,  0, GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_UP, GPIO_CFG_4MA), GPIO_CFG_ENABLE);
+		}
+#endif
+
 #if defined(CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_SEC_GNOTE_PROJECT)
 		gpio_tlmm_config(GPIO_CFG(pdata->gpio_int,  0, GPIO_CFG_INPUT,
 			GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_DISABLE);
@@ -1421,20 +1419,23 @@ static int __devinit tsu6721_probe(struct i2c_client *client,
 			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_DISABLE);
 #endif
 		client->irq = gpio_to_irq(pdata->gpio_int);
-	} else
+	} else {
 		pdata = client->dev.platform_data;
+		if (!pdata)
+			return -EINVAL;
+	}
 
-	if (!pdata)
-		return -EINVAL;
-
-	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
-		return -EIO;
+	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
+		dev_err(&client->dev, "i2c functionality check failed...!\n");
+		ret = -EIO;
+		goto fail;
+	}
 
 	usbsw = kzalloc(sizeof(struct tsu6721_usbsw), GFP_KERNEL);
 	if (!usbsw) {
 		dev_err(&client->dev, "failed to allocate driver data\n");
-		kfree(usbsw);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto fail;
 	}
 
 	usbsw->client = client;
@@ -1576,6 +1577,8 @@ fail2:
 	i2c_set_clientdata(client, NULL);
 fail1:
 	kfree(usbsw);
+fail:
+	kfree(pdata);
 	return ret;
 }
 

@@ -87,17 +87,35 @@ enum {
 	ON = 1,
 };
 #define Atime_ms		504 //50.4 ms
+#ifdef CONFIG_SEC_RUBENS_PROJECT
+#define DGF				600
+#define R_Coef1			(260)
+#define G_Coef1			(1000)
+#define B_Coef1			(20)
+#define CT_Coef1			(3200)
+#define CT_Offset1			(1840)
+#elif defined(CONFIG_SEC_S_PROJECT)
+#define Atime_ms		504 //50.4 ms
+#define DGF				642
+#define R_Coef1			(330)
+#define G_Coef1			(1000)
+#define B_Coef1			(150)
+#define CT_Coef1			(3210)
+#define CT_Offset1			(1788)
+#else
 #define DGF				625
 #define R_Coef1			(-580)
 #define G_Coef1			(1010)
 #define B_Coef1			(80)
+#define CT_Coef1			(2855)
+#define CT_Offset1			(1973)
+#endif
+
 #define IR_R_Coef1			(-1)
 #define IR_G_Coef1			(109)
 #define IR_B_Coef1			(-29)
 #define IR_C_Coef1			(57)
 #define IR_Coef1			(38)
-#define CT_Coef1			(2855)
-#define CT_Offset1			(1973)
 #define INTEGRATION_CYCLE	240
 
 #define ADC_BUFFER_NUM	6
@@ -108,6 +126,8 @@ enum {
 
 #define OFFSET_ARRAY_LENGTH		10
 #define OFFSET_FILE_PATH	"/efs/prox_cal"
+#define CAL_SKIP_ADC	325
+#define CAL_FAIL_ADC	400
 
 #ifdef CONFIG_PROX_WINDOW_TYPE
 #define WINDOW_TYPE_FILE_PATH "/sys/class/sec/sec_touch_ic/window_type"
@@ -505,7 +525,15 @@ static int taos_get_lux(struct taos_data *taos)
 	}
 
 	/* calculate lux */
+#if defined(CONFIG_SEC_RUBENS_PROJECT) || defined(CONFIG_SEC_S_PROJECT)
+	taos->irdata = (reddata + grndata + bludata - clrdata)/2;
+	if(taos->irdata < 0)
+	{
+		taos->irdata=0;
+	}
+#else
 	taos->irdata = (reddata*IR_R_Coef1 + grndata*IR_G_Coef1 + bludata*IR_B_Coef1 - clrdata*IR_C_Coef1) / IR_Coef1;
+#endif
 
 	/* remove ir from counts*/
 	rp1 = taos->reddata - taos->irdata;
@@ -680,8 +708,11 @@ static ssize_t proximity_enable_store(struct device *dev,
 		ret = opt_i2c_write_command(taos, temp);
 		if (ret < 0)
 			gprintk("opt_i2c_write failed, err = %d\n", ret);
-
+#if defined(CONFIG_SEC_S_PROJECT) && defined(CONFIG_INV_MPU_IIO_PRIMARY)
+		input_report_rel(taos->proximity_input_dev, REL_MISC, 1+1);
+#else
 		input_report_abs(taos->proximity_input_dev, ABS_DISTANCE, 1);
+#endif
 		input_sync(taos->proximity_input_dev);
 
 		enable_irq(taos->irq);
@@ -843,34 +874,45 @@ static int proximity_store_offset(struct device *dev, bool do_calib)
 	struct file *offset_filp = NULL;
 	mm_segment_t old_fs;
 	int err = 0;
-	u16 max_ct = taos->pdata->prox_thresh_low /2;
 	u16 abnormal_ct = proximity_adc_read(taos);
 	u16 offset = 0;
 
 	if(do_calib) {
 		/* tap offset button */
-		pr_err("%s: calibration start ", __func__);
-		if(abnormal_ct > taos->pdata->crosstalk_max_offset) {
-			pr_err("%s: crosstalk is lager than 500, this chip is bad smaple ", __func__);
+		pr_info("[SENSOR] %s: calibration start \n", __func__);
+		if(abnormal_ct < CAL_SKIP_ADC)
+		{
+			taos->offset_value = 0;
+			taos->threshold_high= taos->pdata->prox_thresh_hi;
+			taos->threshold_low = taos->pdata->prox_thresh_low;
+			taos_thresh_set(taos);
+			taos->set_manual_thd = false;
+			taos->cal_result = 2;
+			pr_info("%s: crosstalk < %d, skip calibration\n", __func__, CAL_SKIP_ADC);
 		}
-
-		if(abnormal_ct > max_ct) {
-			offset = abnormal_ct - max_ct;
-
-			if((taos->pdata->prox_thresh_hi + offset) > taos->pdata->thresholed_max_offset)
-				pr_err("%s: detect threshold is lager than 900, this chip is bad smaple ", __func__);
+		else if((abnormal_ct >=CAL_SKIP_ADC) && (abnormal_ct <=CAL_FAIL_ADC))
+		{
+			offset = abnormal_ct / 2;
+			taos->offset_value = offset;
+			taos->threshold_high= taos->pdata->prox_thresh_hi + offset;
+			taos->threshold_low = taos->pdata->prox_thresh_low+ offset;
+			taos_thresh_set(taos);
+			taos->set_manual_thd = false;
+			taos->cal_result = 1;
 		}
-
-		taos->offset_value = offset;
-		taos->threshold_high= taos->pdata->prox_thresh_hi + offset;
-		taos->threshold_low = taos->pdata->prox_thresh_low+ offset;
-
-		taos_thresh_set(taos);
-		taos->set_manual_thd = false;
-		taos->cal_result = 1;
+		else
+		{
+			taos->offset_value = 0;
+			taos->threshold_high= taos->pdata->prox_thresh_hi;
+			taos->threshold_low = taos->pdata->prox_thresh_low;
+			taos_thresh_set(taos);
+			taos->set_manual_thd = false;
+			taos->cal_result = 0;
+			pr_info("%s: crosstalk > %d, calibration failed \n", __func__, CAL_FAIL_ADC);
+		}
 	} else {
-	/* tap reset button */
-		pr_err("%s: reset\n", __func__);
+		/* tap reset button */
+		pr_info("%s: reset\n", __func__);
 		taos->threshold_high= taos->pdata->prox_thresh_hi;
 		taos->threshold_low = taos->pdata->prox_thresh_low;
 		taos_thresh_set(taos);
@@ -878,7 +920,7 @@ static int proximity_store_offset(struct device *dev, bool do_calib)
 		taos->cal_result = 2;
 		taos->set_manual_thd = false;
 	}
-	printk("max_ct : %d, abnormal_ct : %d, offset : %d\n", max_ct, abnormal_ct, taos->offset_value);
+	printk("%s: abnormal_ct : %d, offset : %d\n", __func__, abnormal_ct, taos->offset_value);
 	/* store offset in file */
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -1295,15 +1337,25 @@ static void taos_work_func_prox(struct work_struct *work)
 	if ((threshold_high ==  (taos->threshold_high)) &&
 		(adc_data >=  (taos->threshold_high))) {
 		proximity_value = STATE_CLOSE;
+#if defined(CONFIG_SEC_S_PROJECT) && defined(CONFIG_INV_MPU_IIO_PRIMARY)
+		input_report_rel(taos->proximity_input_dev,
+			REL_MISC, proximity_value+1);
+#else
 		input_report_abs(taos->proximity_input_dev,
 			ABS_DISTANCE, proximity_value);
+#endif
 		input_sync(taos->proximity_input_dev);
 		pr_info("[%s] prox value = %d\n", __func__, proximity_value);
 	} else if ((threshold_high == (0xFFFF)) &&
 	(adc_data <= (taos->threshold_low))) {
 		proximity_value = STATE_FAR;
+#if defined(CONFIG_SEC_S_PROJECT) && defined(CONFIG_INV_MPU_IIO_PRIMARY)
+		input_report_rel(taos->proximity_input_dev,
+			REL_MISC, proximity_value+1);
+#else
 		input_report_abs(taos->proximity_input_dev,
 			ABS_DISTANCE, proximity_value);
+#endif
 		input_sync(taos->proximity_input_dev);
 		pr_info("[%s] prox value = %d\n", __func__, proximity_value);
 	} else {
@@ -1475,11 +1527,19 @@ static int taos_parse_dt(struct device *dev,
 	pdata->enable = of_get_named_gpio(np, "taos,en", 0);
 #endif
 
+#ifdef CONFIG_SEC_RUBENS_PROJECT
 	//set trim
-	pdata->prox_rawdata_trim=150;
+	pdata->prox_rawdata_trim=130;
 	// set threshold - prox_rawdata_trim value
+	pdata->prox_thresh_hi = 480,
+	pdata->prox_thresh_low = 340,
+	pdata->prox_pulsecnt = 0x06,
+#else
+	pdata->prox_rawdata_trim=150;
 	pdata->prox_thresh_hi = 650,
 	pdata->prox_thresh_low = 470,
+	pdata->prox_pulsecnt = 0x08,
+#endif
 	pdata->prox_th_hi_cal = 380,
 	pdata->prox_th_low_cal = 250,
 	//set offset- prox_rawdata_trim value
@@ -1487,7 +1547,6 @@ static int taos_parse_dt(struct device *dev,
 	pdata->thresholed_max_offset = 750,
 	pdata->als_time = 0xEB,
 	pdata->intr_filter = 0x33,
-	pdata->prox_pulsecnt = 0x08,
 	pdata->als_gain = 0x22,
 	pdata->coef_atime = 50,
 	pdata->ga = 97,
@@ -1589,7 +1648,11 @@ static int taos_i2c_probe(struct i2c_client *client,
 	taos->proximity_input_dev = input_dev;
 	input_set_drvdata(input_dev, taos);
 	input_dev->name = "proximity_sensor";
+#if defined(CONFIG_SEC_S_PROJECT) && defined(CONFIG_INV_MPU_IIO_PRIMARY)
+	input_set_capability(input_dev, EV_REL, REL_MISC);
+#else
 	input_set_capability(input_dev, EV_ABS, ABS_DISTANCE);
+#endif
 	input_set_abs_params(input_dev, ABS_DISTANCE, 0, 1, 0, 0);
 
 	taos_dbgmsg("registering proximity input device\n");
@@ -1697,7 +1760,9 @@ static int taos_i2c_probe(struct i2c_client *client,
 		pr_err("%s: could not setup irq\n", __func__);
 		goto err_setup_irq;
 	}
+#ifndef CONFIG_SEC_RUBENS_PROJECT
 	sensor_power_on_vdd(taos,0);
+#endif
 	goto done;
 	/* error, unwind it all */
 err_devicetree:

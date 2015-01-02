@@ -1228,6 +1228,28 @@ static int __perf_remove_from_context(void *info)
 	return 0;
 }
 
+#ifdef CONFIG_SMP
+static void perf_retry_remove(struct perf_event *event)
+{
+	int up_ret;
+	/*
+	 * CPU was offline. Bring it online so we can
+	 * gracefully exit a perf context.
+	 */
+	up_ret = cpu_up(event->cpu);
+	if (!up_ret)
+		/* Try the remove call once again. */
+		cpu_function_call(event->cpu, __perf_remove_from_context,
+				  event);
+	else
+		pr_err("Failed to bring up CPU: %d, ret: %d\n",
+		       event->cpu, up_ret);
+}
+#else
+static void perf_retry_remove(struct perf_event *event)
+{
+}
+#endif
 
 /*
  * Remove the event from a task's (or a CPU's) list of events.
@@ -5309,6 +5331,7 @@ static struct pmu perf_swevent = {
 	.read		= perf_swevent_read,
 
 	.event_idx	= perf_swevent_event_idx,
+	.events_across_hotplug = 1,
 };
 
 #ifdef CONFIG_EVENT_TRACING
@@ -5403,6 +5426,7 @@ static struct pmu perf_tracepoint = {
 	.read		= perf_swevent_read,
 
 	.event_idx	= perf_swevent_event_idx,
+	.events_across_hotplug = 1,
 };
 
 static inline void perf_tp_register(void)
@@ -5630,6 +5654,7 @@ static struct pmu perf_cpu_clock = {
 	.read		= cpu_clock_event_read,
 
 	.event_idx	= perf_swevent_event_idx,
+	.events_across_hotplug = 1,
 };
 
 /*
@@ -5710,6 +5735,7 @@ static struct pmu perf_task_clock = {
 	.read		= task_clock_event_read,
 
 	.event_idx	= perf_swevent_event_idx,
+	.events_across_hotplug = 1,
 };
 
 static void perf_pmu_nop_void(struct pmu *pmu)
@@ -7183,11 +7209,20 @@ static void perf_event_exit_cpu_context(int cpu)
 
 	idx = srcu_read_lock(&pmus_srcu);
 	list_for_each_entry_rcu(pmu, &pmus, entry) {
-		ctx = &per_cpu_ptr(pmu->pmu_cpu_context, cpu)->ctx;
+		/*
+		 * If keeping events across hotplugging is supported, do not
+		 * remove the event list, but keep it alive across CPU hotplug.
+		 * The context is exited via an fd close path when userspace
+		 * is done and the target CPU is online.
+		 */
+		if (!pmu->events_across_hotplug) {
+			ctx = &per_cpu_ptr(pmu->pmu_cpu_context, cpu)->ctx;
 
-		mutex_lock(&ctx->mutex);
-		smp_call_function_single(cpu, __perf_event_exit_context, ctx, 1);
-		mutex_unlock(&ctx->mutex);
+			mutex_lock(&ctx->mutex);
+			smp_call_function_single(cpu, __perf_event_exit_context,
+						 ctx, 1);
+			mutex_unlock(&ctx->mutex);
+		}
 	}
 	srcu_read_unlock(&pmus_srcu, idx);
 }

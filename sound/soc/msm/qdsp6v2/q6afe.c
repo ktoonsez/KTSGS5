@@ -449,8 +449,9 @@ static void afe_send_cal_block(int32_t path, u16 port_id)
 	}
 
 	index = q6audio_get_port_index(port_id);
-	if (index < 0) {
-		pr_debug("%s: AFE port index invalid!\n", __func__);
+	if (index < 0 || index > AFE_MAX_PORTS) {
+		pr_debug("%s: AFE port index[%d] invalid!\n",
+				__func__, index);
 		goto done;
 	}
 
@@ -745,8 +746,9 @@ static int afe_send_hw_delay(u16 port_id, u32 rate)
 		goto fail_cmd;
 	}
 	index = q6audio_get_port_index(port_id);
-	if (index < 0) {
-		pr_debug("%s: AFE port index invalid!\n", __func__);
+	if (index < 0 || index > AFE_MAX_PORTS) {
+		pr_debug("%s: AFE port index[%d] invalid!\n",
+				__func__, index);
 		goto fail_cmd;
 	}
 
@@ -2671,7 +2673,7 @@ static ssize_t afe_debug_write(struct file *filp,
 				goto afe_error;
 			}
 
-			if (param[1] < 0 || param[1] > 100) {
+			if (param[1] > 100) {
 				pr_err("%s: Error, volume shoud be 0 to 100 percentage param = %lu\n",
 					__func__, param[1]);
 				rc = -EINVAL;
@@ -2990,8 +2992,9 @@ int afe_close(int port_id)
 			__func__, pcm_afe_instance[port_id & 0x1]);
 		port_id = VIRTUAL_ID_TO_PORTID(port_id);
 		pcm_afe_instance[port_id & 0x1]--;
-		if (!(pcm_afe_instance[port_id & 0x1] == 0 &&
-			proxy_afe_instance[port_id & 0x1] == 0))
+		if ((!(pcm_afe_instance[port_id & 0x1] == 0 &&
+			proxy_afe_instance[port_id & 0x1] == 0)) ||
+			afe_close_done[port_id & 0x1] == true)
 			return 0;
 		else
 			afe_close_done[port_id & 0x1] = true;
@@ -3003,8 +3006,9 @@ int afe_close(int port_id)
 			__func__, proxy_afe_instance[port_id & 0x1]);
 		port_id = VIRTUAL_ID_TO_PORTID(port_id);
 		proxy_afe_instance[port_id & 0x1]--;
-		if (!(pcm_afe_instance[port_id & 0x1] == 0 &&
-			proxy_afe_instance[port_id & 0x1] == 0))
+		if ((!(pcm_afe_instance[port_id & 0x1] == 0 &&
+			proxy_afe_instance[port_id & 0x1] == 0)) ||
+			afe_close_done[port_id & 0x1] == true)
 			return 0;
 		else
 			afe_close_done[port_id & 0x1] = true;

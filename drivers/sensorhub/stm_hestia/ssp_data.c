@@ -141,7 +141,7 @@ static void get_proximity_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 #endif
 }
 
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 static void get_uv_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
@@ -324,7 +324,7 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->get_sensor_data[TEMPERATURE_HUMIDITY_SENSOR] =
 		get_temp_humidity_sensordata;
 #endif
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	data->get_sensor_data[UV_SENSOR] = get_uv_sensordata;
 #endif
 	data->get_sensor_data[ROTATION_VECTOR] = get_rot_sensordata;
@@ -355,7 +355,7 @@ void initialize_function_pointer(struct ssp_data *data)
 	data->report_sensor_data[TEMPERATURE_HUMIDITY_SENSOR] =
 		report_temp_humidity_data;
 #endif
-#ifdef CONFIG_SENSORS_SSP_UV
+#ifdef CONFIG_SENSORS_SSP_UVIS25
 	data->report_sensor_data[UV_SENSOR] = report_uv_data;
 #endif
 	data->report_sensor_data[ROTATION_VECTOR] = report_rot_data;

@@ -70,6 +70,8 @@
 #define MODEL_NAME	"SM-G900K"
 #elif defined(CONFIG_MACH_KLTE_LGT)
 #define MODEL_NAME	"SM-G900L"
+#elif defined(CONFIG_SEC_HESTIA_PROJECT)
+#define MODEL_NAME	"SM-G739F"
 #else
 #define MODEL_NAME	"SM-G900"
 #endif
@@ -249,6 +251,15 @@ static int get_cp_thm_value(struct ssp_data *data)
 	int err = 0;
 	struct qpnp_vadc_result results;
 		mutex_lock(&data->cp_temp_adc_lock);
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	err = qpnp_vadc_read(ssp_vadc, P_MUX5_1_1, &results);
+		mutex_unlock(&data->cp_temp_adc_lock);
+		if (err) {
+		pr_err("%s : error reading chn %d, rc = %d\n",
+			__func__, P_MUX5_1_1, err);
+			return err;
+		}
+#else
 	err = qpnp_vadc_read(ssp_vadc, LR_MUX6_PU1_AMUX_THM3, &results);
 		mutex_unlock(&data->cp_temp_adc_lock);
 		if (err) {
@@ -256,6 +267,7 @@ static int get_cp_thm_value(struct ssp_data *data)
 			__func__, LR_MUX6_PU2_AMUX_THM3, err);
 			return err;
 		}
+#endif
 	return results.adc_code;
 
 }
@@ -265,6 +277,15 @@ static int get_cp_thm2_value(struct ssp_data *data)
 	int err = 0;
 	struct qpnp_vadc_result results;
 	mutex_lock(&data->cp_temp_adc_lock);
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	err = qpnp_vadc_read(ssp_vadc, P_MUX8_1_1, &results);
+	mutex_unlock(&data->cp_temp_adc_lock);
+	if (err) {
+		pr_err("%s : error reading chn %d, rc = %d\n",
+			__func__, P_MUX8_1_1, err);
+		return err;
+	}
+#else
 	err = qpnp_vadc_read(ssp_vadc, LR_MUX8_PU1_AMUX_THM4, &results);
 	mutex_unlock(&data->cp_temp_adc_lock);
 	if (err) {
@@ -272,6 +293,7 @@ static int get_cp_thm2_value(struct ssp_data *data)
 			__func__, LR_MUX8_PU2_AMUX_THM4, err);
 		return err;
 	}
+#endif
 	return results.adc_code;
 }
 
@@ -280,6 +302,15 @@ static int convert_adc_to_temp(struct ssp_data *data, unsigned int adc)
 	int err = 0;
 	struct qpnp_vadc_result results;
 	mutex_lock(&data->cp_temp_adc_lock);
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	err = qpnp_vadc_read(ssp_vadc, P_MUX5_1_1, &results);
+	mutex_unlock(&data->cp_temp_adc_lock);
+	if (err) {
+		pr_err("%s : error reading chn %d, rc = %d\n",
+			__func__, P_MUX5_1_1, err);
+		return err;
+	}
+#else
 	err = qpnp_vadc_read(ssp_vadc, LR_MUX6_PU1_AMUX_THM3, &results);
 	mutex_unlock(&data->cp_temp_adc_lock);
 	if (err) {
@@ -287,6 +318,7 @@ static int convert_adc_to_temp(struct ssp_data *data, unsigned int adc)
 			__func__, LR_MUX6_PU2_AMUX_THM3, err);
 		return err;
 	}
+#endif
 
 	return results.physical * 10;
 }
@@ -296,6 +328,15 @@ static int convert_adc_to_temp2(struct ssp_data *data, unsigned int adc)
 	int err = 0;
 	struct qpnp_vadc_result results;
 	mutex_lock(&data->cp_temp_adc_lock);
+#if defined(CONFIG_SEC_HESTIA_PROJECT)
+	err = qpnp_vadc_read(ssp_vadc, P_MUX8_1_1, &results);
+	mutex_unlock(&data->cp_temp_adc_lock);
+	if (err) {
+		pr_err("%s : error reading chn %d, rc = %d\n",
+			__func__, P_MUX8_1_1, err);
+		return err;
+	}
+#else
 	err = qpnp_vadc_read(ssp_vadc, LR_MUX8_PU1_AMUX_THM4, &results);
 	mutex_unlock(&data->cp_temp_adc_lock);
 	if (err) {
@@ -303,7 +344,7 @@ static int convert_adc_to_temp2(struct ssp_data *data, unsigned int adc)
 			__func__, LR_MUX8_PU2_AMUX_THM4, err);
 		return err;
 	}
-
+#endif
 	return results.physical * 10;
 }
 

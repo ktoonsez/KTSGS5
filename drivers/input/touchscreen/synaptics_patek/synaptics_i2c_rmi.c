@@ -104,6 +104,7 @@ static int synaptics_parse_dt(struct device *dev,
 	dt_data->tsp_sda = of_get_named_gpio(np, "synaptics,tsp_sda", 0);
 	dt_data->tsp_scl  = of_get_named_gpio(np, "synaptics,tsp_scl", 0);
 	dt_data->tsp_sel = of_get_named_gpio(np, "synaptics,tsp_sel", 0);
+	dt_data->hall_ic = of_get_named_gpio(np, "synaptics,hall_flip-gpio", 0);
 	dt_data->fpga_mainclk = of_get_named_gpio(np, "synaptics,fpga_mainclk", 0);
 	dt_data->cresetb = of_get_named_gpio(np, "synaptics,cresetb", 0);
 	dt_data->cdone = of_get_named_gpio(np, "synaptics,cdone", 0);
@@ -133,6 +134,12 @@ static int synaptics_parse_dt(struct device *dev,
 	rc = gpio_direction_output(dt_data->cresetb, 1);
 	if (rc)
 		dev_err(dev, "%s: error to set cresetb : %d\n", __func__, rc);
+
+#ifdef CHARGER_NOTIFIER
+	rc = gpio_request(GPIO_TSP_TA, "tsp_ta");
+	if (rc)
+		dev_err(dev, "%s: error to request tsp_ta gpio : %d\n", __func__, rc);
+#endif
 
 	rc = of_property_read_u32(np, "synaptics,supply-num", &dt_data->num_of_supply);
 	if (dt_data->num_of_supply > 0) {
@@ -703,6 +710,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			if ((finger_data->wx == 0) && (finger_data->wy == 0))
 				continue;
 		}
+
+		/* block palm touch temporary */
+		if (finger_status == 0x03)
+			return 0;
 
 		/*
 		 * Each 3-bit finger status field represents the following:
@@ -1891,8 +1902,13 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 
 				retval = synaptics_rmi4_f12_init(rmi4_data,
 						fhandler, &rmi_fd, intr_count);
-				if (retval < 0)
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+							"%s: f11_init fail[%d]\n",
+							__func__, retval);
+					kfree(fhandler);
 					return retval;
+				}
 				break;
 			case SYNAPTICS_RMI4_F34:
 				if (rmi_fd.intr_src_count == 0)
@@ -1910,8 +1926,13 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 
 				retval = synaptics_rmi4_f34_init(rmi4_data,
 						fhandler, &rmi_fd, intr_count);
-				if (retval < 0)
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+							"%s: f34_init fail[%d]\n",
+							__func__, retval);
+					kfree(fhandler);
 					return retval;
+				}
 				break;
 
 #ifdef PROXIMITY
@@ -1931,8 +1952,13 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 
 				retval = synaptics_rmi4_f51_init(rmi4_data,
 						fhandler, &rmi_fd, intr_count);
-				if (retval < 0)
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+							"%s: f51_init fail[%d]\n",
+							__func__, retval);
+					kfree(fhandler);
 					return retval;
+				}
 				break;
 #endif
 			}
@@ -2211,6 +2237,12 @@ static int synaptics_rmi4_reinit_device(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_device_info *rmi;
 
+	if (!rmi4_data->tsp_probe) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: blocked. tsp probe is not yet done.\n", __func__);
+		return -EPERM;
+	}
+
 	rmi = &(rmi4_data->rmi4_mod_info);
 
 	if (!list_empty(&rmi->support_fn_list)) {
@@ -2268,12 +2300,16 @@ static void synaptics_rmi4_release_all_finger(
 		input_mt_slot(rmi4_data->input_dev, ii);
 		input_mt_report_slot_state(rmi4_data->input_dev,
 				MT_TOOL_FINGER, 0);
+		rmi4_data->finger[ii].mcount = 0;
+		rmi4_data->finger[ii].state = 0;
 	}
 #else
 	input_mt_sync(rmi4_data->input_dev);
 #endif
 	input_report_key(rmi4_data->input_dev,
 			BTN_TOUCH, 0);
+	input_report_key(rmi4_data->input_dev,
+			BTN_TOOL_FINGER, 0);
 #ifdef CONFIG_GLOVE_TOUCH
 	input_report_switch(rmi4_data->input_dev,
 		SW_GLOVE, false);
@@ -2394,7 +2430,7 @@ static void fpga_power_ctrl(struct synaptics_rmi4_data *rmi4_data, int onoff)
 		retval = regulator_set_voltage(rmi4_data->vreg_2p95, 2950000, 2950000);
 		if (retval) {
 			dev_err(&rmi4_data->i2c_client->dev,
-				"%s: unable to set vreg_2p95 voltage to 2.95V\n",
+				"%s: unable to set vreg_2p95 voltage to 1.8 ~ 2.95V\n",
 				__func__);
 		}
 	}
@@ -2652,8 +2688,8 @@ static void synaptics_rmi4_sleep_mode(struct synaptics_rmi4_data *rmi4_data,
 			sizeof(device_ctrl));
 	if (retval < 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Failed to set configured\n",
-				__func__);
+				"%s: Failed to read sleep mode cmd(%d)\n",
+				__func__, enable);
 		return;
 	}
 
@@ -2668,8 +2704,8 @@ static void synaptics_rmi4_sleep_mode(struct synaptics_rmi4_data *rmi4_data,
 			sizeof(device_ctrl));
 	if (retval < 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Failed to set configured\n",
-				__func__);
+				"%s: Failed to write sleep mode cmd(%x)\n",
+				__func__, device_ctrl);
 		return;
 	}
 	return;
@@ -2710,6 +2746,7 @@ void samsung_switching_tsp(int flip)
 		if (rmi4_data->touch_stopped)
 			gpio_set_value(rmi4_data->dt_data->tsp_sel, flip);
 		else {
+			synaptics_rmi4_force_calibration();
 			synaptics_rmi4_release_all_finger(rmi4_data);
 			synaptics_rmi4_sleep_mode(rmi4_data, 1);
 			gpio_set_value(rmi4_data->dt_data->tsp_sel, flip);
@@ -2720,13 +2757,94 @@ void samsung_switching_tsp(int flip)
 				rmi4_data->hover_called = false;
 			}
 #endif
-			synaptics_rmi4_force_calibration();
 		}
 	}
 }
 EXPORT_SYMBOL(samsung_switching_tsp);
 #endif
 
+#ifdef CHARGER_NOTIFIER
+static struct synaptics_cable support_cable_list[] = {
+	{ .cable_type = EXTCON_USB, },
+	{ .cable_type = EXTCON_TA, },
+};
+
+static void synaptics_charger_notify_work(struct work_struct *work)
+{
+	struct synaptics_cable *cable =
+			container_of(work, struct synaptics_cable, work);
+	struct synaptics_rmi4_data *rmi4_data = synaptics_get_tsp_info();
+	int rc;
+
+	if (!rmi4_data){
+		pr_err("%s tsp driver is null\n", __func__);
+		return;
+	}
+
+	rmi4_data->cable_state = cable->cable_state;
+	if (rmi4_data->touch_stopped){
+		pr_err("%s tsp is stopped\n", __func__);
+		return;
+	}
+
+	rc = gpio_direction_output(GPIO_TSP_TA, cable->cable_state);
+	if (rc)
+		pr_err("%s: error to set gpio %d output %ld\n",
+			__func__, GPIO_TSP_TA, cable->cable_state);
+	pr_info("%s %ld, tsp_ta = %d\n",
+		__func__, cable->cable_state, gpio_get_value(GPIO_TSP_TA));
+}
+
+static int synaptics_charger_notify(struct notifier_block *nb,
+					unsigned long stat, void *ptr)
+{
+	struct synaptics_cable *cable =
+			container_of(nb, struct synaptics_cable, nb);
+
+	pr_info("%s, %ld\n", __func__, stat);
+	cable->cable_state = stat;
+
+	schedule_work(&cable->work);
+
+	return NOTIFY_DONE;
+
+}
+
+static int __init synaptics_init_charger_notify(void)
+{
+	struct synaptics_rmi4_data *rmi4_data = synaptics_get_tsp_info();
+	struct synaptics_cable *cable;
+	int ret;
+	int i;
+
+	if (!rmi4_data){
+		pr_info("%s tsp driver is null\n", __func__);
+		return 0;
+	}
+
+	pr_info("%s register extcon notifier for usb and ta\n", __func__);
+	for (i = 0; i < ARRAY_SIZE(support_cable_list); i++) {
+		cable = &support_cable_list[i];
+		INIT_WORK(&cable->work, synaptics_charger_notify_work);
+		cable->nb.notifier_call = synaptics_charger_notify;
+
+		ret = extcon_register_interest(&cable->extcon_nb,
+				EXTCON_DEV_NAME,
+				extcon_cable_name[cable->cable_type],
+				&cable->nb);
+		if (ret)
+			pr_err("%s: fail to register extcon notifier(%s, %d)\n",
+				__func__, extcon_cable_name[cable->cable_type],
+				ret);
+
+		cable->edev = cable->extcon_nb.edev;
+		if (!cable->edev)
+			pr_err("%s: fail to get extcon device\n", __func__);
+	}
+	return 0;
+}
+device_initcall_sync(synaptics_init_charger_notify);
+#endif
 
 /**
 * synaptics_rmi4_new_function()
@@ -2801,13 +2919,13 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	/* block temporory for dev
-		if(!get_lcd_attached()){
-			dev_err(&client->dev, "%s: lcd is not attached\n", __func__);
-			return -EIO;
-		}
+	if(!get_lcd_attached()){
+		dev_err(&client->dev, "%s: lcd is not attached\n", __func__);
+		return -EIO;
+	}
 	*/
 
-	if (boot_mode_recovery){
+	if (boot_mode_recovery == 1){
 		dev_err(&client->dev, "%s: recovery mode\n", __func__);
 		return -EIO;
 	}
@@ -2851,6 +2969,9 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->flip_status = -1;
 	synaptics_set_tsp_info(rmi4_data);
 #endif
+#ifdef CHARGER_NOTIFIER
+	rmi4_data->cable_state = false;
+#endif
 
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;
@@ -2861,8 +2982,19 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 
 	dev_info(&client->dev, "%s : system_rev = %d\n", __func__, system_rev);
 
-	rmi4_data->firmware_name = FW_IMAGE_NAME_PATEK;
-	rmi4_data->fac_firmware_name = FAC_FWIMAGE_NAME_PATEK;
+	/*
+		TSP FPCB is separated after B'd rev 06
+		B'd rev 00 ~ 05 	: FPCB rev 4.0 : synaptics_patek_old.fw (no tuning)
+		B'd rev 06 ~	: FPCB rev 4.1 : synaptics_patek.fw
+	*/
+	if (system_rev < 6) {
+		rmi4_data->firmware_name = FW_IMAGE_NAME_PATEK_OLD;
+		rmi4_data->fac_firmware_name = FAC_FWIMAGE_NAME_PATEK_OLD;
+	}
+	else {
+		rmi4_data->firmware_name = FW_IMAGE_NAME_PATEK;
+		rmi4_data->fac_firmware_name = FAC_FWIMAGE_NAME_PATEK;
+	}
 
 	dev_info(&client->dev, "%s : fw = %s, fac_fw = %s\n",
 		__func__, rmi4_data->firmware_name, rmi4_data->fac_firmware_name);
@@ -2925,6 +3057,9 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	mutex_init(&(rmi4_data->rmi4_reset_mutex));
 	mutex_init(&(rmi4_data->rmi4_reflash_mutex));
 	mutex_init(&(rmi4_data->rmi4_device_mutex));
+
+	regulator_disable(rmi4_data->vreg_2p95);
+	regulator_put(rmi4_data->vreg_2p95);
 
 #ifdef USE_OPEN_DWORK
 	INIT_DELAYED_WORK(&rmi4_data->open_work, synaptics_rmi4_open_work);
@@ -3020,7 +3155,11 @@ err_tsp_reboot:
 	}
 
 	/* Select IC */
-	rmi4_data->flip_status = !(gpio_get_value(HALL_SENSOR_INT_GPIO));
+	if(rmi4_data->dt_data->hall_ic < 0)
+		/* default set : MAIN TSP */
+		rmi4_data->flip_status = 0;
+	else
+		rmi4_data->flip_status = !(gpio_get_value(rmi4_data->dt_data->hall_ic));
 	dev_info(&client->dev, "%s: Folder is %sed now.\n",
 		__func__, rmi4_data->flip_status ? "clos":"open");
 
@@ -3028,8 +3167,6 @@ err_tsp_reboot:
 #endif
 
 	rmi4_data->tsp_probe = true;
-	/* for blocking to be excuted open function until probing */
-
 	dev_info(&client->dev, "%s: done!\n",__func__);
 	return retval;
 
@@ -3059,7 +3196,7 @@ err_set_input_device:
 	synaptics_power_ctrl(rmi4_data,false);
 	fpga_enable(rmi4_data, 0);
 err_configure_fpga:
-	fpga_power_ctrl(rmi4_data, 0);
+	//fpga_power_ctrl(rmi4_data, 0);
 err_get_regulator:
 	kfree(rmi4_data->dt_data->supplies);
 err_mem_regulator:
@@ -3101,7 +3238,7 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 
 	synaptics_power_ctrl(rmi4_data,false);
 	fpga_enable(rmi4_data, 0);
-	fpga_power_ctrl(rmi4_data, 0);
+	//fpga_power_ctrl(rmi4_data, 0);
 
 	rmi4_data->touch_stopped = true;
 
@@ -3127,6 +3264,13 @@ static int synaptics_rmi4_stop_device(struct synaptics_rmi4_data *rmi4_data)
 	disable_irq(rmi4_data->i2c_client->irq);
 	synaptics_rmi4_release_all_finger(rmi4_data);
 	rmi4_data->touch_stopped = true;
+#ifdef CHARGER_NOTIFIER
+	if (gpio_get_value(GPIO_TSP_TA)){
+		gpio_direction_output(GPIO_TSP_TA, 0);
+		dev_info(&rmi4_data->i2c_client->dev,
+			"%s tsp_ta = %d\n", __func__, gpio_get_value(GPIO_TSP_TA));
+	}
+#endif
 	synaptics_power_ctrl(rmi4_data,false);
 	fpga_enable(rmi4_data, 0);
 
@@ -3150,6 +3294,13 @@ static int synaptics_rmi4_start_device(struct synaptics_rmi4_data *rmi4_data)
 
 	fpga_enable(rmi4_data, 1);
 	synaptics_power_ctrl(rmi4_data,true);
+#ifdef CHARGER_NOTIFIER
+	if (rmi4_data->cable_state){
+		gpio_direction_output(GPIO_TSP_TA, 1);
+		dev_info(&rmi4_data->i2c_client->dev,
+			"%s tsp_ta = %d\n", __func__, gpio_get_value(GPIO_TSP_TA));
+	}
+#endif
 	rmi4_data->current_page = MASK_8BIT;
 	rmi4_data->touch_stopped = false;
 
@@ -3208,6 +3359,15 @@ static struct i2c_driver synaptics_rmi4_driver = {
  */
 static int __init synaptics_rmi4_init(void)
 {
+#ifdef CONFIG_SAMSUNG_LPM_MODE
+	extern int poweroff_charging;
+	pr_err("%s\n", __func__);
+
+	if (poweroff_charging) {
+		 pr_err("%s : LPM Charging Mode!!\n", __func__);
+		 return 0;
+	}
+#endif
 	return i2c_add_driver(&synaptics_rmi4_driver);
 }
 

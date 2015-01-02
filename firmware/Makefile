@@ -146,7 +146,9 @@ fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 
 # for IR LED FPGA
+ifndef CONFIG_MACH_KLTE_KOR
 fw-shipped-$(CONFIG_SEC_FPGA_ICE40XX) += ice40xx/i2c_top_bitmap_1.fw
+endif
 fw-shipped-$(CONFIG_SEC_FPGA_ICE40XX) += ice40xx/i2c_top_bitmap_2.fw
 
 #for TSP FPGA (PATEK Project)
@@ -163,15 +165,26 @@ fw-shipped-$(CONFIG_TOUCHSCREEN_MMS134S) += tsp_melfas/kanas_mms134s_new.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_MMS300) += tsp_melfas/hestia_mms300.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_MMS136) += tsp_melfas/victor/victor.fw
 
+ifndef CONFIG_MACH_KLTE_KOR
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)    += tsp_synaptics/synaptics_s5100_hestia.fw
+endif
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)    += tsp_synaptics/synaptics_s5100_k_a2_fhd.fw
+ifndef CONFIG_MACH_KLTE_KOR
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)    += tsp_synaptics/synaptics_s5100_k_a3.fw
+else
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)    += tsp_synaptics/synaptics_s5100_kkor_a3.fw
+endif
+ifndef CONFIG_MACH_KLTE_KOR
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_G)    += tsp_synaptics/synaptics_s5100_k_active.fw
+endif
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_b0_5_1.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_b0_5_1_fac.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_js_b0_5_1.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/synaptics_js_b0_5_1_fac.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_PATEK) += tsp_synaptics/synaptics_patek.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_PATEK) += tsp_synaptics/synaptics_patek_fac.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_PATEK) += tsp_synaptics/synaptics_patek_old.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_PATEK) += tsp_synaptics/synaptics_patek_fac_old.fw
 
 ifdef CONFIG_MACH_JACTIVESKT
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_S5000) += tsp_synaptics/jactive/synaptics_b0_hsync04.fw
@@ -213,6 +226,11 @@ endif
 fw-shipped-$(CONFIG_TOUCHSCREEN_FTS) += tsp_stm/stm.fw tsp_stm/stm_de.fw tsp_stm/stm_sync.fw tsp_stm/stm_tn10.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_FTS_S) += tsp_stm/stm_s.fw
 
+ifdef CONFIG_MACH_KLTE_KOR
+fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/semco_cypress_tkey.fw
+fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/semco02_cypress_tkey.fw
+fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/semco04_cypress_tkey.fw
+else
 ifdef CONFIG_SEC_H_PROJECT 
 fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY_H) += tkey/hlte_cypress_tkey.fw
 else
@@ -227,6 +245,7 @@ fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/semco04_cypress_tkey.fw
 fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TOUCHKEY) += tkey/dtech_cypress_tkey.fw
 fw-shipped-$(CONFIG_KEYBOARD_CYPRESS_TKEY_HL) += tkey/fresco_n_cypress_tkey.fw tkey/s_cypress_tkey.fw
 fw-shipped-$(CONFIG_KEYBOARD_TC360_TOUCHKEY) += tkey/tc300k_chagall.fw
+endif
 
 ifdef CONFIG_SEC_H_PROJECT 
 fw-shipped-$(CONFIG_INPUT_WACOM) += epen/W9010_0174.bin
@@ -245,7 +264,7 @@ fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 fw-shipped-$(CONFIG_SENSORS_SSP_ATMEL) += ssp.fw ssp_rev03.fw ssp_fortius.fw
 ifndef CONFIG_SENSORS_SSP_BOUNCE_FIRMWARE
 ifdef CONFIG_SEC_PATEK_PROJECT
-fw-shipped-$(CONFIG_SEC_PATEK_PROJECT) += ssp_stm_patek.fw
+fw-shipped-$(CONFIG_SEC_PATEK_PROJECT) += ssp_stm_patek.fw ssp_stm_maxim_patek.fw
 else
 fw-shipped-$(CONFIG_SENSORS_SSP_STM) += ssp_stm.fw ssp_stm_rvs.fw ssp_stm_88921.fw ssp_stm_w2014.fw
 endif

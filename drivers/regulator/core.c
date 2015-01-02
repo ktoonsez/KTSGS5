@@ -3785,6 +3785,11 @@ static int __init regulator_init_complete(void)
 		if (rdev_get_id(rdev) == 12 || rdev_get_id(rdev) == 13)
 			goto unlock;
 
+#if defined(CONFIG_MACH_CHAGALL_KDI)	// LCD power(ldo4)
+		if (rdev_get_id(rdev) == 3) 
+			goto unlock;
+#endif
+
 		if (has_full_constraints) {
 			/* We log since this may kill the system if it
 			 * goes wrong. */

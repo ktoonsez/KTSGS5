@@ -339,11 +339,15 @@ static int tspdrv_parse_dt(struct platform_device *pdev)
 #else
 	vibrator_drvdata.vib_pwm_gpio = of_get_named_gpio(np, "samsung,pmic_vib_pwm", 0);
 #endif
-	
+
 	if (!gpio_is_valid(vibrator_drvdata.vib_pwm_gpio)) {
 		pr_err("%s:%d, reset gpio not specified\n",
 				__func__, __LINE__);
-	} 
+	}
+
+#if defined(CONFIG_MOTOR_ISA1000)
+	vibrator_drvdata.vib_en_gpio = of_get_named_gpio(np, "samsung,vib_en_gpio", 0);
+#endif
 
 #if defined(CONFIG_MOTOR_DRV_DRV2603)
 	vibrator_drvdata.drv2603_en_gpio = of_get_named_gpio(np, "samsung,drv2603_en", 0);

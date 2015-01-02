@@ -307,10 +307,8 @@ static int msm_cpufreq_verify(struct cpufreq_policy *policy)
 
 static unsigned int msm_cpufreq_get_freq(unsigned int cpu)
 {
-#if defined(CONFIG_ARCH_MSM8226) || defined(CONFIG_ARCH_MSM8610)
 	if (is_clk && is_sync)
 		cpu = 0;
-#endif
 
 	if (is_clk)
 		return clk_get_rate(cpu_clk[cpu]) / 1000;
@@ -338,15 +336,13 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 		|| cpu_is_msm8610() || (is_clk && is_sync))
 		cpumask_setall(policy->cpus);
 
-#if defined(CONFIG_ARCH_MSM8226) || defined(CONFIG_ARCH_MSM8610)
 	cpu_work = &per_cpu(cpufreq_work, policy->cpu);
 	INIT_WORK(&cpu_work->work, set_cpu_work);
 	init_completion(&cpu_work->complete);
 
 	/* synchronous cpus share the same policy */
-	if (!cpu_clk[policy->cpu])
+	if (is_clk && !cpu_clk[policy->cpu])
 		return 0;
-#endif
 
 	if (cpufreq_frequency_table_cpuinfo(policy, table)) {
 #ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
@@ -394,12 +390,6 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	policy->cpuinfo.transition_latency =
 		acpuclk_get_switch_time() * NSEC_PER_USEC;
 
-#if !defined(CONFIG_ARCH_MSM8226) && !defined(CONFIG_ARCH_MSM8610)
-	cpu_work = &per_cpu(cpufreq_work, policy->cpu);
-	INIT_WORK(&cpu_work->work, set_cpu_work);
-	init_completion(&cpu_work->complete);
-#endif
-
 	return 0;
 }
 
@@ -426,22 +416,38 @@ static int __cpuinit msm_cpufreq_cpu_callback(struct notifier_block *nfb,
 	 * before the CPU is brought up.
 	 */
 	case CPU_DEAD:
-	case CPU_UP_CANCELED:
 		if (is_clk) {
 			clk_disable_unprepare(cpu_clk[cpu]);
 			clk_disable_unprepare(l2_clk);
 			update_l2_bw(NULL);
 		}
 		break;
+	case CPU_UP_CANCELED:
+		if (is_clk) {
+			clk_unprepare(cpu_clk[cpu]);
+			clk_unprepare(l2_clk);
+			update_l2_bw(NULL);
+		}
+		break;
 	case CPU_UP_PREPARE:
 		if (is_clk) {
-			rc = clk_prepare_enable(l2_clk);
+			rc = clk_prepare(l2_clk);
 			if (rc < 0)
 				return NOTIFY_BAD;
-			rc = clk_prepare_enable(cpu_clk[cpu]);
+			rc = clk_prepare(cpu_clk[cpu]);
 			if (rc < 0)
 				return NOTIFY_BAD;
 			update_l2_bw(&cpu);
+		}
+		break;
+	case CPU_STARTING:
+		if (is_clk) {
+			rc = clk_enable(l2_clk);
+			if (rc < 0)
+				return NOTIFY_BAD;
+			rc = clk_enable(cpu_clk[cpu]);
+			if (rc < 0)
+				return NOTIFY_BAD;
 		}
 		break;
 	default:

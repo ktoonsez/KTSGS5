@@ -1809,15 +1809,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					input_report_abs(rmi4_data->input_dev,
 							ABS_MT_WIDTH_MAJOR, rmi4_data->f51_handle->surface_data.sumsize);
 #endif
-#else
-					input_report_abs(rmi4_data->input_dev,
-							ABS_MT_SUMSIZE, rmi4_data->f51_handle->surface_data.sumsize);
 #endif
 
-#ifdef REPORT_ANGLE
-					input_report_abs(rmi4_data->input_dev,
-							ABS_MT_ANGLE, rmi4_data->f51_handle->surface_data.angle);
-#endif
 					input_report_abs(rmi4_data->input_dev,
 							ABS_MT_PALM, rmi4_data->f51_handle->surface_data.palm);
 				}
@@ -1904,6 +1897,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	}
 
 	input_sync(rmi4_data->input_dev);
+
+#ifdef COMMON_INPUT_BOOSTER
+	if (rmi4_data->tsp_booster->dvfs_set)
+		rmi4_data->tsp_booster->dvfs_set(rmi4_data->tsp_booster, touch_count);
+#endif
 
 #ifdef TSP_BOOSTER
 	if (touch_count)
@@ -2050,15 +2048,6 @@ static int synaptics_rmi4_f51_edge_swipe(struct synaptics_rmi4_data *rmi4_data,
 
 	if (!rmi4_data->f51_handle)
 		return -ENODEV;
-#ifdef REPORT_ANGLE
-	if (data->edge_swipe_dg >= 90 && data->edge_swipe_dg <= 180)
-		rmi4_data->f51_handle->surface_data.angle = data->edge_swipe_dg - 180;
-	else if (data->edge_swipe_dg < 90)
-		rmi4_data->f51_handle->surface_data.angle = data->edge_swipe_dg;
-	else
-		dev_err(&rmi4_data->i2c_client->dev, "Skip wrong edge swipe angle [%d]\n",
-				data->edge_swipe_dg);
-#endif
 	rmi4_data->f51_handle->surface_data.sumsize = data->edge_swipe_mm;
 	rmi4_data->f51_handle->surface_data.wx = data->edge_swipe_wx;
 	rmi4_data->f51_handle->surface_data.wy = data->edge_swipe_wy;
@@ -4322,15 +4311,6 @@ static void synaptics_rmi4_set_input_data(struct synaptics_rmi4_data *rmi4_data)
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_WIDTH_MAJOR, 0,
 			EDGE_SWIPE_WIDTH_MAX, 0, 0);
-#else
-	input_set_abs_params(rmi4_data->input_dev,
-			ABS_MT_SUMSIZE, 0,
-			EDGE_SWIPE_WIDTH_MAX, 0, 0);
-#endif
-#ifdef REPORT_ANGLE
-	input_set_abs_params(rmi4_data->input_dev,
-			ABS_MT_ANGLE, 0,
-			EDGE_SWIPE_ANGLE_MAX, 0, 0);
 #endif
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_PALM, 0,
@@ -4487,6 +4467,11 @@ int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data)
 	rmi4_data->fingers_on_2d = false;
 #ifdef PROXIMITY
 	rmi4_data->f51_finger = false;
+#endif
+
+#ifdef COMMON_INPUT_BOOSTER
+	if (rmi4_data->tsp_booster->dvfs_set)
+		rmi4_data->tsp_booster->dvfs_set(rmi4_data->tsp_booster, -1);
 #endif
 
 #ifdef TSP_BOOSTER
@@ -4971,6 +4956,7 @@ void synaptics_power_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable)
 				enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
 	}
 #if defined(CONFIG_SEC_RUBENS_PROJECT)
+	mdelay(5);
 	if (rmi4_data->dt_data->external_ldo2 > 0) {
 		retval = gpio_direction_output(rmi4_data->dt_data->external_ldo2, enable);
 		dev_info(dev, "%s: sensor_en[3.3V][%d] is %s[%s]\n",
@@ -5142,7 +5128,11 @@ static void synaptics_get_firmware_name(struct synaptics_rmi4_data *rmi4_data)
 						rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 				} else {
 					if ((strncmp(rmi->product_id_string, "s5100 A3 F", 10) == 0))
+#if !defined(CONFIG_MACH_KLTE_KOR)
 						rmi4_data->firmware_name = FW_IMAGE_NAME_S5100_K_A3;
+#else
+						rmi4_data->firmware_name = FW_IMAGE_NAME_S5100_K_A3_KOR;
+#endif
 					else
 						rmi4_data->firmware_name = FW_IMAGE_NAME_NONE;
 				}
@@ -5241,6 +5231,9 @@ static void msm_tkey_led_set(struct led_classdev *led_cdev,
 #endif
 #endif
 
+#if defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
+extern int get_lcd_attached(void);
+#endif
 /**
  * synaptics_rmi4_probe()
  *
@@ -5273,7 +5266,12 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 				__func__);
 		return -EIO;
 	}
-
+#if defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
+        if (get_lcd_attached() == 0) {
+                dev_err(&client->dev, "%s : get_lcd_attached()=0 \n", __func__);
+                return -EIO;
+        }
+#endif
 	if (client->dev.of_node) {
 		dt_data = devm_kzalloc(&client->dev,
 				sizeof(struct synaptics_rmi4_device_tree_data),
@@ -5368,6 +5366,16 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 				 rmi4_data->supplies);
 	if (retval)
 		goto err_get_regulator;
+#ifdef COMMON_INPUT_BOOSTER
+	rmi4_data->tsp_booster = kzalloc(sizeof(struct input_booster), GFP_KERNEL);
+	if (!rmi4_data->tsp_booster) {
+		dev_err(&client->dev,
+			"%s: Failed to alloc mem for tsp_booster\n", __func__);
+		goto err_get_tsp_booster;
+	} else {
+		input_booster_init_dvfs(rmi4_data->tsp_booster, INPUT_BOOSTER_ID_TSP);
+	}
+#endif
 
 err_tsp_reboot:
 	synaptics_power_ctrl(rmi4_data, true);
@@ -5520,6 +5528,10 @@ err_init_exp_fn:
 	rmi4_data->input_dev = NULL;
 err_set_input_device:
 	synaptics_power_ctrl(rmi4_data, false);
+#ifdef COMMON_INPUT_BOOSTER
+	kfree(rmi4_data->tsp_booster);
+err_get_tsp_booster:
+#endif
 err_get_regulator:
 	kfree(rmi4_data->supplies);
 err_mem_regulator:
@@ -5590,6 +5602,10 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 	input_unregister_device(rmi4_data->input_dev);
 	input_free_device(rmi4_data->input_dev);
 	rmi4_data->input_dev = NULL;
+
+#ifdef COMMON_INPUT_BOOSTER
+	kfree(rmi4_data->tsp_booster);
+#endif
 
 	kfree(rmi4_data->supplies);
 

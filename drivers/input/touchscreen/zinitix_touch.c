@@ -2306,8 +2306,6 @@ static irqreturn_t bt532_touch_irq_handler(int irq, void *data)
 				ABS_MT_TOUCH_MINOR, (u32)info->touch_info.coord[i].minor_width);
 //			input_report_abs(info->input_dev,
 //				ABS_MT_WIDTH_MINOR, (u32)info->touch_info.coord[i].minor_width);
-			input_report_abs(info->input_dev, ABS_MT_ANGLE,
-						(palm > 1)?70:info->touch_info.coord[i].angle - 90);
 			//dev_info(&client->dev, "finger [%02d] angle = %03d\n", i,
 						//info->touch_info.coord[i].angle);
 			input_report_abs(info->input_dev, ABS_MT_PALM, (palm > 0)?1:0);
@@ -4596,8 +4594,6 @@ static int bt532_ts_probe(struct i2c_client *client,
 		0, 255, 0, 0); */
 	input_set_abs_params(info->input_dev, ABS_MT_ORIENTATION,
 		-128, 127, 0, 0);
-	input_set_abs_params(info->input_dev, ABS_MT_ANGLE,
-		-90, 90, 0, 0);
 	input_set_abs_params(info->input_dev, ABS_MT_PALM,
 		0, 1, 0, 0);
 #endif

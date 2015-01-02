@@ -104,7 +104,7 @@ extern char *saved_command_line;
 #define TSP_HW_ID_INDEX_NULL	3
 
 /* Upgrade Method*/
-#define TOUCH_ONESHOT_UPGRADE		1
+#define TOUCH_ONESHOT_UPGRADE		0
 /* if you use isp mode, you must add i2c device :
 name = "zinitix_isp" , addr 0x50*/
 /* resolution offset */
@@ -2524,10 +2524,6 @@ static irqreturn_t bt532_touch_work(int irq, void *data)
 //			input_report_abs(info->input_dev,
 //				ABS_MT_WIDTH_MINOR, (u32)info->touch_info.coord[i].minor_width);
 #ifdef SUPPORTED_PALM_TOUCH
-			/*input_report_abs(info->input_dev, ABS_MT_ANGLE,
-						(palm > 1)?70:info->touch_info.coord[i].angle - 90);*/
-			/*dev_info(&client->dev, "finger [%02d] angle = %03d\n", i,
-						info->touch_info.coord[i].angle);*/
 			input_report_abs(info->input_dev, ABS_MT_PALM, (palm > 0)?1:0);
 #endif
 //			input_report_abs(info->input_dev, ABS_MT_PALM, 1);
@@ -4781,7 +4777,7 @@ static int zinitix_init_gpio(struct bt532_ts_platform_data *pdata)
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_int, 0,
 		GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 
-#if !defined(CONFIG_SEC_MEGA23G_COMMON) && !defined(CONFIG_SEC_MEGA2LTE_COMMON)
+#if !defined(CONFIG_SEC_MEGA23G_COMMON) && !defined(CONFIG_SEC_MEGA2LTE_COMMON) && !defined(CONFIG_SEC_VASTALTE_CHN_CMMCC_DUOS_PROJECT)
 	ret = gpio_request(pdata->tsp_vendor1, "zinitix_tsp_vendor1");
 	if (ret) {
 		pr_err("[TSP]%s: unable to request zinitix_tsp_vendor1 [%d]\n",
@@ -5069,8 +5065,6 @@ static int bt532_ts_probe(struct i2c_client *client,
 		0, 255, 0, 0); */
 /*	input_set_abs_params(info->input_dev, ABS_MT_ORIENTATION,
 		-128, 127, 0, 0);  */
-/*	input_set_abs_params(info->input_dev, ABS_MT_ANGLE,
-		-90, 90, 0, 0);*/
 	input_set_abs_params(info->input_dev, ABS_MT_PALM,
 		0, 1, 0, 0);
 #endif
