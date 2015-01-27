@@ -28,8 +28,6 @@
 #include <mach/sec_debug.h>
 #endif
 
-extern void screenwake_setdev(struct qpnp_pon * pon);
-
 #define PMIC_VER_8941           0x01
 #define PMIC_VERSION_REG        0x0105
 #define PMIC_VERSION_REV4_REG   0x0103
@@ -41,6 +39,7 @@ extern void screenwake_setdev(struct qpnp_pon * pon);
 #if defined(CONFIG_SEC_PATEK_PROJECT) || defined(CONFIG_SEC_S_PROJECT)
 	static int check_pkey_press;
 #endif
+extern void screenwake_setdev(struct qpnp_pon * pon);
 
 #ifdef CONFIG_ARCH_MSM8226  //should be removed
 extern struct class *sec_class;
@@ -471,7 +470,7 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	}else if((cfg->key_code == 116) && !(pon_rt_sts & pon_rt_bit)){
 		pon->powerkey_state = 0;
 	}
-#endif
+#endif	
 
 #if defined(CONFIG_SEC_PM)
 	/* RESIN is used for VOL DOWN key, it should report the keycode for kernel panic */

@@ -2546,17 +2546,17 @@ int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 					__func__, retval);
 			return retval;
 		}
-		
-		// | IRQF_NO_SUSPEND
+
 		if (rmi4_data->dt_data->extra_config[3])
+		// | IRQF_NO_SUSPEND
 		retval = request_threaded_irq(rmi4_data->irq, NULL,
-				synaptics_rmi4_irq, TSP_IRQ_TYPE_LEVEL,
+				synaptics_rmi4_irq, TSP_IRQ_TYPE_LEVEL, 
 				DRIVER_NAME, rmi4_data);
 		else
 			retval = request_threaded_irq(rmi4_data->irq, NULL,
 				synaptics_rmi4_irq, TSP_IRQ_TYPE_EDGE, 
 				DRIVER_NAME, rmi4_data);
-				
+
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
 					"%s: Failed to create irq thread\n",
@@ -5909,21 +5909,12 @@ static void synaptics_rmi4_input_close(struct input_dev *dev)
 		synaptics_rmi4_sensor_sleep(rmi4_data);
 		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->scl_gpio, 3, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_KT), 1);
 		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->sda_gpio, 3, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_KT), 1);
-#if defined(CONFIG_SEC_RUBENS_PROJECT)
-		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->reset_gpio, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 0);
-                gpio_set_value(rmi4_data->dt_data->reset_gpio,1);
-#endif
-
 	} else {
 		synaptics_rmi4_stop_device(rmi4_data);
 		if (!screen_wake_options || call_in_progress)
 		{
 			gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->scl_gpio, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_KT), 1);
 			gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->sda_gpio, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_KT), 1);
-#if defined(CONFIG_SEC_RUBENS_PROJECT)
-			gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->reset_gpio, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-		        gpio_set_value(rmi4_data->dt_data->reset_gpio,1);
-#endif
 		}
 	}
 }

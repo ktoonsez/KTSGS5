@@ -550,8 +550,7 @@ static int kgsl_pwrctrl_gpuclk_store(struct device *dev,
 	level = _get_nearest_pwrlevel(pwr, val);
 	if (level >= 0)
 		kgsl_pwrctrl_pwrlevel_change(device, level);
-	
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+
 	return count;
 }
 

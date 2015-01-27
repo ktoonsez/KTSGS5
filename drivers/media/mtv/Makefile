@@ -26,6 +26,16 @@ obj-$(CONFIG_MTV_FC8300) += fc8300/
 # Raontech 
 ###########
 
+# MTV222
+ccflags-$(CONFIG_MTV_MTV222) += -Idrivers/media/mtv/mtv222
+obj-$(CONFIG_MTV_MTV222) += isdbt_port_mtv222.o
+obj-$(CONFIG_MTV_MTV222) += mtv222/
+
+# MTV230
+ccflags-$(CONFIG_MTV_MTV23x) += -Idrivers/media/mtv/mtv23x
+obj-$(CONFIG_MTV_MTV23x) += isdbt_port_mtv23x.o
+obj-$(CONFIG_MTV_MTV23x) += mtv23x/
+
 ###########
 # I/F
 ###########

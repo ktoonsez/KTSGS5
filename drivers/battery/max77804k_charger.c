@@ -1000,6 +1000,7 @@ static bool check_fastcharge(struct max77804k_charger_data *charger)
 		max77804k_set_input_current(charger, charge_current);
 		max77804k_set_charge_current(charger, charge_current);
 	}
+	pr_alert("FAST CHARGE1!!!! - %d - %d - %d", charge_current, ret, force_fast_charge);
 	return ret;
 }
 
@@ -1016,6 +1017,7 @@ static int sec_chg_set_property(struct power_supply *psy,
 	u8 chg_cnfg_00;
 	int current_now = 0;
 	
+	pr_alert("FAST CHARGE2!!!! - %d - %d", psp, force_fast_charge);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
 		charger->status = val->intval;
@@ -1096,6 +1098,8 @@ static int sec_chg_set_property(struct power_supply *psy,
 			}
 		}
 		max77804k_set_charger_state(charger, charger->is_charging);
+		if (check_fastcharge(charger))
+			goto got_override2;
 		/* if battery full, only disable charging  */
 		if ((charger->status == POWER_SUPPLY_STATUS_CHARGING) ||
 				(charger->status == POWER_SUPPLY_STATUS_DISCHARGING) ||
@@ -1118,6 +1122,7 @@ static int sec_chg_set_property(struct power_supply *psy,
 				charger->pdata->charging_current[
 				val->intval].full_check_current_2nd);
 		}
+got_override2:
 		break;
 	/* val->intval : input charging current */
 	case POWER_SUPPLY_PROP_CURRENT_MAX:

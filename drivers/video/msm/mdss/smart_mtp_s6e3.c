@@ -99,6 +99,7 @@ static char VT_300CD_R;
 static char VT_300CD_G;
 static char VT_300CD_B;
 
+int get_lcd_ldi_info(void);
 static int color_mods[5][9] = {
 	{  0,  0,  5, -18, -16, -10, 0, 0,  3 },
 	{  0,  0,  2,  -9,  -8,  -5, 0, 0,  1 },
@@ -112,7 +113,7 @@ extern int mipi_samsung_disp_send_cmd(
 		enum mipi_samsung_cmd_list cmd,
 		unsigned char lock);
 		
-int get_lcd_ldi_info(void);
+int get_lcd_panel_res(void);
 
 static int char_to_int(char data1)
 {

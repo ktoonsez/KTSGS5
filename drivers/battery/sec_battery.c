@@ -29,6 +29,9 @@ unsigned int is_charging;
 #define TUNER_IS_OFF 0
 #endif
 
+#ifdef CONFIG_SAMSUNG_BATTERY_DISALLOW_DEEP_SLEEP
+struct clk * xo_chr = NULL;
+#endif
 //KT Specifics
 unsigned int gbatt_lvl_low = 0;
 unsigned int gbatt_lvl_high = 0;
@@ -56,6 +59,8 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(batt_temp_adc),
 	SEC_BATTERY_ATTR(batt_temp_aver),
 	SEC_BATTERY_ATTR(batt_temp_adc_aver),
+	SEC_BATTERY_ATTR(chg_temp),
+	SEC_BATTERY_ATTR(chg_temp_adc),
 	SEC_BATTERY_ATTR(batt_vf_adc),
 	SEC_BATTERY_ATTR(batt_slate_mode),
 
@@ -66,11 +71,14 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(fg_reg_dump),
 	SEC_BATTERY_ATTR(fg_reset_cap),
 	SEC_BATTERY_ATTR(fg_capacity),
+	SEC_BATTERY_ATTR(fg_asoc),
 	SEC_BATTERY_ATTR(auth),
 	SEC_BATTERY_ATTR(chg_current_adc),
 	SEC_BATTERY_ATTR(wc_adc),
 	SEC_BATTERY_ATTR(wc_status),
 	SEC_BATTERY_ATTR(wc_enable),
+	SEC_BATTERY_ATTR(hv_charger_status),
+	SEC_BATTERY_ATTR(hv_charger_set),
 	SEC_BATTERY_ATTR(factory_mode),
 	SEC_BATTERY_ATTR(store_mode),
 	SEC_BATTERY_ATTR(update),
@@ -95,6 +103,7 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(gps),
 	SEC_BATTERY_ATTR(event),
 	SEC_BATTERY_ATTR(batt_temp_table),
+	SEC_BATTERY_ATTR(batt_high_current_usb),
 #if defined(CONFIG_SAMSUNG_BATTERY_ENG_TEST)
 	SEC_BATTERY_ATTR(test_charge_current),
 #endif
@@ -107,9 +116,6 @@ static char *pm_batt_supplied_to[] = {
 };
 #endif
 
-#ifdef CONFIG_SAMSUNG_BATTERY_DISALLOW_DEEP_SLEEP
-struct clk * xo_chr = NULL;
-#endif
 
 static enum power_supply_property sec_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
@@ -1786,38 +1792,6 @@ static bool sec_bat_fullcharged_check(
 	return true;
 }
 
-void set_batt_mhz_info(unsigned int batt_lvl_low, unsigned int batt_lvl_high, unsigned int mhz_lvl_low, unsigned int mhz_lvl_high, unsigned int disable_chrg)
-{
-	gbatt_lvl_low = batt_lvl_low;
-	gbatt_lvl_high = batt_lvl_high;
-	gmhz_lvl_low = mhz_lvl_low;
-	gmhz_lvl_high = mhz_lvl_high;
-	gdisable_chrg = disable_chrg;
-}
-
-unsigned int get_batt_level(void)
-{
-	//Exit if user disables battery control while plugged in
-	if (gdisable_chrg == 1 && (gbatt_chg > 1))
-		return Lscreen_off_scaling_mhz_orig;
-
-	if (gbatt_lvl_low > 0 && gmhz_lvl_low > 0)
-	{
-		if (gbatt_soc <= gbatt_lvl_low)
-			return gmhz_lvl_low;
-
-	}
-	if (gbatt_lvl_high > 0 && gmhz_lvl_high > 0)
-	{
-		if (gbatt_soc <= gbatt_lvl_high)
-			return gmhz_lvl_high;
-	}
-	if ((gbatt_lvl_low > 0 && gbatt_soc > gbatt_lvl_low) || (gmhz_lvl_high > 0 && gbatt_soc > gbatt_lvl_high))
-		return Lscreen_off_scaling_mhz_orig;
-	else
-		return 0;
-}
-
 static void sec_bat_check_changed_soc(
 				struct sec_battery_info *battery,
 				union power_supply_propval *value)
@@ -1855,6 +1829,38 @@ report:
 #if defined(CONFIG_MACH_MILLETLTE_ATT) || defined(CONFIG_MACH_MILLETLTE_CAN)
 extern unsigned int system_rev;
 #endif
+
+void set_batt_mhz_info(unsigned int batt_lvl_low, unsigned int batt_lvl_high, unsigned int mhz_lvl_low, unsigned int mhz_lvl_high, unsigned int disable_chrg)
+{
+	gbatt_lvl_low = batt_lvl_low;
+	gbatt_lvl_high = batt_lvl_high;
+	gmhz_lvl_low = mhz_lvl_low;
+	gmhz_lvl_high = mhz_lvl_high;
+	gdisable_chrg = disable_chrg;
+}
+
+unsigned int get_batt_level(void)
+{
+	//Exit if user disables battery control while plugged in
+	if (gdisable_chrg == 1 && (gbatt_chg > 1))
+		return Lscreen_off_scaling_mhz_orig;
+
+	if (gbatt_lvl_low > 0 && gmhz_lvl_low > 0)
+	{
+		if (gbatt_soc <= gbatt_lvl_low)
+			return gmhz_lvl_low;
+
+	}
+	if (gbatt_lvl_high > 0 && gmhz_lvl_high > 0)
+	{
+		if (gbatt_soc <= gbatt_lvl_high)
+			return gmhz_lvl_high;
+	}
+	if ((gbatt_lvl_low > 0 && gbatt_soc > gbatt_lvl_low) || (gmhz_lvl_high > 0 && gbatt_soc > gbatt_lvl_high))
+		return Lscreen_off_scaling_mhz_orig;
+	else
+		return 0;
+}
 
 static void sec_bat_get_battery_info(
 				struct sec_battery_info *battery)
@@ -4504,7 +4510,6 @@ static int __devinit sec_battery_probe(struct platform_device *pdev)
 	battery->ps_status= 0;
 	battery->ps_changed= 0;
 	battery->ps_enable= 0;
-
 	battery->wire_status = POWER_SUPPLY_TYPE_BATTERY;
 
 #if defined(CONFIG_BATTERY_SWELLING)

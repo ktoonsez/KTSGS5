@@ -65,9 +65,21 @@
 #include <asm/div64.h>
 #include "internal.h"
 
+#ifdef CONFIG_SDP_CACHE_CLEANUP
+#include <linux/highmem.h>
+#define PER_USER_RANGE 100000
+#define SENSITIVITY_UNKNOWN 0
+#define SENSITIVE 1
+#define NOT_SENSITIVE 2
+#endif
+
 #ifdef CONFIG_USE_PERCPU_NUMA_NODE_ID
 DEFINE_PER_CPU(int, numa_node);
 EXPORT_PER_CPU_SYMBOL(numa_node);
+#endif
+
+#ifdef CONFIG_SDP_CACHE_CLEANUP
+extern int dek_is_sdp_uid(uid_t uid);
 #endif
 
 #ifdef CONFIG_HAVE_MEMORYLESS_NODES
@@ -174,17 +186,10 @@ int sysctl_lowmem_reserve_ratio[MAX_NR_ZONES-1] = {
 #ifdef CONFIG_ZONE_DMA32
 	 256,
 #endif
-#if defined(CONFIG_ARCH_MSM8974PRO) || defined(CONFIG_SEC_ATLANTIC_PROJECT)
 #ifdef CONFIG_HIGHMEM
 	 96,
 #endif
 	 96,
-#else
-#ifdef CONFIG_HIGHMEM
-	 32,
-#endif
-	 32,
-#endif
 };
 
 EXPORT_SYMBOL(totalram_pages);
@@ -726,6 +731,17 @@ static bool free_pages_prepare(struct page *page, unsigned int order)
 {
 	int i;
 	int bad = 0;
+#ifdef CONFIG_SDP_CACHE_CLEANUP
+	if (PageSensitive(page)) {
+		void *kaddr;
+		ClearPageSensitive(page);
+		kaddr = kmap_atomic(page);
+		if (kaddr)
+			clear_page(kaddr);
+		kunmap_atomic(kaddr);
+		flush_dcache_page(page);
+	}
+#endif
 
 	trace_mm_page_free(page, order);
 	kmemcheck_free_shadow(page, order);
@@ -2359,7 +2375,7 @@ static inline int
 gfp_to_alloc_flags(gfp_t gfp_mask)
 {
 	int alloc_flags = ALLOC_WMARK_MIN | ALLOC_CPUSET;
-	const bool atomic = !(gfp_mask & (__GFP_WAIT | __GFP_NO_KSWAPD));
+	const gfp_t wait = gfp_mask & __GFP_WAIT;
 
 	/* __GFP_HIGH is assumed to be the same as ALLOC_HIGH to save a branch. */
 	BUILD_BUG_ON(__GFP_HIGH != (__force gfp_t) ALLOC_HIGH);
@@ -2368,20 +2384,20 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	 * The caller may dip into page reserves a bit more if the caller
 	 * cannot run direct reclaim, or if the caller has realtime scheduling
 	 * policy or is asking for __GFP_HIGH memory.  GFP_ATOMIC requests will
-	 * set both ALLOC_HARDER (atomic == true) and ALLOC_HIGH (__GFP_HIGH).
+	 * set both ALLOC_HARDER (!wait) and ALLOC_HIGH (__GFP_HIGH).
 	 */
 	alloc_flags |= (__force int) (gfp_mask & __GFP_HIGH);
 
-	if (atomic) {
+	if (!wait) {
 		/*
-		 * Not worth trying to allocate harder for __GFP_NOMEMALLOC even
-		 * if it can't schedule.
+		 * Not worth trying to allocate harder for
+		 * __GFP_NOMEMALLOC even if it can't schedule.
 		 */
-		if (!(gfp_mask & __GFP_NOMEMALLOC))
+		if  (!(gfp_mask & __GFP_NOMEMALLOC))
 			alloc_flags |= ALLOC_HARDER;
 		/*
-		 * Ignore cpuset mems for GFP_ATOMIC rather than fail, see the
-		 * comment for __cpuset_node_allowed_softwall().
+		 * Ignore cpuset if GFP_ATOMIC (!wait) rather than fail alloc.
+		 * See also cpuset_zone_allowed() comment in kernel/cpuset.c.
 		 */
 		alloc_flags &= ~ALLOC_CPUSET;
 	} else if (unlikely(rt_task(current)) && !in_interrupt())
@@ -2400,7 +2416,7 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	return alloc_flags;
 }
 
-#ifdef CONFIG_SEC_SLOWPATH
+#if defined(CONFIG_SEC_SLOWPATH)
 unsigned int oomk_state; /* 0 none, bit_0 time's up, bit_1 OOMK */
 
 struct slowpath_pressure {
@@ -2603,7 +2619,7 @@ rebalance:
 			if (did_some_progress) {
 				pr_info("time's up : calling "
 					"__alloc_pages_may_oom(o:%d, gfp:0x%x)\n", order, gfp_mask);
-#ifdef CONFIG_SEC_SLOWPATH
+#if defined(CONFIG_SEC_SLOWPATH)
 				oomk_state |= 0x01;
 #endif
 			}
@@ -2635,7 +2651,7 @@ rebalance:
 			}
 
 #ifdef CONFIG_SEC_OOM_KILLER
-			oom_invoke_timeout = jiffies + HZ/4;
+			oom_invoke_timeout = jiffies + HZ/32;
 #endif
 			goto restart;
 		}
@@ -2668,7 +2684,7 @@ rebalance:
 
 nopage:
 	warn_alloc_failed(gfp_mask, order, NULL);
-#ifdef CONFIG_SEC_SLOWPATH
+#if defined(CONFIG_SEC_SLOWPATH)
 	slowpath_time = jiffies - slowpath_time;
 	if (wait && slowpath_time)
 		slowpath_pressure(slowpath_time);
@@ -2677,7 +2693,7 @@ nopage:
 got_pg:
 	if (kmemcheck_enabled)
 		kmemcheck_pagealloc_alloc(page, order, gfp_mask);
-#ifdef CONFIG_SEC_SLOWPATH
+#if defined(CONFIG_SEC_SLOWPATH)
 	slowpath_time = jiffies - slowpath_time;
 	if (wait && slowpath_time)
 		slowpath_pressure(slowpath_time);
@@ -2752,6 +2768,32 @@ out:
 	if (unlikely(!put_mems_allowed(cpuset_mems_cookie) && !page))
 		goto retry_cpuset;
 
+#ifdef CONFIG_SDP_CACHE_CLEANUP
+	if(page) {
+		uid_t uid = task_uid(current);
+		if (((uid/PER_USER_RANGE) <= 199)  && ((uid/PER_USER_RANGE) >= 100)) {
+			if (dek_is_sdp_uid(uid)) {
+				switch (current->sensitive) {
+				case SENSITIVITY_UNKNOWN:
+					if ((0 == strcmp(current->comm, "m.android.email")) ||
+						(0 == strcmp(current->comm, "ndroid.exchange"))) {
+						SetPageSensitive(page);
+						current->sensitive = SENSITIVE;
+					} else {
+						current->sensitive = NOT_SENSITIVE;
+					}
+					break;
+				case SENSITIVE:
+						SetPageSensitive(page);
+					break;
+				case NOT_SENSITIVE:
+				default:
+					break;
+				}
+			}
+		}
+	}
+#endif
 	return page;
 }
 EXPORT_SYMBOL(__alloc_pages_nodemask);
@@ -2785,19 +2827,6 @@ EXPORT_SYMBOL(get_zeroed_page);
 void __free_pages(struct page *page, unsigned int order)
 {
 	if (put_page_testzero(page)) {
-#ifdef CONFIG_TIMA_RKP_DEBUG
-	//TODO: Do the check for all pages if order > 0
-	if (((unsigned long)__va(page_to_phys(page))) < ((unsigned long) high_memory)){
-		if (tima_debug_page_protection((unsigned long)__va(page_to_phys(page)), 6, 0) == 1) {
-			tima_debug_signal_failure(0x3f80f221, 6);
-			//tima_send_cmd((unsigned long)__va(page_to_phys(page)), 0x3f80e221);
-			//printk(KERN_ERR"TIMA: Freed PAGE prtctd va %lx pa %lx caller %lx\n",
-			// (unsigned long)__va(page_to_phys(page)),
-			// (unsigned long) page_to_phys(page),
-			// (unsigned long)__builtin_return_address(0));
-		}
-	}
-#endif
 		if (order == 0)
 			free_hot_cold_page(page, 0);
 		else
@@ -6254,7 +6283,9 @@ static struct trace_print_flags pageflag_names[] = {
 	{1UL << PG_hwpoison,		"hwpoison"	},
 #endif
 	{1UL << PG_readahead,           "PG_readahead"  },
-	{-1UL,				NULL		},
+#ifdef CONFIG_SDP
+	{1UL << PG_sensitive,	"sensitive"	},
+#endif
 };
 
 static void dump_page_flags(unsigned long flags)

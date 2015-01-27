@@ -683,7 +683,7 @@ static void clear_system_oom(void)
 	spin_unlock(&zone_scan_lock);
 }
 
-#ifdef CONFIG_SEC_SLOWPATH
+#if defined(CONFIG_SEC_SLOWPATH)
 extern unsigned int oomk_state; /* 0 none, bit_0 time's up, bit_1 OOMK */
 #endif
 
@@ -711,7 +711,7 @@ void out_of_memory(struct zonelist *zonelist, gfp_t gfp_mask,
 	enum oom_constraint constraint = CONSTRAINT_NONE;
 	int killed = 0;
 
-#ifdef CONFIG_SEC_SLOWPATH
+#if defined(CONFIG_SEC_SLOWPATH)
 	oomk_state |= 0x02;
 #endif
 

@@ -497,11 +497,11 @@ static void an30259a_start_led_pattern(int mode)
 
 	/* Set to low power consumption mode */
 	if (LED_LOWPOWER_MODE == 1)
-		LED_DYNAMIC_CURRENT = (u8)led_lowpower_cur;
+		LED_DYNAMIC_CURRENT = 0x05;
 	else if (led_enable_fade)
 		LED_DYNAMIC_CURRENT = 0x1;
 	else
-		LED_DYNAMIC_CURRENT = (u8)led_default_cur;
+		LED_DYNAMIC_CURRENT = 0x28;
 
 	if (led_intensity == 0) {	// then use stock values
 		led_r_brightness = LED_R_CURRENT;

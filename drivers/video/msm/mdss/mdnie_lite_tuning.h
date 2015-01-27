@@ -124,8 +124,8 @@
 #define SIG_MDNIE_eBOOK					9
 #define SIG_MDNIE_EMAIL					10
 
-#define SIG_MDNIE_DYNAMIC				0
-#define SIG_MDNIE_STANDARD				1
+#define SIG_MDNIE_DYNAMIC				1
+#define SIG_MDNIE_STANDARD				0
 #define SIG_MDNIE_MOVIE				2
 
 #if defined(CONFIG_TDMB)
