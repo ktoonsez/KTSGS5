@@ -813,13 +813,13 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	if (((!mfd->panel_power_on && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) {
 		mfd->unset_bl_level = bkl_lvl;
-		pr_info("[BL1] bkl_lvl (%d), bl_updated(%d), power(%d)\n",
-			bkl_lvl, mfd->bl_updated, mfd->panel_power_on);
+		//pr_info("[BL1] bkl_lvl (%d), bl_updated(%d), power(%d)\n",
+		//	bkl_lvl, mfd->bl_updated, mfd->panel_power_on);
 		return;
 	} else {
 		mfd->unset_bl_level = 0;
-		pr_info("[BL2] bkl_lvl (%d), bl_updated(%d)\n",
-			bkl_lvl, mfd->bl_updated);
+		//pr_info("[BL2] bkl_lvl (%d), bl_updated(%d)\n",
+		//	bkl_lvl, mfd->bl_updated);
 	}
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);

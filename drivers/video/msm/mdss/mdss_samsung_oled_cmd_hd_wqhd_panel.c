@@ -1366,7 +1366,7 @@ static int make_brightcontrol_set(int bl_level)
 	testKey = get_testKey_set(0);
 	cmd_count = update_bright_packet(cmd_count, &testKey);
 
-#if defined(TEMPERATURE_ELVSS)
+/*#if defined(TEMPERATURE_ELVSS)
 	LCD_DEBUG("bright_level: %d, candela_idx: %d( %d cd ), "\
 		"cmd_count(aid,acl,elvss,temperature,gamma)::(%d,%d,%d,%d,%d)%d,id3(0x%x)\n",
 #else
@@ -1382,7 +1382,7 @@ static int make_brightcontrol_set(int bl_level)
 #endif
 		gamma_control.num_of_cmds,
 		cmd_count,
-		msd.id3);
+		msd.id3);*/
 	return cmd_count;
 
 }
