@@ -771,7 +771,7 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 		wait_count--;
 		if (rc != -ERESTARTSYS)
 			break;
-		pr_err("%s:%d retry wait_event_interruptible_timeout ERESTARTSYS, remain_count : %d\n", __func__, __LINE__, wait_count);
+		//pr_err("%s:%d retry wait_event_interruptible_timeout ERESTARTSYS, remain_count : %d\n", __func__, __LINE__, wait_count);
 		usleep(1000); /* wait for 2ms */
 	} while (wait_count > 0);
 

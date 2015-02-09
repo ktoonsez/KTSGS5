@@ -17,6 +17,8 @@
 #define pr_fmt(fmt)	"%s: " fmt, __func__
 
 #include <linux/clk.h>
+#include <mach/clk-provider.h>
+
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
@@ -176,43 +178,6 @@ static inline int mdss_irq_dispatch(u32 hw_ndx, int irq, void *ptr)
 		rc = hw->irq_handler(irq, hw->ptr);
 
 	return rc;
-}
-
-static irqreturn_t mdss_irq_handler(int irq, void *ptr)
-{
-	struct mdss_data_type *mdata = ptr;
-	u32 intr = MDSS_MDP_REG_READ(MDSS_REG_HW_INTR_STATUS);
-
-#if 0//defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
-	xlog(__func__,  intr, (u32) mdata, 0, 0, 0, 0xffff);
-#endif
-
-	if (!mdata)
-		return IRQ_NONE;
-
-	mdata->irq_buzy = true;
-
-	if (intr & MDSS_INTR_MDP) {
-		spin_lock(&mdp_lock);
-		mdss_irq_dispatch(MDSS_HW_MDP, irq, ptr);
-		spin_unlock(&mdp_lock);
-	}
-
-	if (intr & MDSS_INTR_DSI0)
-		mdss_irq_dispatch(MDSS_HW_DSI0, irq, ptr);
-
-	if (intr & MDSS_INTR_DSI1)
-		mdss_irq_dispatch(MDSS_HW_DSI1, irq, ptr);
-
-	if (intr & MDSS_INTR_EDP)
-		mdss_irq_dispatch(MDSS_HW_EDP, irq, ptr);
-
-	if (intr & MDSS_INTR_HDMI)
-		mdss_irq_dispatch(MDSS_HW_HDMI, irq, ptr);
-
-	mdata->irq_buzy = false;
-
-	return IRQ_HANDLED;
 }
 
 int mdss_register_irq(struct mdss_hw *hw)
@@ -643,6 +608,56 @@ static inline struct clk *mdss_mdp_get_clk(u32 clk_idx)
 	if (clk_idx < MDSS_MAX_CLK)
 		return mdss_res->mdp_clk[clk_idx];
 	return NULL;
+}
+
+static irqreturn_t mdss_irq_handler(int irq, void *ptr)
+{
+	struct mdss_data_type *mdata = ptr;
+	u32 intr = 0;
+
+	if (!mdata)
+		return IRQ_NONE;
+
+	 if (mdata) {
+		 struct clk *clk = mdss_mdp_get_clk(MDSS_CLK_AHB);
+		 if (clk) {
+			 if (clk->prepare_count == 0 || clk->count == 0) {
+				 pr_err("[QC] ERROR : MDSS_CLK_AHB is not on, prepare_cnt:%d, count:%d\n", clk->prepare_count, clk->count);
+
+				 return IRQ_NONE;
+			 }
+		 }
+	 }
+
+	intr = MDSS_MDP_REG_READ(MDSS_REG_HW_INTR_STATUS);
+
+#if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
+	xlog(__func__,	intr, (u32) mdata, 0, 0, 0, 0xffff);
+#endif
+
+	mdata->irq_buzy = true;
+
+	if (intr & MDSS_INTR_MDP) {
+		spin_lock(&mdp_lock);
+		mdss_irq_dispatch(MDSS_HW_MDP, irq, ptr);
+		spin_unlock(&mdp_lock);
+	}
+
+	if (intr & MDSS_INTR_DSI0)
+		mdss_irq_dispatch(MDSS_HW_DSI0, irq, ptr);
+
+	if (intr & MDSS_INTR_DSI1)
+		mdss_irq_dispatch(MDSS_HW_DSI1, irq, ptr);
+
+	if (intr & MDSS_INTR_EDP)
+		mdss_irq_dispatch(MDSS_HW_EDP, irq, ptr);
+
+	if (intr & MDSS_INTR_HDMI)
+		mdss_irq_dispatch(MDSS_HW_HDMI, irq, ptr);
+
+	mdata->irq_buzy = false;
+
+	return IRQ_HANDLED;
 }
 
 static int mdss_mdp_clk_update(u32 clk_idx, u32 enable)

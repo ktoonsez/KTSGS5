@@ -775,11 +775,11 @@ bb2139=bb2549(bb1006,bb2072,bb2133,bb2371);
 bbm(bb2139==bb90){bb586("\x63\x61\x6c\x6c\x5f\x75\x73\x65\x72\x6d\x6f"
 "\x64\x65\x68\x65\x6c\x70\x65\x72\x5f\x2c\x20\x69\x6e\x66\x6f\x20\x3d"
 "\x3d\x20\x4e\x55\x4c\x4c\n");bb2-bb2262;}bb2 bb2649(bb2139,bb2354);}
-//#if defined( PLAT_VER) && PLAT_VER >= 0x50000
+#if defined( PLAT_VER) && PLAT_VER >= 0x50000
 #define bb2384 "/system/bin/mwlan_helper"
-/* #else
+#else
 #define bb2384 "/system/bin/toolbox"
-#endif*/
+#endif
 bbe bb2643(){bbe bb26;
 #ifdef _DEBUG
 bb1867();

@@ -2014,18 +2014,12 @@ static int es705_get_control_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int value =0;
 
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(1);
-#endif
 	if (es705_priv.rx1_route_enable ||
 		es705_priv.tx1_route_enable ||
 		es705_priv.rx2_route_enable) {
 	value = es705_read(NULL, reg);
 	}
 	ucontrol->value.integer.value[0] = value;
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(0);
-#endif
 
 	return 0;
 }
@@ -2053,9 +2047,6 @@ static int es705_get_control_enum(struct snd_kcontrol *kcontrol,
 	unsigned int reg = e->reg;
 	unsigned int value=0;
 
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(1);
-#endif
 	if (es705_priv.rx1_route_enable ||
 		es705_priv.tx1_route_enable ||
 		es705_priv.rx2_route_enable) {
@@ -2063,9 +2054,6 @@ static int es705_get_control_enum(struct snd_kcontrol *kcontrol,
 }
 
 	ucontrol->value.enumerated.item[0] = value;
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(0);
-#endif
 
 	return 0;
 }
@@ -3669,18 +3657,12 @@ static int es705_get_dereverb_gain_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int value=0;
 
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(1);
-#endif
 	if (es705_priv.rx1_route_enable ||
 		es705_priv.tx1_route_enable ||
 		es705_priv.rx2_route_enable) {
 	value = es705_read(NULL, reg);
 }
 	ucontrol->value.integer.value[0] = es705_gain_to_index(-12, 1, value);
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(0);
-#endif
 	return 0;
 }
 
@@ -3710,18 +3692,12 @@ static int es705_get_bwe_high_band_gain_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int value=0;
 
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(1);
-#endif
 	if (es705_priv.rx1_route_enable ||
 		es705_priv.tx1_route_enable ||
 		es705_priv.rx2_route_enable) {
 	value = es705_read(NULL, reg);
 }
 	ucontrol->value.integer.value[0] = es705_gain_to_index(-10, 1, value);
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(0);
-#endif
 
 	return 0;
 }
@@ -3752,19 +3728,12 @@ static int es705_get_bwe_max_snr_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int value=0;
 
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(1);
-#endif
 	if (es705_priv.rx1_route_enable ||
 		es705_priv.tx1_route_enable ||
 		es705_priv.rx2_route_enable) {
 	value = es705_read(NULL, reg);
 }
 	ucontrol->value.integer.value[0] = es705_gain_to_index(-20, 1, value);
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(0);
-#endif
-
 	return 0;
 }
 
@@ -3990,9 +3959,6 @@ int es705_get_vs_detection_sensitivity(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int value=0;
 
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(1);
-#endif
 	if (es705_priv.rx1_route_enable ||
 		es705_priv.tx1_route_enable ||
 		es705_priv.rx2_route_enable) {
@@ -4002,9 +3968,6 @@ int es705_get_vs_detection_sensitivity(struct snd_kcontrol *kcontrol,
 
 	dev_dbg(es705_priv.dev, "%s(): value = %d ucontrol = %ld\n",
 		__func__, value, ucontrol->value.integer.value[0]);
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(0);
-#endif
 
 	return 0;
 }
@@ -4038,9 +4001,6 @@ int es705_get_vad_sensitivity(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int value=0;
 
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(1);
-#endif
 	if (es705_priv.rx1_route_enable ||
 		es705_priv.tx1_route_enable ||
 		es705_priv.rx2_route_enable) {
@@ -4050,9 +4010,6 @@ int es705_get_vad_sensitivity(struct snd_kcontrol *kcontrol,
 
 	dev_dbg(es705_priv.dev, "%s(): value = %d ucontrol = %ld\n",
 		__func__, value, ucontrol->value.integer.value[0]);
-#if defined(SAMSUNG_ES705_FEATURE)
-	es705_read_write_power_control(0);
-#endif
 
 	return 0;
 }
@@ -4677,12 +4634,7 @@ int es705_core_probe(struct device *dev)
 #ifdef ES705_VDDCORE_MAX77826
 	struct regulator *es705_vdd_core = NULL;
 #endif
-
-#if defined(CONFIG_MACH_KLTE_KOR)
-	const char *fw_filename = "audience-es705-fw-kltekor.bin";
-#else
 	const char *fw_filename = "audience-es705-fw.bin";
-#endif
 #ifndef CONFIG_ARCH_MSM8226
 	const char *vs_filename = "audience-es705-vs.bin";
 #endif /* CONFIG_ARCH_MSM8226 */

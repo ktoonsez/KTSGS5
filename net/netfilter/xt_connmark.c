@@ -30,11 +30,9 @@
 
 // ------------- START of KNOX_VPN ------------------//
 #include <linux/types.h>
-#include <linux/netfilter/xt_mark.h>
-#include <net/sock.h>
-#include <net/ip.h>
-#include <linux/ip.h>
 #include <linux/tcp.h>
+#include <linux/ip.h>
+#include <net/ip.h>
 // ------------- END of KNOX_VPN -------------------//
 
 MODULE_AUTHOR("Henrik Nordstrom <hno@marasystems.com>");
@@ -45,6 +43,57 @@ MODULE_ALIAS("ip6t_CONNMARK");
 MODULE_ALIAS("ipt_connmark");
 MODULE_ALIAS("ip6t_connmark");
 
+// ------------- START of KNOX_VPN ------------------//
+   
+/* KNOX framework uses mark value 100 to 500 
+ * when the special meta data is added
+ * This will indicate to the kernel code that
+ * it needs to append meta data to the packets
+ */
+    
+#define META_MARK_BASE_LOWER 100
+#define META_UID_PID_MARK_BASE_LOWER 150
+#define META_UID_PID_MARK_BASE_UPPER 199
+#define META_MARK_BASE_UPPER 500
+    
+/* Structure to hold metadata values
+ * intended for VPN clients to make 
+ * more intelligent decisions
+ * when the KNOX meta mark 
+ * feature is enabled
+ */
+    
+struct knox_meta_param {
+    uid_t uid;
+    pid_t pid;
+};
+
+union ip_address {
+    u8 a[4];
+    __be32 addr;
+};
+    
+static unsigned int knoxvpn_uidpid(struct sk_buff *skb, u_int32_t newmark){
+    int szMetaData;
+    struct skb_shared_info * temp = NULL;
+
+    szMetaData = sizeof(struct knox_meta_param);
+    temp = skb_shinfo(skb);
+    
+    if (skb == NULL || newmark < META_UID_PID_MARK_BASE_LOWER || META_UID_PID_MARK_BASE_UPPER < newmark || skb->sk == NULL || temp == NULL ){
+        return 0;
+    }
+    else{
+        temp->uid = skb->sk->knox_uid;
+        temp->pid = skb->sk->knox_pid;
+        temp->knox_mark = newmark;
+    }
+
+    return 0;
+}
+
+// ------------- END of KNOX_VPN -------------------//
+
 static unsigned int
 connmark_tg(struct sk_buff *skb, const struct xt_action_param *par)
 {
@@ -52,16 +101,6 @@ connmark_tg(struct sk_buff *skb, const struct xt_action_param *par)
 	enum ip_conntrack_info ctinfo;
 	struct nf_conn *ct;
 	u_int32_t newmark;
-
-// ------------- START of KNOX_VPN ------------------//
-	unsigned int metabufspace;
-	unsigned char *temp_skb_partial = NULL;
-	struct skb_meta_param *uh;
-	struct iphdr iph;
-	struct iphdr *iphlocal;
-	uid_t localuid;
-	pid_t localpid;
-// ------------- END of KNOX_VPN -------------------//
 
 	ct = nf_ct_get(skb, &ctinfo);
 	if (ct == NULL)
@@ -82,98 +121,23 @@ connmark_tg(struct sk_buff *skb, const struct xt_action_param *par)
 			ct->mark = newmark;
 			nf_conntrack_event_cache(IPCT_MARK, ct);
 		}
+        
+// ------------- START of KNOX_VPN -----------------//        
+        knoxvpn_uidpid(skb,newmark);
+// ------------- END of KNOX_VPN -------------------//
+
 		break;
 	case XT_CONNMARK_RESTORE:
 		newmark = (skb->mark & ~info->nfmask) ^
 		          (ct->mark & info->ctmask);
 		skb->mark = newmark;
 
-/* The KNOX framework marks packets intended to a VPN client for special processing differently.
- * The marked packets hit special IP table rules and are routed back to user space using the TUN driver
- * for policy based treatment by the VPN client.
- * Some VPN clients can make more intelligent decisions based on the UID/PID information.
- * For such clients, we mark packets to be in the range >= META_MARK_BASE_LOWER and < META_MARK_BASE_UPPER.
- * When such packets are seen, we update the IP headers to carry UID/PID information
- * in the IP options - all other packets are ignored.
- * Also, see the comments above the individual steps taken in the code for details
- */
-
-// ------------- START of KNOX_VPN ------------------//
-		if (newmark >= META_MARK_BASE_LOWER
-		    && newmark < META_MARK_BASE_UPPER) {
-			metabufspace = sizeof(struct skb_meta_param);
-			if (skb->sk != NULL) {
-				/* Obtain UID/PID of the source of the packet */
-				localuid = skb->sk->knox_uid;
-				localpid = skb->sk->knox_pid;
-				
-				/* Backup the IP header */
-				memcpy(&iph, skb->data,
-				       sizeof(struct iphdr));
-
-				/* Ensure IP options are not used already
-				 * Typically we would check for ">" 
-				 */
-				if (iph.ihl != sizeof(struct iphdr) / 4) {
-					pr_err
-					    ("KNOX %s: Seems like IP options are already in use - bailout - %d",
-					     __FUNCTION__, iph.ihl);
-					goto bailout;
-				}
-
-				/* Strip the IP header from the skb */
-				temp_skb_partial =
-				    skb_pull(skb, sizeof(struct iphdr));
-				if (NULL == temp_skb_partial) {
-					pr_err
-					    ("KNOX: Could not extract IP header from SKB - bailout");
-					goto bailout;
-				}
-				/* Push the meta data structure into the packet first
-				 * Once we stack the IP header on top of this,
-				 * metadata automatically becomes IP options
-				 */
-				uh = (struct skb_meta_param *)
-				    skb_push(skb, metabufspace);
-
-				/* Update the metadata with required information */
-				uh->uid = localuid;
-				uh->pid = localpid;
-
-				/* Update the IP header length to reflect the 
-				 * additional metadata (since it is part of the options)
-				 */
-				iph.ihl =
-				    (sizeof(struct iphdr) +
-				     metabufspace) / 4;
-				iph.tot_len += htons(metabufspace);
-				iph.check = 0;
-				ip_send_check (&iph);
-
-				/* Push an IP header back into the skb */
-				iphlocal =
-				    (struct iphdr *)skb_push(skb,
-							     sizeof
-							     (struct
-							      iphdr));
-
-				/* Update the IP header with the modified values */
-				memcpy(iphlocal, &iph,
-				       sizeof(struct iphdr));
-				skb_reset_network_header(skb);
-			} else {
-				pr_err
-			    	("KNOX: In %s - Socket structure skb->sk is NULL", __FUNCTION__);
-				goto bailout;
-			}
-
-		}
+// ------------- START of KNOX_VPN -----------------//		
+        knoxvpn_uidpid(skb,newmark);
 // ------------- END of KNOX_VPN -------------------//
+
 		break;
 	}
-// ------------- START of KNOX_VPN ------------------//
-bailout:
-// ------------- END of KNOX_VPN -------------------//
 	return XT_CONTINUE;
 }
 

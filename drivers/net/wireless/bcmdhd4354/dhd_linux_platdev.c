@@ -561,9 +561,7 @@ static int dhd_wifi_platform_load_sdio(void)
 			}
 			err = wifi_platform_set_power(adapter, TRUE, WIFI_TURNON_DELAY);
 			if (err) {
-				/* WL_REG_ON state unknown, Power off forcely */
-				wifi_platform_set_power(adapter, FALSE, WIFI_TURNOFF_DELAY);
-				continue;
+					DHD_ERROR(("failed to set WIFI_REG_ON\n"));
 			} else {
 				wifi_platform_bus_enumerate(adapter, TRUE);
 				err = 0;

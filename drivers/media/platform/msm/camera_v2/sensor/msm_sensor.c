@@ -33,6 +33,7 @@ uint16_t back_cam_fw_version = 0;
 #endif
 int led_torch_en;
 int led_flash_en;
+struct task_struct	*qdaemon_task;
 
 static int32_t msm_sensor_get_dt_data(struct device_node *of_node,
 				      struct msm_sensor_ctrl_t *s_ctrl)
@@ -300,6 +301,8 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl,
 		       s_ctrl->sensor_state);
 		return -EINVAL;
 	}
+
+	qdaemon_task = current;
 
 	pr_warn("[%s:%d] %s", __func__, __LINE__,
 		sensor_name);

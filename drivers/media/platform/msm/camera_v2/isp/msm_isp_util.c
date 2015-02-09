@@ -1009,9 +1009,10 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 		msm_isp_update_error_info(vfe_dev, error_mask0, error_mask1);
 
 	if ((irq_status0 == 0) && (irq_status1 == 0) &&
-		(!((error_mask0 != 0) || (error_mask1 != 0)) &&
-		 vfe_dev->error_info.error_count == 1)) {
-		ISP_DBG("%s: irq_status0 & 1 are both 0!\n", __func__);
+		(!(((error_mask0 != 0) || (error_mask1 != 0)) &&
+		 vfe_dev->error_info.error_count == 1))) {
+		ISP_DBG("%s: irq status 0 and 1 = 0, also error irq hadnled!\n",
+			__func__);
 		return IRQ_HANDLED;
 	}
 /*

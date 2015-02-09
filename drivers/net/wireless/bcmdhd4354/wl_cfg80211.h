@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfg80211.h 487871 2014-06-27 07:48:00Z $
+ * $Id: wl_cfg80211.h 519153 2014-12-05 05:10:07Z $
  */
 
 #ifndef _wl_cfg80211_h_
@@ -624,6 +624,7 @@ struct bcm_cfg80211 {
 #ifdef WLFBT
 	uint8 fbt_key[FBT_KEYLEN];
 #endif
+	bool need_wait_afrx;
 };
 
 

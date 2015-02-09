@@ -2997,6 +2997,9 @@ int mdss_fb_suspres_panel(struct device *dev, void *data)
 	if (!mfd)
 		return 0;
 
+	if (mfd->index == 1)
+		return 0;
+
 	event = *((bool *) data) ? MDSS_EVENT_RESUME : MDSS_EVENT_SUSPEND;
 
 	rc = mdss_fb_send_panel_event(mfd, event, NULL);

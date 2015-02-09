@@ -179,8 +179,11 @@ static struct battery_data_t samsung_battery_data[] = {
 	}
 };
 #endif
-
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || \
+#if defined(CONFIG_MACH_KLTE_CTC)
+#define CAPACITY_MAX			980
+#define CAPACITY_MAX_MARGIN	50
+#define CAPACITY_MIN			-7
+#elif defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || \
 	defined(CONFIG_SEC_KSPORTS_PROJECT)
 #define CAPACITY_MAX			990
 #define CAPACITY_MAX_MARGIN	50

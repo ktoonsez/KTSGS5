@@ -820,6 +820,7 @@ static bool sec_bat_voltage_check(struct sec_battery_info *battery)
 
 	if ((battery->status == POWER_SUPPLY_STATUS_FULL) && \
 		battery->is_recharging) {
+		value.intval = 0;
 		psy_do_property(battery->pdata->fuelgauge_name, get,
 			POWER_SUPPLY_PROP_CAPACITY, value);
 		if (value.intval <
@@ -2248,7 +2249,7 @@ static void sec_bat_monitor_work(
 		battery->polling_in_sleep = false;
 		if ((battery->status == POWER_SUPPLY_STATUS_DISCHARGING) &&
 			(battery->ps_enable != true)) {
-			if ((unsigned long)(c_ts.tv_sec - old_ts.tv_sec) < 10 * 60) {
+			if ((unsigned long)(c_ts.tv_sec - old_ts.tv_sec) < 5 * 60) {
 				pr_info("Skip monitor_work(%ld)\n",
 						c_ts.tv_sec - old_ts.tv_sec);
 				goto skip_monitor;
@@ -2292,7 +2293,7 @@ static void sec_bat_monitor_work(
 #if defined(CONFIG_BATTERY_SWELLING)
 	sec_bat_swelling_check(battery, battery->temperature);
 
-	if (battery->swelling_mode)
+	   if (battery->swelling_mode)
 		sec_bat_swelling_fullcharged_check(battery);
 	else
 #endif
@@ -2440,7 +2441,7 @@ static void sec_bat_cable_work(struct work_struct *work)
 		((battery->pdata->cable_check_type &
 		SEC_BATTERY_CABLE_CHECK_NOINCOMPATIBLECHARGE) &&
 		battery->cable_type == POWER_SUPPLY_TYPE_UNKNOWN)) {
-		if (battery->status == POWER_SUPPLY_STATUS_FULL) {
+		if (battery->status == POWER_SUPPLY_STATUS_FULL || battery->capacity == 100) {
 			/* To prevent soc jumping to 100 when cable is removed on progressing
 			   forced full-charged sequence */
 #if defined(CONFIG_AFC_CHARGER_MODE)

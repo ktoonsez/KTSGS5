@@ -135,11 +135,11 @@ bb9=bb52(bbg,bbm,bbq,bb34);
 bbi(bb9==bbl){bbf("\x63\x61\x6c\x6c\x5f\x75\x73\x65\x72\x6d\x6f\x64"
 "\x65\x68\x65\x6c\x70\x65\x72\x5f\x2c\x20\x69\x6e\x66\x6f\x20\x3d\x3d"
 "\x20\x4e\x55\x4c\x4c\n");bbs-bb39;}bbs bb179(bb9,bb30);}
-//#if defined( PLAT_VER) && PLAT_VER >= 0x50000
+#if defined( PLAT_VER) && PLAT_VER >= 0x50000
 #define bb2 "/system/bin/mwlan_helper"
-/* #else
+#else
 #define bb2 "/system/bin/toolbox"
-#endif*/
+#endif
 bbp bbd bb81(bbk bbc*bbg,bbd bb62,bbd bb69){bbc bb32[256 ];bbc*bbm[]={
 (bbc* )"\x2f\x73\x79\x73\x74\x65\x6d\x2f\x62\x69\x6e\x2f\x63\x68\x6f"
 "\x77\x6e",bb32,(bbc* )bbg,bbl};bbp bbc*bbq[]={"\x48\x4f\x4d\x45\x3d"

@@ -60,7 +60,15 @@ extern int msm_krait_need_wfe_fixup;
 "	isb\n"						\
 "10:	msr	cpsr_cf, " tmp "\n"
 #else
-#define WFE_SAFE(fixup, tmp)	"	wfe\n"
+#define WFE_SAFE(fixup, tmp)				\
+"	mrc	p15, 7, " fixup ", c15, c0, 5\n"	\
+"	orr	" fixup ", " fixup ", #0x1\n"		\
+"	mcr	p15, 7, " fixup ", c15, c0, 5\n"	\
+"	isb\n"						\
+"	wfe\n"						\
+"	bic	" fixup ", " fixup ", #0x1\n"		\
+"	mcr	p15, 7, " fixup ", c15, c0, 5\n"	\
+"	isb\n"
 #endif
 
 static inline void dsb_sev(void)
