@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd.h 479444 2014-05-21 04:19:36Z $
+ * $Id: dhd.h 487900 2014-06-27 10:26:47Z $
  */
 
 /****************
@@ -341,6 +341,13 @@ typedef struct dhd_pub {
 	struct task_struct * current_rxf;
 	int chan_isvht80;
 #endif /* CUSTOM_SET_CPUCORE */
+#if defined(CUSTOMER_HW4) && defined(ARGOS_CPU_SCHEDULER)
+	cpumask_var_t default_cpu_mask;
+	cpumask_var_t dpc_affinity_cpu_mask;
+	cpumask_var_t rxf_affinity_cpu_mask;
+	bool affinity_isdpc;
+	bool affinity_isrxf;
+#endif /* CUSTOMER_HW4 && ARGOS_CPU_SCHEDULER */
 } dhd_pub_t;
 #if defined(CUSTOMER_HW4)
 #define MAX_RESCHED_CNT 600
@@ -910,6 +917,9 @@ void dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr, int idx);
 #endif /* ARP_OFFLOAD_SUPPORT */
 #ifdef WLTDLS
 int dhd_tdls_enable(struct net_device *dev, bool tdls_on, bool auto_on, struct ether_addr *mac);
+#ifdef CUSTOMER_HW4
+int dhd_tdls_reset_manual(dhd_pub_t *dhd, struct net_device *dev);
+#endif /* CUSTOMER_HW4 */
 #endif
 /* Neighbor Discovery Offload Support */
 int dhd_ndo_enable(dhd_pub_t * dhd, int ndo_enable);
