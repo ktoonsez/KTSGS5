@@ -97,17 +97,17 @@ if [ -e $KERNELDIR/arch/arm/boot/zImage ]; then
 	echo "Size of $FILENAME = $FILESIZE bytes."
 	rm ../$MREV-$PLATFORM-$CARRIER"-version.txt"
 	exec 1>>../$MREV-$PLATFORM-$CARRIER"-version.txt" 2>&1
-	echo -n "$MUXEDNAMELONG,$FILESIZE," & curl -s https://www.googleapis.com/urlshortener/v1/url --header 'Content-Type: application/json' --data "{'longUrl': '$DLNAME'}" | grep \"id\" | sed -e 's,^.*id": ",,' -e 's/",.*$//'
-	#echo 1>&-
+	# echo -n "$MUXEDNAMELONG,$FILESIZE," & curl -s https://www.googleapis.com/urlshortener/v1/url --header 'Content-Type: application/json' --data "{'longUrl': '$DLNAME'}" | grep \"id\" | sed -e 's,^.*id": ",,' -e 's/",.*$//'
+	echo -n "$MUXEDNAMELONG,$FILESIZE,$DLNAME"
 	
-	SHORTURL=$(grep "http" ../$MREV-$PLATFORM-$CARRIER"-version.txt" | sed s/$MUXEDNAMELONG,$FILESIZE,//g)
-	exec 1>>../url/aurlstats-$CURDATE.sh 2>&1
-	##echo "curl -s 'https://www.googleapis.com/urlshortener/v1/url?shortUrl="$SHORTURL"&projection=FULL' | grep -m2 \"shortUrlClicks\|\\\"longUrl\\\"\""
-	echo "echo "$MREV-$PLATFORM-$CARRIER
-	echo "curl -s 'https://www.googleapis.com/urlshortener/v1/url?shortUrl="$SHORTURL"&projection=FULL' | grep -m1 \"shortUrlClicks\""
-	#echo 1>&-
-	chmod 0777 ../url/aurlstats-$CURDATE.sh
-	sed -i 's,http://ktoonsez.jonathanjsimon.com/sgs5/'$PLATFORM'/'$MUXEDNAMESHRT','"[B]"$CURDATE":[/B] [url]"$SHORTURL'[/url],' ../url/SERVERLINKS.txt
+	# SHORTURL=$(grep "http" ../$MREV-$PLATFORM-$CARRIER"-version.txt" | sed s/$MUXEDNAMELONG,$FILESIZE,//g)
+	# exec 1>>../url/aurlstats-$CURDATE.sh 2>&1
+	# ##echo "curl -s 'https://www.googleapis.com/urlshortener/v1/url?shortUrl="$SHORTURL"&projection=FULL' | grep -m2 \"shortUrlClicks\|\\\"longUrl\\\"\""
+	# echo "echo "$MREV-$PLATFORM-$CARRIER
+	# echo "curl -s 'https://www.googleapis.com/urlshortener/v1/url?shortUrl="$SHORTURL"&projection=FULL' | grep -m1 \"shortUrlClicks\""
+	# #echo 1>&-
+	# chmod 0777 ../url/aurlstats-$CURDATE.sh
+	# sed -i 's,http://ktoonsez.jonathanjsimon.com/sgs5/'$PLATFORM'/'$MUXEDNAMESHRT','"[B]"$CURDATE":[/B] [url]"$SHORTURL'[/url],' ../url/SERVERLINKS.txt
 
 	cd $KERNELDIR
 else
