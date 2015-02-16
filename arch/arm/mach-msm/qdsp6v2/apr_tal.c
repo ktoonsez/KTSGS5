@@ -190,9 +190,6 @@ struct apr_svc_ch_dev *apr_tal_open(uint32_t svc, uint32_t dest,
 		apr_tal_close(&apr_svc_ch[dl][dest][svc]);
 		return NULL;
 	}
-
-	smd_disable_read_intr(apr_svc_ch[dl][dest][svc].ch);
-
 	if (!apr_svc_ch[dl][dest][svc].dest_state) {
 		apr_svc_ch[dl][dest][svc].dest_state = 1;
 		pr_debug("apr_tal:Waiting for apr svc init\n");
@@ -266,7 +263,6 @@ static struct platform_driver apr_modem_driver = {
 static int __init apr_tal_init(void)
 {
 	int i, j, k;
-	int ret;
 
 	for (i = 0; i < APR_DL_MAX; i++)
 		for (j = 0; j < APR_DEST_MAX; j++)
@@ -277,19 +273,8 @@ static int __init apr_tal_init(void)
 				spin_lock_init(&apr_svc_ch[i][j][k].w_lock);
 				mutex_init(&apr_svc_ch[i][j][k].m_lock);
 			}
-	ret  = platform_driver_register(&apr_q6_driver);
-	if (ret)
-		goto err;
-		ret  = platform_driver_register(&apr_modem_driver);
-	if (ret)
-		goto err_register;
-
+	platform_driver_register(&apr_q6_driver);
+	platform_driver_register(&apr_modem_driver);
 	return 0;
-
-err_register:
-	platform_driver_unregister(&apr_q6_driver);
-err:
-	return ret;
-
 }
 device_initcall(apr_tal_init);
