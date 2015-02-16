@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -304,8 +304,6 @@ static void kgsl_snapshot_put_object(struct kgsl_device *device,
 	list_del(&obj->node);
 
 	obj->entry->memdesc.priv &= ~KGSL_MEMDESC_FROZEN;
-
-	kgsl_memdesc_unmap(&obj->entry->memdesc);
 	kgsl_mem_entry_put(obj->entry);
 
 	kfree(obj);
@@ -420,7 +418,7 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, phys_addr_t ptbase,
 
 	if (obj == NULL) {
 		KGSL_DRV_ERR(device, "Unable to allocate memory\n");
-		goto err_unmap;
+		goto err_put;
 	}
 
 	obj->type = type;
@@ -446,9 +444,6 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, phys_addr_t ptbase,
 	entry->memdesc.priv |= KGSL_MEMDESC_FROZEN;
 
 	return ret;
-
-err_unmap:
-	kgsl_memdesc_unmap(&entry->memdesc);
 err_put:
 	kgsl_mem_entry_put(entry);
 	return ret;
@@ -665,7 +660,7 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 		return 0;
 
 	/* Get the mutex to keep things from changing while we are dumping */
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 
 	obj_itr_init(&itr, buf, off, count);
 
@@ -704,7 +699,7 @@ static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
 	}
 
 done:
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 
 	return itr.write;
 }
@@ -736,12 +731,12 @@ static ssize_t trigger_store(struct kgsl_device *device, const char *buf,
 	size_t count)
 {
 	if (device && count > 0) {
-		kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+		mutex_lock(&device->mutex);
 		if (!kgsl_active_count_get(device)) {
 				kgsl_device_snapshot(device, 0);
 				kgsl_active_count_put(device);
 		}
-		kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+		mutex_unlock(&device->mutex);
 	}
 
 	return count;

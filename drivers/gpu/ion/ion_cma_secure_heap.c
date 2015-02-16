@@ -136,7 +136,6 @@ static int ion_secure_cma_add_to_pool(
 	}
 
 	dma_set_attr(DMA_ATTR_NO_KERNEL_MAPPING, &attrs);
-	dma_set_attr(DMA_ATTR_SKIP_ZEROING, &attrs);
 
 	cpu_addr = dma_alloc_attrs(sheap->dev, len, &handle, GFP_KERNEL,
 								&attrs);
@@ -445,19 +444,19 @@ static struct ion_secure_cma_buffer_info *__ion_secure_cma_allocate(
 	ret = ion_secure_cma_alloc_from_pool(sheap, &info->phys, len);
 
 	if (ret) {
-retry:
 		ret = ion_secure_cma_add_to_pool(sheap, len);
 		if (ret) {
-			mutex_unlock(&sheap->alloc_lock);
 			dev_err(sheap->dev, "Fail to allocate buffer\n");
+			mutex_unlock(&sheap->alloc_lock);
 			goto err;
 		}
 		ret = ion_secure_cma_alloc_from_pool(sheap, &info->phys, len);
 		if (ret) {
 			/*
-			 * Lost the race with the shrinker, try again
+			 * We just added memory to the pool, we shouldn't be
+			 * failing to get memory
 			 */
-			goto retry;
+			BUG();
 		}
 	}
 	mutex_unlock(&sheap->alloc_lock);

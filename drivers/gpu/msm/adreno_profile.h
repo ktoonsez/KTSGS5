@@ -27,8 +27,7 @@ struct adreno_profile_assigns_list {
 	char name[25];
 	unsigned int groupid;
 	unsigned int countable;
-	unsigned int offset;    /* LO offset */
-	unsigned int offset_hi; /* HI offset */
+	unsigned int offset;   /* LO offset,  HI offset is +1 */
 };
 
 struct adreno_profile {

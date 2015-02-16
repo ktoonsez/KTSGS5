@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -191,6 +191,8 @@ struct adreno_device {
 	unsigned int fast_hang_detect;
 	unsigned int ft_policy;
 	unsigned int long_ib_detect;
+	unsigned int long_ib;
+	unsigned int long_ib_ts;
 	unsigned int ft_pf_policy;
 	unsigned int gpulist_index;
 	struct ocmem_buf *ocmem_hdl;
@@ -217,7 +219,6 @@ enum adreno_device_flags {
 	ADRENO_DEVICE_PWRON_FIXUP = 1,
 	ADRENO_DEVICE_INITIALIZED = 2,
 	ADRENO_DEVICE_STARTED = 3,
-	ADRENO_DEVICE_HANG_INTR = 4,
 };
 
 #define PERFCOUNTER_FLAG_NONE 0x0
@@ -240,7 +241,6 @@ struct adreno_perfcount_register {
 	unsigned int kernelcount;
 	unsigned int usercount;
 	unsigned int offset;
-	unsigned int offset_hi;
 	int load_bit;
 	unsigned int select;
 	uint64_t value;
@@ -311,7 +311,6 @@ enum adreno_regs {
 	ADRENO_REG_CP_IB2_BASE,
 	ADRENO_REG_CP_IB2_BUFSZ,
 	ADRENO_REG_CP_TIMESTAMP,
-	ADRENO_REG_CP_HW_FAULT,
 	ADRENO_REG_SCRATCH_ADDR,
 	ADRENO_REG_SCRATCH_UMSK,
 	ADRENO_REG_SCRATCH_REG2,
@@ -417,10 +416,7 @@ struct log_field {
 #define  KGSL_FT_SKIPFRAME                3
 #define  KGSL_FT_DISABLE                  4
 #define  KGSL_FT_TEMP_DISABLE             5
-#define  KGSL_FT_THROTTLE                 6
-#define  KGSL_FT_SKIPCMD                  7
-#define  KGSL_FT_DEFAULT_POLICY (BIT(KGSL_FT_REPLAY) + BIT(KGSL_FT_SKIPCMD) \
-				+ BIT(KGSL_FT_THROTTLE))
+#define  KGSL_FT_DEFAULT_POLICY (BIT(KGSL_FT_REPLAY) + BIT(KGSL_FT_SKIPIB))
 
 /* This internal bit is used to skip the PM dump on replayed command batches */
 #define  KGSL_FT_SKIP_PMDUMP              31
@@ -438,9 +434,7 @@ struct log_field {
 	{ BIT(KGSL_FT_SKIPIB), "skipib" }, \
 	{ BIT(KGSL_FT_SKIPFRAME), "skipframe" }, \
 	{ BIT(KGSL_FT_DISABLE), "disable" }, \
-	{ BIT(KGSL_FT_TEMP_DISABLE), "temp" }, \
-	{ BIT(KGSL_FT_THROTTLE), "throttle"}, \
-	{ BIT(KGSL_FT_SKIPCMD), "skipcmd" }
+	{ BIT(KGSL_FT_TEMP_DISABLE), "temp" }
 
 extern struct adreno_gpudev adreno_a2xx_gpudev;
 extern struct adreno_gpudev adreno_a3xx_gpudev;
@@ -470,7 +464,6 @@ void adreno_coresight_disable(struct coresight_device *csdev);
 void adreno_coresight_remove(struct platform_device *pdev);
 int adreno_coresight_init(struct platform_device *pdev);
 
-bool adreno_hw_isidle(struct kgsl_device *device);
 int adreno_idle(struct kgsl_device *device);
 bool adreno_isidle(struct kgsl_device *device);
 
@@ -488,12 +481,10 @@ unsigned int adreno_a3xx_rbbm_clock_ctl_default(struct adreno_device
 struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 						phys_addr_t pt_base,
 						unsigned int gpuaddr,
-						unsigned int size,
-						struct kgsl_mem_entry **entry);
+						unsigned int size);
 
 uint8_t *adreno_convertaddr(struct kgsl_device *device,
-	phys_addr_t pt_base, unsigned int gpuaddr, unsigned int size,
-	struct kgsl_mem_entry **entry);
+	phys_addr_t pt_base, unsigned int gpuaddr, unsigned int size);
 
 struct kgsl_memdesc *adreno_find_ctxtmem(struct kgsl_device *device,
 	phys_addr_t pt_base, unsigned int gpuaddr, unsigned int size);
@@ -522,10 +513,6 @@ int adreno_reset(struct kgsl_device *device);
 int adreno_ft_init_sysfs(struct kgsl_device *device);
 void adreno_ft_uninit_sysfs(struct kgsl_device *device);
 
-void adreno_fault_skipcmd_detached(struct kgsl_device *device,
-					 struct adreno_context *drawctxt,
-					 struct kgsl_cmdbatch *cmdbatch);
-
 int adreno_perfcounter_get_groupid(struct adreno_device *adreno_dev,
 					const char *name);
 
@@ -534,7 +521,7 @@ const char *adreno_perfcounter_get_name(struct adreno_device
 
 int adreno_perfcounter_get(struct adreno_device *adreno_dev,
 	unsigned int groupid, unsigned int countable, unsigned int *offset,
-	unsigned int *offset_hi, unsigned int flags);
+	unsigned int flags);
 
 int adreno_perfcounter_put(struct adreno_device *adreno_dev,
 	unsigned int groupid, unsigned int countable, unsigned int flags);
@@ -778,6 +765,7 @@ static inline int adreno_wait_reg_eq(unsigned int *cmds, unsigned int addr,
 	*cmds++ = val;
 	*cmds++ = mask;
 	*cmds++ = interval;
+
 	return cmds - start;
 }
 
