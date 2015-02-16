@@ -202,7 +202,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"BN", "BN", 4},
 	{"BG", "BG", 4},
 	{"KH", "KH", 2},
-	{"CA", "US", 0},
+	{"CA", "CA", 31},
 	{"KY", "KY", 3},
 	{"CN", "CN", 38},
 	{"CO", "CO", 17},
@@ -302,9 +302,6 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"MN", "MN", 1},
 	{"NI", "NI", 2},
 	{"UZ", "MA", 2},
-	{"ZA", "ZA", 6},
-	{"EG", "EG", 13},
-	{"TN", "TN", 1},
 #endif /* default ccode/regrev */
 };
 

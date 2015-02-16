@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_ip.c 519554 2014-12-08 06:23:43Z $
+ * $Id: dhd_ip.c 457995 2014-02-25 13:53:31Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -865,7 +865,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 				bcopy(last_tdata_info, tdata_info_tmp, sizeof(tcpdata_info_t));
 			}
 			bzero(last_tdata_info, sizeof(tcpdata_info_t));
-			DHD_INFO(("%s %d: tcpdata_info(idx %d) is aged out. ttl cnt is now %d\n",
+			DHD_ERROR(("%s %d: tcpdata_info(idx %d) is aged out. ttl cnt is now %d\n",
 				__FUNCTION__, __LINE__, i, tcpack_sup_mod->tcpdata_info_cnt));
 			/* Don't increase "i" here, so that the prev last tcpdata_info is checked */
 		} else
@@ -894,7 +894,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 		/* No TCP flow with the same IP addr and TCP port is found
 		 * in tcp_data_info_tbl. So add this flow to the table.
 		 */
-		DHD_INFO(("%s %d: Add data info to tbl[%d]: IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
+		DHD_ERROR(("%s %d: Add data info to tbl[%d]: IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
 			" TCP port %d %d\n",
 			__FUNCTION__, __LINE__, tcpack_sup_mod->tcpdata_info_cnt,
 			IPV4_ADDR_TO_STR(ntoh32_ua(&ip_hdr[IPV4_SRC_IP_OFFSET])),
