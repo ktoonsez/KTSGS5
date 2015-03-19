@@ -489,6 +489,8 @@ enum {
 #define ES705_REROUTE_INV 200
 #endif
 
+#define FORCED_REROUTE_PRESET
+
 /* Maximum size of keyword parameter block in bytes. */
 #define ES705_VS_KEYWORD_PARAM_MAX 512
 
@@ -549,6 +551,9 @@ struct es705_priv {
 	struct delayed_work sleep_work;
 #if defined(PREVENT_CALL_MUTE_WHEN_SWITCH_NB_AND_WB)
 	struct delayed_work reroute_work;
+#endif
+#if defined(FORCED_REROUTE_PRESET)
+	struct delayed_work forced_reroute_work;
 #endif
 	struct es705_slim_dai_data dai[ES705_NUM_CODEC_SLIM_DAIS];
 	struct es705_slim_ch slim_rx[ES705_SLIM_RX_PORTS];

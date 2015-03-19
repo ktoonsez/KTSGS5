@@ -1,5 +1,5 @@
 /*
-   'src_ipsec_pgpIPsec.c' Obfuscated by COBF (Version 1.06 2006-01-07 by BB) at Mon Dec 22 18:00:49 2014
+   'src_pm_pgpNetPolicyManager.c' Obfuscated by COBF (Version 1.06 2006-01-07 by BB) at Mon Dec 22 18:00:49 2014
 */
 #include"cobf.h"
 #ifdef _WIN32
@@ -159,9 +159,6 @@ bba bb343 bb95;
 #define bb144( bbc) (( bbb)0)
 #define bb135( bbc) bb352( bbc)
 #define bb133( bbc) bb344( bbc)
-#endif
-#ifdef UNDER_CE
-#define bb1970 64
 #endif
 #define bb977 bb56(0x0800)
 #define bb1131 bb56(0x0806)
@@ -483,14 +480,48 @@ bb317 bb201);bb236 bb1289(bb35*bb114,bb389 bb465,bb324 bb140,bb362
 bb427,bb317 bb201);bb236 bb1299(bb35*bb114,bb175*bb51,bb83 bb78);
 bb236 bb1278(bb35*bb114,bb175*bb51,bb83 bb78);bb7 bb1288(bb35*bb114,
 bb175*bb51,bbd*bb106);bb7 bb1191(bb83 bb78,bb35*bb114,bb175*bb51,
-bb161*bb323,bbu bb606,bbu bb972);bba bbj bb1942{bb123 bb1965;bb123
-bb1974;bb35*bb1005;}bb1091, *bb1943;bbr bb1091 bb976;bbj bb999{bb123
-bb1937;bbo bb1945;bbd bb2008;bb91 bb1034;bb91 bb1986;bb91 bb1908;bb91
-bb1946;bb91 bb1991;bb472 bb1907;bb472 bb2006;bb472 bb1958;bb95 bb1174
-;bb103 bb1959;bb103 bb2001;bb103 bb1980;bb123 bb2004;bb123 bb1917;};
-bbr bb83 bb2011;bbr bb95 bb1968;bbd bb1912(bbb*bb535,bbb*bb1931,bb160
- *bb1167);bb160 bb1999(bb123 bb2010,bb123 bb1956,bb81 bb569,bbo bb567
-,bb81 bb1150,bbo bb1139,bbo bb1183);
+bb161*bb323,bbu bb606,bbu bb972);bb7 bb1815(bb35*bbi,bb503*bb471);bbb
+bb2090(bb35*bbi);bbb bb1963(bb35*bbi,bbd bb296,bbh bbf bb1219[6 ]);bbu
+bb1977(bb35*bbi,bbd bb296,bb416*bb442);bbb bb2097(bb35*bbi);bbb bb2066
+(bb35*bbi,bbd bb296,bbh bbf bb1219[6 ],bbf bb104,bbk bb425,bbk bb426);
+bbu bb2077(bb35*bbi,bbd bb296,bbf bb104,bbk bb425,bbk bb426);bbu
+bb1904(bb35*bbi,bbf bb104,bbk bb425,bbk bb426);bbb bb2047(bb35*bbi,
+bb445*bb570,bbo bb611);bbu bb1918(bbd bb296);bb161*bb1829(bb35*bbi,
+bbd bb296,bbu bb606);bb161*bb1896(bb35*bbi,bbd bb296,bbd bb106);bb161
+ *bb1972(bb35*bbi,bb180 bb106);bbb bb1994(bb525*bb42);bb161*bb1989(
+bb35*bbi,bb174*bb181);bbb bb1935(bb35*bbi,bb180 bb106);bbb bb1910(
+bb35*bbi,bb180 bb106);bbb bb2040(bb35*bbi);bbb bb1836(bb35*bbi);bbu
+bb1920(bb311*bbi,bbo bb534);bbb bb2018(bb311*bbi);bbb bb2098(bb311*
+bbi);bbu bb1828(bb311*bbi,bb420*bb826);bbu bb1984(bb311*bbi,bb420*
+bb826);bbb bb1988(bb35*bbi,bb180 bb106);bbb bb1919(bb35*bbi,bb180
+bb106);bbb bb1864(bb35*bbi,bbd bb29,bbd bb973);bb7 bb2122(bby*bb302,
+bbd*bb106);bb7 bb2184(bby*bb88,bbu bb179,bbd bb490,bb537 bb298,bbh bbf
+ *bb1349,bbf*bb92,bb438 bb428,bbf*bb580,bbd bb106,bbd bb517,bby*bb60);
+bb7 bb2108(bby*bb88,bbu bb179,bb537 bb298,bbh bbf*bb1349,bb438 bb428,
+bbf*bb580,bbd*bb494,bbd*bb476,bbd*bb568,bby*bb60);bb7 bb2138(bby*
+bb302,bbd*bb106);bb7 bb2156(bby*bb88,bbu bb179,bbd bb490,bb438 bb428,
+bbf*bb580,bbd bb106,bbd bb517,bby*bb60);bb7 bb2128(bby*bb88,bbu bb179
+,bb438 bb428,bbf*bb580,bbd*bb494,bbd*bb476,bbd*bb568,bby*bb60);bbu
+bb2207(bby*bb302);bbu bb2266(bby*bb302);bb7 bb2127(bby*bb302,bbd*
+bb106);bb7 bb2074(bby*bb302,bbd*bb106);bb7 bb2015(bby*bb88,bby*bb60,
+bbu bb1123,bbk bb2186,bbk bb1857);bb7 bb1911(bby*bb88,bby*bb60,bbu
+bb1123);bbb bb1928();bbb bb1930();bbb bb155(bbh bbl*bb20,...);bbb
+bb2062(bb186 bbg);bbb bb2096(bbb*bb28,bbo bb11);bbb bb2103(bbb*bbx,
+bbo bb5);bbb bb1852(bbb*bbx,bbo bb5);bbb bb1370(bbb*bbx,bbo bb5);bbb
+bb1951();bbb bb1779();bbb bb2035(bb374*bb1973);bbb bb1594(bb330*bb28);
+bbb bb1306(bb330*bb754,bb508*bb136);bbb bb1503(bb330*bb754,bb431*
+bb1631);
+#ifdef UNDER_CE
+#define bb1970 64
+#endif
+bba bbj bb1942{bb123 bb1965;bb123 bb1974;bb35*bb1005;}bb1091, *bb1943
+;bbr bb1091 bb976;bbj bb999{bb123 bb1937;bbo bb1945;bbd bb2008;bb91
+bb1034;bb91 bb1986;bb91 bb1908;bb91 bb1946;bb91 bb1991;bb472 bb1907;
+bb472 bb2006;bb472 bb1958;bb95 bb1174;bb103 bb1959;bb103 bb2001;bb103
+bb1980;bb123 bb2004;bb123 bb1917;};bbr bb83 bb2011;bbr bb95 bb1968;
+bbd bb1912(bbb*bb535,bbb*bb1931,bb160*bb1167);bb160 bb1999(bb123
+bb2010,bb123 bb1956,bb81 bb569,bbo bb567,bb81 bb1150,bbo bb1139,bbo
+bb1183);
 #ifdef UNDER_CE
 #define bb618 16
 #define bb1176 32
@@ -511,175 +542,200 @@ bb560,bb91 bb51);bb91 bb1307(bb83 bb78,bb91*bb560);bbu bb1814(bb83
 bb78);bbb bb1833(bb83 bb78);bb91 bb1483(bb172 bb368,bb83 bb78);bb91
 bb1874(bb172 bb368,bb83 bb78);bb91 bb1810(bb172 bb368,bb83 bb78);
 bb143 bb1679(bb83 bb78,bb91 bb51);bb143 bb1839(bb83 bb78,bb91 bb51);
-bb143 bb1895(bb83 bb78,bb91 bb51);bbb bb1928();bbb bb1930();bbb bb155
-(bbh bbl*bb20,...);bbb bb2062(bb186 bbg);bbb bb2096(bbb*bb28,bbo bb11
-);bbb bb2103(bbb*bbx,bbo bb5);bbb bb1852(bbb*bbx,bbo bb5);bbb bb1370(
-bbb*bbx,bbo bb5);bbb bb1951();bbb bb1779();bbb bb2035(bb374*bb1973);
-bbb bb1594(bb330*bb28);bbb bb1306(bb330*bb754,bb508*bb136);bbb bb1503
-(bb330*bb754,bb431*bb1631);bb7 bb2138(bby*bb302,bbd*bb106);bb7 bb2156
-(bby*bb88,bbu bb179,bbd bb490,bb438 bb428,bbf*bb580,bbd bb106,bbd
-bb517,bby*bb60);bb7 bb2128(bby*bb88,bbu bb179,bb438 bb428,bbf*bb580,
-bbd*bb494,bbd*bb476,bbd*bb568,bby*bb60);bb7 bb2122(bby*bb302,bbd*
-bb106);bb7 bb2184(bby*bb88,bbu bb179,bbd bb490,bb537 bb298,bbh bbf*
-bb1349,bbf*bb92,bb438 bb428,bbf*bb580,bbd bb106,bbd bb517,bby*bb60);
-bb7 bb2108(bby*bb88,bbu bb179,bb537 bb298,bbh bbf*bb1349,bb438 bb428,
-bbf*bb580,bbd*bb494,bbd*bb476,bbd*bb568,bby*bb60);bb13{bb571=1 ,};bbb*
-bb518(bbd bb1264,bbd bb387);bb7 bb474(bbb*bb1004);bba bbj bb2049
-bb2031, *bb396;bba bb13{bb2058=0 ,bb1790=1 ,bb1807=2 }bb898;bb7 bb1859(
-bb898 bb1923,bb396*bb369);bb7 bb2002(bb396 bb369,bbf*bb450,bbd bb434,
-bbf*bb314,bbd bb295,bbd*bb453,bbd*bb310);bb7 bb1996(bb396 bb369,bbf*
-bb314,bbd bb295,bbd*bb310,bbu*bb1007);bb7 bb2005(bb396 bb369,bbf*
-bb450,bbd bb434,bbf*bb314,bbd bb295,bbd*bb453,bbd*bb310,bbu*bb997);
-bb7 bb1869(bb396 bb369);bb7 bb2261(bby*bb88,bbu bb179,bbd bb490,bb898
-bb1399,bby*bb60,bbu*bb2155);bb7 bb2167(bby*bb88,bbu bb179,bb898 bb1399
-,bby*bb60);bba bb13{bb423,bb1524,}bb306;bbk bb1235(bb306 bb881,bbh bbf
- *bb464);bbd bb553(bb306 bb881,bbh bbf*bb464);bbb bb1213(bbk bb158,
-bb306 bb584,bbf bb452[2 ]);bbb bb1006(bbd bb158,bb306 bb584,bbf bb452[
-4 ]);bbu bb1920(bb311*bbi,bbo bb534);bbb bb2018(bb311*bbi);bbb bb2098(
-bb311*bbi);bbu bb1828(bb311*bbi,bb420*bb826);bbu bb1984(bb311*bbi,
-bb420*bb826);bbb bb1988(bb35*bbi,bb180 bb106);bbb bb1919(bb35*bbi,
-bb180 bb106);bbb bb1864(bb35*bbi,bbd bb29,bbd bb973);bbu bb2207(bby*
-bb302);bbu bb2266(bby*bb302);bb7 bb2127(bby*bb302,bbd*bb106);bb7
-bb2074(bby*bb302,bbd*bb106);bb7 bb2015(bby*bb88,bby*bb60,bbu bb1123,
-bbk bb2186,bbk bb1857);bb7 bb1911(bby*bb88,bby*bb60,bbu bb1123);bbu
-bb1918(bbd bb296);bb161*bb1829(bb35*bbi,bbd bb296,bbu bb606);bb161*
-bb1896(bb35*bbi,bbd bb296,bbd bb106);bb161*bb1972(bb35*bbi,bb180 bb106
-);bbb bb1994(bb525*bb42);bb161*bb1989(bb35*bbi,bb174*bb181);bbb bb1935
-(bb35*bbi,bb180 bb106);bbb bb1910(bb35*bbi,bb180 bb106);bbb bb2040(
-bb35*bbi);bbb bb1836(bb35*bbi);bbo bb974;bb7 bb1288(bb35*bb114,bb175*
-bb51,bbd*bb106){bby bb42;bbd bb1696;bb7 bb18=bb101;bbm(!bb114||!bb51
-||!bb106)bb4 bb372; *bb106=0 ;bbm(bb51->bb478>0 ){bb42.bb76=bb51->bb318
-;bb42.bb129=bb51->bb478;}bb50{bb42.bb76=bb51->bb484;bb42.bb129=bb51->
-bb591;}bb42.bb76+=14 ;bb42.bb129-=14 ;bb42.bb183=bb974+20 ;bb42.bb99=
-bb93;bb2122(&bb42,&bb1696);bbm(!bb1696)bb2138(&bb42,&bb1696);bbm(!
-bb1696)bb2127(&bb42,&bb1696);bbm(!bb1696){bbm(bb51->bb455==bb114->
-bb1145)bb2074(&bb42,&bb1696);}bbm(!bb1696){bbd bb29;bbd bb2284;bb161*
-bb166;bb2074(&bb42,&bb2284);bb1009(&bb42,&bb29);bb166=bb1896(bb114,
-bb29,bb2284);bbm(bb166){bbm(bb166->bb181.bb417[0 ].bb104==bb639&&bb166
-->bb181.bb417[0 ].bb299.bb316.bb47.bb45==bb1106&&bb51->bb455==bb56(
-bb166->bb181.bb1104))bb1696=bb2284;}} *bb106=bb1696;bb4 bb18;}bb7
-bb1191(bb83 bb78,bb35*bb114,bb175*bb51,bb161*bb323,bbu bb606,bbu bb972
-){bb470*bb384;bb537 bb1296=bb630;bb438 bb1816=bb579;bb438 bb1767=
-bb579;bb898 bb1040=bb2058;bbk bb163;bbf*bb2224=bb93;bbf*bb2495=bb93;
-bbf*bb2262=bb93;bbf*bb2216=bb93;bbd bb2313=0 ;bbd bb2320=0 ;bbd bb490;
-bbd bb494;bbd bb476;bbd bb568;bbu bb2247;bbu bb2226;bbu bb638=0 ;bbu
-bb675=0 ;bbu bb810=0 ;bbu bb993;bbu bb2332;bbu bb541;bbu bb2095;bby*
-bb302=bb93;bby*bb1029=bb93;bby*bb75=bb93;bby*bb49=bb93;bby*bb479=bb93
-;bby bb988[2 ];bby*bb1691;bby*bb1463;bb175*bb305;bb160 bb368;bb7 bb18=
-bb101;bbm(!bb114||!bb51)bb4 bb372;bb305=bb51;bbm(!bb305->bb1020)bb4
-bb372;bbm(bb1235(bb423,&(bb51->bb484[16 ]))>=65515 )bb4 bb1052;bb2095=
-bb51->bb478>0 ;bb90(bb163=0 ;bb163<2 ;bb163++){bb988[bb163].bb76=bb93;
-bb988[bb163].bb129=0 ;bb988[bb163].bb183=0 ;bb988[bb163].bb99=bb93;}
-bb302=(bby* )bb518(bb12(bby),bb571);bbm(!bb302){bb18=bb365;bb96 bb1363
-;}bbm(bb2095){bb302->bb76=(bbf* )bb518(1500 ,0 );bbm(!bb302->bb76){bb18
-=bb365;bb96 bb1363;}bb74(bb302->bb76,&bb305->bb318[14 ],bb305->bb478-
-14 );bb302->bb129=bb305->bb478-14 ;}bb50{bb302->bb76=&(bb305->bb484[14 ]
-);bb302->bb129=bb305->bb591-14 ;}bb302->bb183=1500 ;bb302->bb99=bb93;
-bb1029=(bby* )bb518(bb12(bby),bb571);bbm(!bb1029){bb18=bb365;bb96
-bb1363;}bb1029->bb76=&(bb305->bb318[14 ]);bb1029->bb129=0 ;bb1029->
-bb183=bb974+20 ;bb1029->bb99=bb93;bb90(bb163=0 ;bb163<2 ;bb163++){bb988[
-bb163].bb76=(bbf* )bb518(bb974+20 ,0 );bbm(!bb988[bb163].bb76){bb18=
-bb365;bb96 bb1363;}bb988[bb163].bb129=0 ;bb988[bb163].bb183=bb974+20 ;
-bb988[bb163].bb99=bb93;}bb75=bb302;bb49=bb1029;bb1691=&(bb988[0 ]);
-bb1463=&(bb988[1 ]);bbm(bb2095)bb541=bb305->bb547;bb50 bb541=bb305->
-bb541;bb109(bb305->bb328&&((bb18)==bb101)){bbm(!bb541){bb75->bb99=(
-bby* )bb518(bb12(bby),bb571);bbm(!bb75->bb99){bb18=bb365;bb96 bb1363;
-}}bb50 bb75->bb99=bb93;bb49->bb99=(bby* )bb518(bb12(bby),bb571);bbm(!
-bb49->bb99){bb18=bb365;bb96 bb1363;}bb1691->bb99=(bby* )bb518(bb12(
-bby),bb571);bbm(!bb1691->bb99){bb18=bb365;bb96 bb1363;}bb1691=bb1691
-->bb99;bb1691->bb76=(bbf* )bb518(bb974,0 );bbm(!bb1691->bb76){bb18=
-bb365;bb96 bb1363;}bb1691->bb129=0 ;bb1691->bb183=bb974;bb1691->bb99=
-bb93;bb1463->bb99=(bby* )bb518(bb12(bby),bb571);bbm(!bb1463->bb99){
-bb18=bb365;bb96 bb1363;}bb1463=bb1463->bb99;bb1463->bb76=(bbf* )bb518
-(bb974,0 );bbm(!bb1463->bb76){bb18=bb365;bb96 bb1363;}bb1463->bb129=0 ;
-bb1463->bb183=bb974;bb1463->bb99=bb93;bbm(((bb18)==bb101)){bb49=bb49
-->bb99;bb305=bb305->bb328;bbm(!bb541){bb75=bb75->bb99;bbm(bb2095){
-bb75->bb76=(bbf* )bb518(1500 -14 -20 ,0 );bbm(!bb75->bb76){bb18=bb365;
-bb96 bb1363;}bb74(bb75->bb76,&bb305->bb318[14 +20 ],bb305->bb478-14 -20 );
-bb75->bb129=bb305->bb478-14 -20 ;bb541=bb305->bb547;}bb50{bb75->bb76=&(
-bb305->bb484[14 +20 ]);bb75->bb129=bb305->bb591-14 -20 ;bb541=bb305->
-bb541;}bb75->bb183=1500 -14 -20 ;bb75->bb99=bb93;}bb49->bb76=&(bb305->
-bb318[14 +20 ]);bb49->bb129=0 ;bb49->bb183=bb974;bb49->bb99=bb93;}}bb490
-=bb972?bb323->bb181.bb29:0 ;bb90(bb163=0 ;bb163<bb323->bb181.bb1295;
-bb163++){bb384=&bb323->bb181.bb417[bb163];bbm(bb384->bb104==bb1225){
-bb338(bb384->bb299.bb582.bb47.bb1384){bb17 bb1403:bb1767=bb607;bb21;
-bb17 bb1366:bb1767=bb609;bb21;bb17 bb1339:bb1767=bb601;bb21;bb17
-bb1400:bb1767=bb586;bb21;bb17 bb1357:bb1767=bb593;bb21;bb17 bb1361:
-bb1767=bb604;bb21;bb17 bb1388:bb1767=bb612;bb21;bb477:bb18=bb548;}bbm
-(bb606){bb2216=bb384->bb299.bb582.bb581;bb2320=bb553(bb423,bb384->
-bb984);}bb50{bb2216=bb384->bb299.bb582.bb583;bb2320=bb553(bb423,bb384
-->bb1241);}}bb50 bbm(bb384->bb104==bb639){bb338(bb384->bb299.bb316.
-bb47.bb298){bb17 bb1351:bb1296=bb623;bb21;bb17 bb1334:bb1296=bb623;
-bb21;bb17 bb1347:bb1296=bb623;bb21;bb17 bb1335:bb1296=bb955;bb21;bb17
-bb1385:bb1296=bb949;bb21;bb17 bb1382:bb1296=bb945;bb21;bb17 bb1373:
-bb1296=bb940;bb21;bb17 bb1344:bb1296=bb941;bb21;bb17 bb1337:bb1296=
-bb947;bb21;bb17 bb1371:bb1296=bb936;bb21;bb17 bb1345:bb21;bb477:bb18=
-bb588;}bb338(bb384->bb299.bb316.bb47.bb617){bb17 bb1342:bb1816=bb607;
-bb21;bb17 bb1404:bb1816=bb609;bb21;bb17 bb1381:bb1816=bb601;bb21;bb17
-bb1360:bb1816=bb586;bb21;bb17 bb1355:bb1816=bb593;bb21;bb17 bb1396:
-bb1816=bb604;bb21;bb17 bb1407:bb1816=bb612;bb21;bb17 bb1398:bb21;
-bb477:bb18=bb548;}bbm(bb606){bb2224=bb384->bb299.bb316.bb1249;bb2262=
-bb384->bb299.bb316.bb581;bb2313=bb553(bb423,bb384->bb984);}bb50{
-bb2224=bb384->bb299.bb316.bb1263;bb2262=bb384->bb299.bb316.bb583;
-bb2313=bb553(bb423,bb384->bb1241);bb2495=bb384->bb299.bb316.bb1232;}}
-bb50 bbm(bb384->bb104==bb1280){bb338(bb384->bb299.bb632.bb47.bb1040){
-bb17 bb1405:bb1040=bb1790;bb21;bb17 bb1368:bb1040=bb1807;bb21;bb17
-bb1336:bb21;bb477:bb18=bb372;}}}bb338(bb323->bb181.bb417[0 ].bb104){
-bb17 bb1225:bb675=1 ;bb21;bb17 bb639:bb638=1 ;bb21;bb17 bb1280:bb810=1 ;
-bb21;}bb384=&bb323->bb181.bb417[0 ];bb338(bb323->bb181.bb523){bb17
-bb1130:bb993=1 ;bb21;bb17 bb1178:bb993=bb384->bb104==bb639&&bb384->
-bb299.bb316.bb47.bb45==bb1153;bb21;bb17 bb1180:bb993=bb384->bb104==
+bb143 bb1895(bb83 bb78,bb91 bb51);bbe bb2499(bb324 bb140,bbd bb1102);
+bbe bb2383(bb324 bb140);bb40 bbf bb2306[8192 ];bb236 bb1311(bb35*bb114
+,bb389 bb465,bb324 bb140,bb362 bb427,bb317 bb201){bb1275 bb126;bbk
+bb1820;bbf bb1834;bbk bb425,bb426;bbm(!bb114->bb471)bb4 bb1047;bb126=
+bb114->bb471->bb1110;bbm(bb114->bb471->bb1157){bb161*bb166=bb1829(
+bb114,bb140->bb256,0 );bbm(bb166)bb4 bb1056;}bb1820=bb140->bb909>>3 ;
+bb1834=1 <<(bb140->bb909&0x07 );bbm(!bb1013(bb140->bb603)){bbm(bb2306[
+bb1820]&bb1834)bb96 bb1374;bb50 bb96 bb2104;}bbm(bb427){bb425=bb197(
+bb427->bb290);bb426=bb197(bb427->bb439);bbm(bb426==0x01f4 ||bb426==
+0x1194 ){bb1963(bb114,bb140->bb256,bb465->bb376);bb96 bb1374;}}bb50 bbm
+(bb201){bb425=bb197(bb201->bb290);bb426=bb197(bb201->bb621);}bb50{
+bb425=bb426=0 ;}bbm(bb126==bb1254)bb96 bb1374;bbm(bb126==bb1276)bb96
+bb2104;bbm(bb126==bb1294){bb1963(bb114,bb140->bb256,bb465->bb376);}
+bb50 bbm(bb126==bb1328){bbm(bb1904(bb114,bb140->bb291,bb425,bb426))bb96
+bb1374;bb2066(bb114,bb140->bb256,bb465->bb376,bb140->bb291,bb425,
+bb426);}bb1374:bb2306[bb1820]|=bb1834;bb4 bb1047;bb2104:bb2306[bb1820
+]&=~bb1834;bb4 bb1112;}bb40 bbf bb2368[8192 ];bb236 bb1289(bb35*bb114,
+bb389 bb465,bb324 bb140,bb362 bb427,bb317 bb201){bb1275 bb126;bbk
+bb1820;bbf bb1834;bbk bb425,bb426;(bbb)bb465;bbm(!bb114->bb471)bb4
+bb1047;bb126=bb114->bb471->bb1110;bbm(bb114->bb471->bb1157){bb161*
+bb323=bb1829(bb114,bb140->bb312,1 );bbm(bb323){bbm(bb140->bb291==50 ||
+bb140->bb291==51 ||bb140->bb291==108 )bb4 bb1056;bbm(bb427){bbu bb993;
+bb470*bb384;bb384=&bb323->bb181.bb417[0 ];bb338(bb323->bb181.bb523){
+bb17 bb1130:bb993=1 ;bb21;bb17 bb1178:bb993=bb384->bb104==bb639&&bb384
+->bb299.bb316.bb47.bb45==bb1153;bb21;bb17 bb1180:bb993=bb384->bb104==
 bb639&&bb384->bb299.bb316.bb47.bb45==bb1258;bb21;bb17 bb1169:bb993=
 bb384->bb104==bb639&&(bb384->bb299.bb316.bb47.bb45==bb1153||bb384->
 bb299.bb316.bb47.bb45==bb1106);bb21;bb17 bb1108:bb17 bb1105:bb993=
 bb384->bb104==bb639&&bb384->bb299.bb316.bb47.bb45==bb1106;bb21;bb477:
-bb993=0 ;bb21;}bbm(bb675&&bb993)bb675=0 ;bbm(!bb638&&!bb675)bb810=0 ;
-bb2247=!bb638&&!bb810&&bb972;bb2226=!bb810&&bb972;bb75=bb302;bbm(
-bb638&&(bb675||bb810||bb993))bb49=&(bb988[0 ]);bb50 bbm(bb675&&bb810)bb49
-=&(bb988[0 ]);bb50 bb49=bb1029;bbm(bb606){bbm(bb993&&((bb18)==bb101)){
-bb338(bb323->bb181.bb523){bb17 bb1178:bb17 bb1180:bb18=bb1911(bb75,
-bb49,0 );bb21;bb17 bb1130:bb17 bb1169:bb18=bb1911(bb75,bb49,1 );bb21;
-bb17 bb1108:bb17 bb1105:bb18=bb1911(bb75,bb49,0 );bb21;}bb75=bb49;bbm(
-bb638&&bb810)bb49=&(bb988[1 ]);bb50 bb49=bb1029;}bbm(bb675&&((bb18)==
-bb101)){bb494=bb323->bb1324;bb476=bb323->bb1290;bb568=bb323->bb1274;
-bb18=bb2128(bb75,bb2247,bb1767,bb2216,&bb494,&bb476,&bb568,bb49);bbm(
-((bb18)==bb101)){bb323->bb1324=bb494;bb323->bb1290=bb476;bb323->
-bb1274=bb568;}bb75=bb49;bbm(bb638&&bb810)bb49=&(bb988[1 ]);bb50 bb49=
-bb1029;}bbm(bb638&&((bb18)==bb101)){bb494=bb323->bb1283;bb476=bb323->
-bb1321;bb568=bb323->bb1305;bb18=bb2108(bb75,bb2226,bb1296,bb2224,
-bb1816,bb2262,&bb494,&bb476,&bb568,bb49);bbm(((bb18)==bb101)){bb323->
-bb1283=bb494;bb323->bb1321=bb476;bb323->bb1305=bb568;}bb75=bb49;bb49=
-bb1029;}bbm(bb810&&((bb18)==bb101)){bb18=bb2167(bb75,bb972,bb1040,
-bb49);bb109(bb18==bb392){bb305=bb51;bb479=bb1029;bb479->bb129=0 ;bb109
-(bb479->bb99){bb305=bb305->bb328;bb479=bb479->bb99;bb479->bb129=0 ;}
-bb479->bb99=(bby* )bb518(bb12(bby),0 );bbm(bb479->bb99){bb305->bb328=
-bb1810(&bb368,bb78);bbm(bb305->bb328){bb479->bb99->bb76=&(bb305->
-bb328->bb318[14 +20 ]);bb479->bb99->bb129=0 ;bb479->bb99->bb183=bb974;
-bb479->bb99->bb99=bb93;bb305->bb328->bb328=bb93;}bb50 bb18=bb365;}
-bb50 bb18=bb365;bbm(bb18==bb392)bb18=bb2167(bb75,bb972,bb1040,bb49);}
-}}bb50{bbm(bb2095){bb1016(bb75);bb556(bb75);}bbm(bb810&&((bb18)==
-bb101)){bb18=bb2261(bb75,bb972,bb490,bb1040,bb49,&bb2332);bb75=bb49;
-bbm(bb638&&(bb675||bb993))bb49=&(bb988[1 ]);bb50 bb49=bb1029;bb2226=
-bb972&&bb638&&!bb2332;bb2247=bb972&&bb675&&!bb638&&!bb2332;}bbm(bb638
-&&((bb18)==bb101)){bb18=bb2184(bb75,bb2226,bb490,bb1296,bb2224,bb2495
-,bb1816,bb2262,bb2313,bb323->bb1119+1 ,bb49);bb75=bb49;bb49=bb1029;}
-bbm(bb675&&((bb18)==bb101)){bb18=bb2156(bb75,bb2247,bb490,bb1767,
-bb2216,bb2320,bb323->bb1119+1 ,bb49);}bbm(bb993&&((bb18)==bb101)){
-bb338(bb323->bb181.bb523){bb17 bb1178:bb17 bb1180:bb18=bb2015(bb75,
-bb49,0 ,bb114->bb1145,bb975);bb21;bb17 bb1130:bb17 bb1169:bb18=bb2015(
-bb75,bb49,1 ,bb114->bb1194,bb958);bb21;bb17 bb1108:bb17 bb1105:bb18=
-bb2015(bb75,bb49,0 ,bb56(bb323->bb181.bb1104),bb56(bb323->bb181.bb1104
-));bb21;}}}bbm(((bb18)==bb101)){bb51->bb478=bb1029->bb129+14 ;bb51->
-bb1172=1 ;bb49=bb1029->bb99;bbm(!bb51->bb328||!bb49){bb51->bb547=1 ;
-bb305=bb93;}bb50 bbm(bb49->bb129==0 ){bb51->bb547=1 ;bb305=bb93;}bb50{
-bb305=bb51->bb328;bb51->bb547=0 ;}bb109(bb305){bb305->bb478=14 +20 +bb49
-->bb129;bb305->bb1172=0 ;bb305->bb547=0 ;bbm(!bb49->bb99){bb305->bb547=
-1 ;bb305=bb93;}bb50 bbm(bb49->bb99->bb129==0 ){bb305->bb547=1 ;bb305=
-bb93;}bb50{bb49=bb49->bb99;bb305=bb305->bb328;}}}bb1363:bb90(bb163=0 ;
-bb163<2 ;bb163++){bbm(bb988[bb163].bb76)bb474(bb988[bb163].bb76);bb90(
-bb75=bb988[bb163].bb99;bb75;){bbm(bb75->bb76)bb474(bb75->bb76);bb479=
-bb75;bb75=bb75->bb99;bb474(bb479);}}bb90(bb75=bb302;bb75;){bbm(bb2095
-)bb474(bb75->bb76);bb479=bb75;bb75=bb75->bb99;bb474(bb479);}bb90(bb49
-=bb1029;bb49;){bb479=bb49;bb49=bb49->bb99;bb474(bb479);}bbm(((bb18)==
-bb101)){bbm(bb606)bb323->bb1207=bb301(bb93);bb50 bb323->bb1193=bb301(
-bb93);}bb4 bb18;}
+bb993=0 ;bb21;}bbm(bb993){bbk bb2195=0 ;bb338(bb323->bb181.bb523){bb17
+bb1178:bb17 bb1180:bb2195=bb114->bb1145;bb21;bb17 bb1130:bb17 bb1169:
+bb2195=bb114->bb1194;bb21;bb17 bb1108:bb17 bb1105:bb2195=bb56(bb323->
+bb181.bb1104);}bbm(bb427->bb439==bb2195)bb4 bb1056;}}}}bb1820=bb140->
+bb909>>3 ;bb1834=1 <<(bb140->bb909&0x07 );bbm(!bb1013(bb140->bb603)){bbm
+(bb2368[bb1820]&bb1834)bb96 bb1374;bb50 bb96 bb2104;}bbm(bb427){bb425
+=bb197(bb427->bb290);bb426=bb197(bb427->bb439);bbm(bb425==0x01f4 ||
+bb425==0x1194 )bb96 bb1374;}bb50 bbm(bb201){bb425=bb197(bb201->bb290);
+bb426=bb197(bb201->bb621);}bb50{bb425=bb426=0 ;}bbm(bb126==bb1254)bb96
+bb1374;bbm(bb126==bb1276)bb96 bb2104;bbm(bb126==bb1294){bbm(bb1977(
+bb114,bb140->bb312,bb93))bb96 bb1374;}bb50 bbm(bb126==bb1328){bbm(
+bb1904(bb114,bb140->bb291,bb426,bb425))bb96 bb1374;bbm(bb2077(bb114,
+bb140->bb312,bb140->bb291,bb426,bb425))bb96 bb1374;}bb2104:bb2368[
+bb1820]&=!bb1834;bb4 bb1112;bb1374:bb2368[bb1820]|=bb1834;bb4 bb1047;
+}bb40 bbu bb2397(bb35*bb2337,bb161*bb166){bbm(bb166->bb181.bb1068&&
+bb166->bb1118>=bb166->bb181.bb1068*1024 ||bb166->bb1119>=0xfffffffe ){
+bb1988(bb2337,bb166->bb181.bb417[0 ].bb984);bb4 1 ;}bb4 0 ;}bb40 bbb
+bb2516(bb35*bb2337,bb161*bb166){bbu bb2173=0 ;bbd bb2170=1 ;bbm(!bb166)bb4
+;bbm(bb166->bb1256)bb4;bbm(bb166->bb1119>=0xFFFF7FFF ){bb2173=1 ;bb96
+bb2244;}bbm(bb166->bb181.bb1068==0 ||bb166->bb1118<1024 )bb4;bb2170=
+bb166->bb1118/1024 ;{bbd bb2503=(bbd)(bb301(bb93)-bb166->bb600);bbd
+bb2483=bb2503?bb2170/bb2503:0 ;bbm(bb2483&&(bb166->bb181.bb1068-bb2170
+)/bb2483<=30 ){bb2173=1 ;bb96 bb2244;}}bbm(bb166->bb181.bb1068>2048 ){
+bbm(bb2170>=bb166->bb181.bb1068-1024 ){bb2173=1 ;bb96 bb2244;}}bb50 bbm
+(bb2170>=bb166->bb181.bb1068){bb2173=1 ;bb96 bb2244;}bb2244:bbm(bb2173
+){bb1919(bb2337,bb166->bb181.bb417[0 ].bb984);bb166->bb1256=1 ;}}bb40
+bb236 bb2570(bb35*bb114,bbd bb29,bbk bb455,bb161* *bb2423,bb161* *
+bb2402){bb161*bb166;bb470*bb384;(bbb)bb455; *bb2423=bb93; *bb2402=
+bb93;bb166=bb1829(bb114,bb29,0 );bbm(!bb166)bb4 bb1112;bb384=&bb166->
+bb181.bb417[0 ];bbm((bb384->bb104==bb1225&&bb384->bb299.bb582.bb47.
+bb45==bb1203)||(bb384->bb104==bb639&&bb384->bb299.bb316.bb47.bb45==
+bb1203)) *bb2423=bb166;bb50*bb2402=bb166;bb4 bb1056;}bb40 bbb bb2347(
+bb175*bb1846){bb175*bb635;bbm(!bb1846->bb1020)bb4;bb90(bb635=bb1846;
+bb635;bb635=bb635->bb328){bb74(bb635->bb318,bb635->bb484,bb635->bb591
+);bb635->bb478=bb635->bb591;bb635->bb1172=bb635->bb1020;bb635->bb547=
+bb635->bb541;bbm(bb635->bb541)bb21;}}bb40 bbb bb2548(bb175*bb1846){
+bb175*bb635;bb324 bb140;bb362 bb427;bbo bb1216=0 ;bbm(!bb1846->bb1020)bb4
+;bb2347(bb1846);bb140=(bb324)(bb1846->bb318+bb12(bb374));bbm(bb140->
+bb291!=17 )bb4;bb427=(bb362)(bb140+1 );bbm(bb427->bb326==0 ){bb3 bb105=
+bb127(bb1216+12 );bbm(!bb105)bb4;bb90(bb635=bb1846;bb635;bb635=bb635->
+bb328){bb140=(bb324)(bb635->bb318+bb12(bb374));bbm(bb635==bb1846){
+bb589 bb578=(bb589)bb105;bb74(&bb578->bb312,&bb140->bb312,4 );bb74(&
+bb578->bb256,&bb140->bb256,4 );bb578->bb934=0 ;bb578->bb291=17 ;bb578->
+bb937=bb56(bb1216);bb427->bb326=0 ;}{bbo bb2520=bb197(bb140->bb381)-
+bb12(bb330);bb74(bb105+bb12(bb627)+bb1061(bb140->bb603),bb140+1 ,
+bb2520);bb1216+=bb2520;}bbm(bb635->bb547)bb21;}bb427->bb326=bb660(
+bb105,bb1216+12 );bb108(bb105);}}bb236 bb1299(bb35*bb114,bb175*bb51,
+bb83 bb78){bbd bb29=bb457(bb51->bb29);bb161*bb1680=0 , *bb964=0 ;bb7
+bb18=bb101;bb236 bb540;bbu bb2514=0 ;bb51->bb478=0 ;bb2500:bb540=bb2570
+(bb114,bb29,bb51->bb455,&bb1680,&bb964);bbm(bb540!=bb1056&&bb540!=
+bb1047)bb96 bb456;bbm(bb1680&&bb2397(bb114,bb1680)){bb1680->bb181.
+bb1142=0 ;bb96 bb2500;}bbm(bb964&&bb2397(bb114,bb964)){bb964->bb181.
+bb1142=0 ;bb96 bb2500;}bbm(bb1680){bb18=bb1191(bb78,bb114,bb51,bb1680,
+0 ,0 );bbm(((bb18)!=bb101))bb96 bb2102;bb1680->bb1119++;{bb91 bb305;
+bb90(bb305=bb51;bb305;bb305=bb305->bb328){bb1680->bb1118+=bb51->bb591
+;bbm(bb305->bb541)bb21;}}}bb50 bbm((bb51->bb455==bb958||bb51->bb455==
+bb975)&&!bb964){bb2548(bb51);}bbm(bb964){bbm(bb51->bb455==bb56(bb964
+->bb181.bb1104)&&bb51->bb541&&(bb964->bb181.bb523==bb1108||bb964->
+bb181.bb523==bb1105)&&bb51->bb29==bb457(bb964->bb181.bb29)){bbd bb2331
+;bbd bb97;bb2331=(bb51->bb484[14 ]&0x0f )<<2 ;bb97=14 +bb2331+8 ;bbm(bb51
+->bb591==bb97+1 &&bb51->bb484[bb97]==0xff ){bb2347(bb51);bb97=14 +bb2331
+;bb51->bb318[bb97]=bb51->bb484[bb97+2 ];bb51->bb318[bb97+1 ]=bb51->
+bb484[bb97+3 ];bb51->bb318[bb97+6 ]=0 ;bb51->bb318[bb97+7 ]=0 ;bb2514=1 ;}}
+}bbm(bb964&&!bb2514){bb389 bb465;bbk bb383;bbk bb1949;bb324 bb140;bbd
+bb2291=0 ;bbd bb1102=0 ;bb103 bb2141=0 ;bb103 bb2112=0 ;bbo bb1216=0 ;bb91
+bb349=bb51;bb109(bb349){bb465=(bb389)bb349->bb484;bb383=bb465->bb383;
+bb1949=bb12(bb374);bbm(bb383==bb977){bb140=(bb324)(bb349->bb484+
+bb1949);bb74(&bb2291,&bb140->bb312,4 );bb1102=bb964->bb181.bb574;bbm(
+bb1102){bb74(&bb140->bb312,&bb1102,4 );bb964->bb1230=bb2291;bbm(bb349
+==bb51){bbm(bb140->bb291==6 ){bb2141=1 ;bb349->bb591+=bb2499(bb140,
+bb1102);}bb50 bbm(bb140->bb291==17 )bb2112=1 ;}bb140->bb634=0 ;bb140->
+bb634=bb942(bb140);}bb1216+=bb197(bb140->bb381)-bb12(bb330);}bbm(
+bb349->bb541)bb21;bb349=bb349->bb328;}bbm(bb2141){bb3 bb1358;bb589
+bb578;bb317 bb201=bb93;bb1358=bb127(bb1216+12 );bb349=bb51;bb109(bb349
+){bb140=(bb324)(bb349->bb484+bb12(bb374));bbm(bb349==bb51){bb578=(
+bb589)bb1358;bb74(&bb578->bb312,&bb140->bb312,4 );bb74(&bb578->bb256,&
+bb140->bb256,4 );bb578->bb934=0 ;bb578->bb291=6 ;bb578->bb937=bb56((bbk)bb1216
+);bb201=(bb317)(bb140+1 );
+#ifdef _DEBUG
+bb155("\x69\x70\x73\x65\x63\x20\x73\x65\x6e\x64\x20\x78\x66\x6f\x72"
+"\x6d\x65\x64\x20");bb1306(bb140,bb93);
+#endif
+bb201->bb326=0 ;bbm(bb201->bb171&0x02 ){bbm(((bb201->bb97&0xF0 )>>2 )>(
+bbe)bb12(bb508)){bbl*bb992=((bbl* )bb201)+bb12(bb508);bbl*bb2180=
+bb992+(((bb201->bb97&0xF0 )>>2 )-bb12(bb508));bb109(bb992<bb2180){bb338
+( *bb992){bb17 0 :bb992=bb2180;bb21;bb17 1 :bb992++;bb21;bb17 2 :{bbk
+bb1240;bb59 bb2093=(bb59)(bb992+2 );bb1240=bb197( *bb2093);bbm(bb1240>
+1400 )bb1240=1280 ;bb50 bbm(bb1240>300 )bb1240-=120 ; *bb2093=bb56(bb1240
+);bb992+=4 ;}bb21;bb477:bb992+=bb992[1 ];bb21;}}}}}bb74(bb1358+bb12(
+bb627)+bb1061(bb140->bb603),bb140+1 ,bb197(bb140->bb381)-bb12(bb330));
+bbm(bb349->bb541||bb1069(bb140->bb603))bb21;bb349=bb349->bb328;}bb201
+->bb326=bb660(bb1358,bb1216+12 );bb108(bb1358);}bbm(bb2112){bb362 bb427
+=(bb362)(bb51->bb484+bb12(bb374)+bb12(bb330));bb427->bb326=0 ;}
+#ifdef _DEBUG
+bb155("\x6f\x75\x74\x67\x6f\x69\x6e\x67\x2c\x20\x62\x65\x66\x6f\x72"
+"\x65\x20\x41\x70\x70\x6c\x79\x53\x41\n");bb1852(bb51->bb484+bb12(
+bb374),bb51->bb591-bb12(bb374));
+#endif
+bb18=bb1191(bb78,bb114,bb51,bb964,0 ,1 );bbm(((bb18)==bb101)){bb349=
+bb51;bb109(bb349){bb465=(bb389)bb349->bb318;bb383=bb465->bb383;bb1949
+=bb12(bb374);bb140=(bb324)(bb349->bb318+bb1949);bbm(bb1102){bb74(&
+bb140->bb312,&bb2291,4 );bb140->bb634=0 ;bb140->bb634=bb942(bb140);}bbm
+(bb349->bb547||bb1069(bb140->bb603))bb21;bb349=bb349->bb328;}}bbm(
+bb114->bb1309&&bb51->bb318[bb12(bb374)+9 ]==17 ){bbk bb2408;bbd bb157;
+bbo bbz,bb22,bb97,bb2302;bb59 bb318=(bb59)bb51->bb318;bb157=0 ;bb97=
+bb12(bb374)+12 ;bb22=bb97+8 ;bb90(bbz=bb97;bbz<bb22;bbz+=2 )bb157+=bb318
+[bbz/2 ];bb157+=17 <<8 ;bb97=bb12(bb374)+(( * (bb51->bb318+bb12(bb374))&
+0xf )<<2 );bb157+=bb318[(bb97+4 )/2 ];bb2302=bb97+6 ;bb318[bb2302/2 ]=0 ;
+bb90(bb349=bb51;bb349;bb349=bb349->bb328){bb59 bb318=(bb59)bb349->
+bb318;bb97=bb12(bb374)+(( * (bb349->bb318+bb12(bb374))&0xf )<<2 );bb22=
+bb349->bb478&0xfffffffe ;bb90(bbz=bb97;bbz<bb22;bbz+=2 )bb157+=bb318[
+bbz/2 ];bbm(bb22!=bb349->bb478)bb157+= * (bb349->bb318+bb349->bb478-1 );
+bb109(bb157>>16 )bb157=(bb157&0xffff )+(bb157>>16 );bbm(bb349->bb547)bb21
+;}bb2408=~bb157;bb318[bb2302/2 ]=bb2408;}bbm(((bb18)!=bb101))bb96
+bb2102;bb51->bb1408=1 ;bb74(bb51->bb1346,bb964->bb376,6 );bb964->bb1119
+++;{bb91 bb305;bb90(bb305=bb51;bb305;bb305=bb305->bb328){bb964->
+bb1118+=bb51->bb591;bbm(bb305->bb541)bb21;}}}bbm(!bb964&&!bb1680&&
+bb51->bb455!=bb958&&bb51->bb455!=bb975){bb18=bb1120;bb96 bb2102;}
+bb2516(bb114,bb1680);bb2516(bb114,bb964);bb4 bb1179;bb2102:bb1864(
+bb114,bb29,bb18);bb4 bb1112;bb456:bb4 bb540;}bb236 bb1278(bb35*bb114,
+bb175*bb51,bb83 bb78){bbd bb29=bb457(bb51->bb29);bbd bb106=0 ;bb161*
+bb166=0 ;bb7 bb18=bb101;bbu bb179=0 ;bb51->bb478=0 ;bb18=bb1288(bb114,
+bb51,&bb106);bbm(((bb18)!=bb101))bb96 bb2102;bbm(!bb106){bb2347(bb51);
+bb4 bb1179;}{bb166=bb1896(bb114,bb29,bb106);bbm(!bb166)bb4 bb1112;
+bb338(bb166->bb181.bb417[0 ].bb299.bb316.bb47.bb45){bb17 bb1378:bb17
+bb1258:bb17 bb1106:bb17 bb1153:bb179=1 ;bb21;bb17 bb1203:bb17 bb1402:
+bb17 bb1397:bb17 bb1341:bb477:bb179=0 ;bb21;}bb18=bb1191(bb78,bb114,
+bb51,bb166,1 ,bb179);bbm(((bb18)==bb101)){bb166->bb1406++;{bb91 bb305=
+bb51;bb109(bb305){bb166->bb1282+=bb51->bb478;bbm(bb305->bb547)bb21;
+bb305=bb305->bb328;}}
+#ifdef _DEBUG
+bb155("\x69\x6e\x63\x6f\x6d\x69\x6e\x67\x2c\x20\x61\x66\x74\x65\x72"
+"\x20\x41\x70\x70\x6c\x79\x53\x41\n");bb1852(bb51->bb318+bb12(bb374),
+bb51->bb478-bb12(bb374));
+#endif
+}bbm(((bb18)==bb101)){bb389 bb465;bbk bb383;bbk bb1949;bb324 bb140;
+bbo bb2488;bbo bb1102;bb103 bb2141=0 ;bb103 bb2112=0 ;bbo bb1216=0 ;bb91
+bb349=bb51;bb103 bb2491=1 ;bbm(bb166->bb181.bb574){bb109(bb349){bb465=
+(bb389)bb349->bb318;bb383=bb465->bb383;bb1949=bb12(bb374);bbm(bb383==
+bb977){bb140=(bb324)(bb349->bb318+bb1949);bb74(&bb2488,&bb140->bb256,
+4 );bb1102=bb166->bb181.bb574;bb1216+=(bb349->bb478-bb12(bb374)-bb12(
+bb330));bbm(bb1102==bb2488){bb74(&bb140->bb256,&bb166->bb1230,4 );bbm(
+bb349==bb51){bbm(bb140->bb291==6 ){bb2141=1 ;bb2383(bb140);}bb50 bbm(
+bb140->bb291==17 ){bb2491=bb1013(bb140->bb603);bb2112=1 ;}}bb140->bb634
+=0 ;bb140->bb634=bb942(bb140);}bbm((bb349->bb547)){bb21;}}bb349=bb349
+->bb328;}}bbm(bb2141){bb3 bb1358;bb589 bb578;bb317 bb201=bb93;bbo
+bb2385=0 ;bb1358=bb127(bb1216+12 );bb349=bb51;bb109(bb349){bb140=(bb324
+)(bb349->bb318+bb12(bb374));bbm(bb349==bb51){bb578=(bb589)bb1358;bb74
+(&bb578->bb312,&bb140->bb312,4 );bb74(&bb578->bb256,&bb140->bb256,4 );
+bb578->bb934=0 ;bb578->bb291=6 ;bb578->bb937=bb56((bbk)bb1216);bb201=(
+bb317)(bb140+1 );
+#ifdef _DEBUG
+bb155("\x69\x70\x73\x65\x63\x20\x72\x65\x63\x76\x20");bb1306(bb140,
+bb201);
+#endif
+bb201->bb326=0 ;bbm(bb201->bb171&0x02 ){bbm(((bb201->bb97&0xF0 )>>2 )>(
+bbe)bb12(bb508)){bbl*bb992=((bbl* )bb201)+bb12(bb508);bbl*bb2180=
+bb992+(((bb201->bb97&0xF0 )>>2 )-bb12(bb508));bb109(bb992<bb2180){bb338
+( *bb992){bb17 0 :bb992=bb2180;bb21;bb17 1 :bb992++;bb21;bb17 2 :{bbk
+bb1240;bb59 bb2093;bb2093=(bb59)(bb992+2 );bb1240=bb197( *bb2093);bbm(
+bb1240>1400 )bb1240=1280 ;bb50 bbm(bb1240>300 )bb1240-=120 ; *bb2093=bb56
+(bb1240);bb992+=4 ;}bb21;bb477:bb992+=bb992[1 ];bb21;}}}}}bb74(bb1358+
+bb12(bb627)+bb2385,bb140+1 ,bb349->bb478-bb12(bb374)-bb12(bb330));
+bb2385+=bb349->bb478-bb12(bb374)-bb12(bb330);bbm((bb349->bb547)){bb21
+;}bb349=bb349->bb328;}bb201->bb326=bb660(bb1358,bb1216+12 );bb108(
+bb1358);}bbm(bb2112){bb362 bb427=(bb362)(bb51->bb318+bb12(bb374)+bb12
+(bb330));bbm(bb2491){bb427->bb326=0 ;}}}bbm(((bb18)!=bb101)){bb96
+bb2102;}}bb4 bb1179;bb2102:bb1864(bb114,bb29,bb18);bb4 bb1112;}

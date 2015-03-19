@@ -45,6 +45,8 @@ enum boot_events_type {
 	PLATFORM_END_INIT_AND_LOOP,
 	PLATFORM_BOOT_COMPLETE,
 	PLATFORM_ENABLE_SCREEN,
+	PLATFORM_VOICE_SVC,
+	PLATFORM_DATA_SVC,
 };
 
 static struct boot_event boot_events[] = {
@@ -62,6 +64,8 @@ static struct boot_event boot_events[] = {
 	{PLATFORM_END_INIT_AND_LOOP, "!@Boot: Loop forever", 0},
 	{PLATFORM_BOOT_COMPLETE, "!@Boot: bootcomplete", 0},
 	{PLATFORM_ENABLE_SCREEN, "!@Boot: Enabling Screen!", 0},
+	{PLATFORM_VOICE_SVC,"!@Boot: Voice SVC is acquired",0},
+	{PLATFORM_DATA_SVC,"!@Boot: Data SVC is acquired",0},
 	{0, NULL, 0},
 };
 
