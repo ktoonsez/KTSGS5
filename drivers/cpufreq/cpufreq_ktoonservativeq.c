@@ -1648,64 +1648,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 
 	policy = this_dbs_info->cur_policy;
 
-	if (boostpulse_relayf)
-	{
-		if (stored_sampling_rate != 0 && screen_is_on)
-			dbs_tuners_ins.sampling_rate = stored_sampling_rate;
-		this_dbs_info->down_skip = 0;
-		if (!boost_hold_cycles_cnt)
-			this_dbs_info->requested_freq = policy->min;
-			
-		if (boost_hold_cycles_cnt >= dbs_tuners_ins.boost_hold_cycles)
-		{
-			boostpulse_relayf = false;
-			boost_hold_cycles_cnt = 0;
-			if ((screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_on == 0) || (!screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_off == 0))
-			{
-				for (cpu = 0; cpu < CPUS_AVAILABLE; cpu++)
-					kt_freq_control[cpu] = 0;
-			}
-			boost_the_gpu(dbs_tuners_ins.touch_boost_gpu, false);
-			if (turned_off_super_conservative_screen_off)
-			{
-				dbs_tuners_ins.super_conservative_screen_off = 1;
-				turned_off_super_conservative_screen_off = false;
-			}
-			//pr_alert("BOOST ENDED: %d - %d - %d - %d", trmlpolicy[0].cur, trmlpolicy[1].cur, trmlpolicy[2].cur, trmlpolicy[3].cur);
-			if (fake_screen_on)
-			{
-				if (!screen_is_on)
-					cpufreq_gov_suspend();
-				fake_screen_on = false;
-			}
-			goto boostcomplete;
-		}
-		boost_hold_cycles_cnt++;
-
-		if (dbs_tuners_ins.touch_boost_cpu_all_cores && policy->cpu == 0)
-		{
-			for (cpu = 1; cpu < CPUS_AVAILABLE; cpu++)
-			{
-				if (&trmlpolicy[cpu] != NULL)
-				{
-					if (cpu_online(cpu))
-						kt_freq_control[cpu] = dbs_tuners_ins.touch_boost_cpu;
-				}
-			}
-		}
-		
-		/* if we are already at full speed then break out early */
-		//if (this_dbs_info->requested_freq == policy->max || policy->cur > dbs_tuners_ins.touch_boost_cpu || this_dbs_info->requested_freq > dbs_tuners_ins.touch_boost_cpu)
-		if (policy->cur > dbs_tuners_ins.touch_boost_cpu)
-			return;
-		
-		this_dbs_info->requested_freq = dbs_tuners_ins.touch_boost_cpu;
-		__cpufreq_driver_target(policy, this_dbs_info->requested_freq,
-			CPUFREQ_RELATION_H);
-boostcomplete:
-		return;
-	}
-	
 	/*
 	 * Every sampling_rate, we check, if current idle time is less
 	 * than 20% (default), then we try to increase frequency
@@ -1773,6 +1715,7 @@ boostcomplete:
 	if ((screen_is_on && dbs_tuners_ins.freq_step_raise_screen_on == 0) || (!screen_is_on && dbs_tuners_ins.freq_step_raise_screen_off == 0))
 		return;
 	
+	//Check cpu online status
 	if (policy->cpu == 0)
 	{
 		for (cpu = 1; cpu < CPUS_AVAILABLE; cpu++)
@@ -1842,27 +1785,32 @@ boostcomplete:
 			if (this_dbs_info->requested_freq > policy->max)
 				this_dbs_info->requested_freq = policy->max;
 
-			__cpufreq_driver_target(policy, this_dbs_info->requested_freq, CPUFREQ_RELATION_H);
-			if (((screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_on) || (!screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_off)) && policy->cpu == 0)
-				setExtraCores(this_dbs_info->requested_freq);
+			if (!boostpulse_relayf)
+			{
+				__cpufreq_driver_target(policy, this_dbs_info->requested_freq, CPUFREQ_RELATION_H);
+				if (((screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_on) || (!screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_off)) && policy->cpu == 0)
+					setExtraCores(this_dbs_info->requested_freq);
+			}
 			if ((!call_in_progress && screen_is_on && dbs_tuners_ins.super_conservative_screen_on) || (!call_in_progress && !screen_is_on && dbs_tuners_ins.super_conservative_screen_off))
 				Lblock_cycles_raise = 0;
 		}
 		//if ((!call_in_progress && screen_is_on && dbs_tuners_ins.super_conservative_screen_on) || (!call_in_progress && !screen_is_on && dbs_tuners_ins.super_conservative_screen_off))
 		if (Lblock_cycles_raise < 100)
 			Lblock_cycles_raise++;
-		return;
+		//return;
 	}
 	else if ((!call_in_progress && screen_is_on && dbs_tuners_ins.super_conservative_screen_on) || (!call_in_progress && !screen_is_on && dbs_tuners_ins.super_conservative_screen_off))
 		Lblock_cycles_raise = 0;
 	
-	if (policy->cpu == 0 && hotplug_flag_off && !dbs_tuners_ins.disable_hotplug && !disable_hotplug_chrg_override && !disable_hotplug_media_override && disable_hotplug_bt_active == false) {
+	//Check cpu offline status
+	if (policy->cpu == 0 && hotplug_flag_off && !dbs_tuners_ins.disable_hotplug && !disable_hotplug_chrg_override && !disable_hotplug_media_override && disable_hotplug_bt_active == false)
+	{
 		if (num_online_cpus() > 1)
 		{
 			if ((screen_is_on && Lblock_cycles_offline > dbs_tuners_ins.block_cycles_offline_screen_on) || (!screen_is_on && Lblock_cycles_offline > dbs_tuners_ins.block_cycles_offline_screen_off))
 			{
 				hotplug_flag_off = false;
-				if (!hotplugInProgress && policy->cpu == 0)
+				if (!hotplugInProgress && policy->cpu == 0 && !boostpulse_relayf)
 					queue_work_on(policy->cpu, dbs_wq, &hotplug_offline_work);
 			}
 			if (Lblock_cycles_offline < 100)
@@ -1875,7 +1823,7 @@ boostcomplete:
 	 * can support the current CPU usage without triggering the up
 	 * policy. To be safe, we focus 10 points under the threshold.
 	 */
-	if ((screen_is_on && max_load < (dbs_tuners_ins.down_threshold_screen_on - 10)) || (!screen_is_on && max_load < (dbs_tuners_ins.down_threshold_screen_off - 10)))
+	if (!boostpulse_relayf && ((screen_is_on && max_load < (dbs_tuners_ins.down_threshold_screen_on - 10)) || (!screen_is_on && max_load < (dbs_tuners_ins.down_threshold_screen_off - 10))))
 	{
 		if (screen_is_on)
 			freq_target = (dbs_tuners_ins.freq_step_lower_screen_on * policy->max) / 100;
@@ -1900,6 +1848,61 @@ boostcomplete:
 			setExtraCores(this_dbs_info->requested_freq);
 		return;
 	}
+	
+	//boost code
+	if (boostpulse_relayf)
+	{
+		if (stored_sampling_rate != 0 && screen_is_on)
+			dbs_tuners_ins.sampling_rate = stored_sampling_rate;
+			
+		if (boost_hold_cycles_cnt >= dbs_tuners_ins.boost_hold_cycles)
+		{
+			boostpulse_relayf = false;
+			boost_hold_cycles_cnt = 0;
+			if ((screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_on == 0) || (!screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_off == 0))
+			{
+				for (cpu = 0; cpu < CPUS_AVAILABLE; cpu++)
+					kt_freq_control[cpu] = 0;
+			}
+			boost_the_gpu(dbs_tuners_ins.touch_boost_gpu, false);
+			if (turned_off_super_conservative_screen_off)
+			{
+				dbs_tuners_ins.super_conservative_screen_off = 1;
+				turned_off_super_conservative_screen_off = false;
+			}
+			//pr_alert("BOOST ENDED: %d - %d - %d - %d", trmlpolicy[0].cur, trmlpolicy[1].cur, trmlpolicy[2].cur, trmlpolicy[3].cur);
+			if (fake_screen_on)
+			{
+				if (!screen_is_on)
+					cpufreq_gov_suspend();
+				fake_screen_on = false;
+			}
+			goto boostcomplete;
+		}
+		boost_hold_cycles_cnt++;
+
+		if (dbs_tuners_ins.touch_boost_cpu_all_cores && policy->cpu == 0)
+		{
+			if (dbs_tuners_ins.touch_boost_cpu > this_dbs_info->requested_freq && dbs_tuners_ins.touch_boost_cpu > policy->cur)
+				setExtraCores(dbs_tuners_ins.touch_boost_cpu);
+			else if (this_dbs_info->requested_freq > dbs_tuners_ins.touch_boost_cpu && this_dbs_info->requested_freq > policy->cur)
+				setExtraCores(this_dbs_info->requested_freq);
+			else
+				setExtraCores(policy->cur);
+		}
+		
+		/* if we are already at full speed then break out early */
+		if (policy->cur > dbs_tuners_ins.touch_boost_cpu && policy->cur > this_dbs_info->requested_freq)
+			return;
+		
+		if (dbs_tuners_ins.touch_boost_cpu > this_dbs_info->requested_freq)
+			this_dbs_info->requested_freq = dbs_tuners_ins.touch_boost_cpu;
+		__cpufreq_driver_target(policy, this_dbs_info->requested_freq,
+			CPUFREQ_RELATION_H);
+boostcomplete:
+		return;
+	}
+
 }
 
 void setExtraCores(unsigned int requested_freq)
