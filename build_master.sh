@@ -55,7 +55,7 @@ echo "Modding .config file - "$KTVER
 sed -i 's,CONFIG_LOCALVERSION="-KT-SGS5",CONFIG_LOCALVERSION="'$KTVER'",' .config
 
 HOST_CHECK=`uname -n`
-if [ $HOST_CHECK = 'ktoonsez-VirtualBox' ] || [ $HOST_CHECK = 'task650-Underwear' ]; then
+if [ $HOST_CHECK = 'ktoonsez-VirtualBox' ] || [ $HOST_CHECK = 'ktoonsez-vm' ] || [ $HOST_CHECK = 'task650-Underwear' ]; then
 	echo "Ktoonsez/task650 24!"
 	make -j24
 else
