@@ -2656,7 +2656,14 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 		pr_debug("setting range\n");
 		ret = cpufreq_driver->setpolicy(policy);
 	} else {
-		if (policy->governor != data->governor) {
+		bool cpu_dup_gov = false;
+		//if (policy->cpu != 0)
+		//{
+		//	if (policy->governor != trmlpolicy[0].governor)
+		//		cpu_dup_gov = true;
+		//}
+			
+		if (policy->governor != data->governor || cpu_dup_gov) {
 			/* save old, working values */
 			struct cpufreq_governor *old_gov = data->governor;
 
@@ -2667,7 +2674,10 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 				__cpufreq_governor(data, CPUFREQ_GOV_STOP);
 
 			/* start new governor */
-			data->governor = policy->governor;
+			if (cpu_dup_gov)
+				data->governor = trmlpolicy[0].governor;
+			else
+				data->governor = policy->governor;
 			if (__cpufreq_governor(data, CPUFREQ_GOV_START)) {
 				/* new governor failed, so re-start old one */
 				pr_debug("starting governor %s failed\n",
