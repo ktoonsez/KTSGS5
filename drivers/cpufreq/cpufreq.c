@@ -542,7 +542,7 @@ static void __cpuinit set_cpu_min_max_work_fn(struct work_struct *work)
 		for (cpu = work_speed_core_start; cpu < CPUS_AVAILABLE; cpu++)
 		{
 			if (!cpu_online(cpu)) cpu_up(cpu);
-			usleep(50);
+			//usleep(50);
 			if (cpu_online(cpu))
 			{
 				struct cpufreq_policy *policyorig = cpufreq_cpu_get_sysfs(cpu);
@@ -562,11 +562,14 @@ static void __cpuinit set_cpu_min_max_work_fn(struct work_struct *work)
 						new_policy.user_policy.max = new_policy.max;
 					}
 					//pr_alert("SET EXTRA CORES 1 - %d - %d - %d - %d - %d - %d - %d", cpu, policyorig->cpu, new_policy.min, new_policy.max, policyorig->min, policyorig->max, policyorig->user_policy.max);
-					__cpufreq_set_policy(policyorig, &new_policy);
-					if (work_speed_min)
-						policyorig->user_policy.min = policyorig->min;
-					if (work_speed_max)
-						policyorig->user_policy.max = policyorig->max;
+					if (cpu_online(cpu))
+					{
+						__cpufreq_set_policy(policyorig, &new_policy);
+						if (work_speed_min)
+							policyorig->user_policy.min = policyorig->min;
+						if (work_speed_max)
+							policyorig->user_policy.max = policyorig->max;
+					}
 					//pr_alert("SET EXTRA CORES 2 - %d - %d - %d - %d - %d - %d - %d", cpu, policyorig->cpu, new_policy.min, new_policy.max, policyorig->min, policyorig->max, policyorig->user_policy.max);
 				}
 			}				
@@ -2458,7 +2461,8 @@ static int __cpufreq_governor(struct cpufreq_policy *policy,
 #else
 	struct cpufreq_governor *gov = NULL;
 #endif
-
+	if (!policy->governor)
+		return -EINVAL;
 	if (policy->governor->max_transition_latency &&
 	    policy->cpuinfo.transition_latency >
 	    policy->governor->max_transition_latency) {
@@ -2666,8 +2670,7 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 		if (policy->governor != data->governor || cpu_dup_gov) {
 			/* save old, working values */
 			struct cpufreq_governor *old_gov = data->governor;
-
-			pr_debug("governor switch\n");
+			//pr_alert("governor switch1: %s - %d\n", policy->governor->name, policy->cpu);
 
 			/* end old governor */
 			if (data->governor)
@@ -2678,9 +2681,10 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 				data->governor = trmlpolicy[0].governor;
 			else
 				data->governor = policy->governor;
+			//pr_alert("governor switch2 - %d\n", policy->cpu);
 			if (__cpufreq_governor(data, CPUFREQ_GOV_START)) {
 				/* new governor failed, so re-start old one */
-				pr_debug("starting governor %s failed\n",
+				pr_alert("starting governor %s failed\n",
 							data->governor->name);
 				if (old_gov) {
 					data->governor = old_gov;
@@ -2690,6 +2694,7 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 				ret = -EINVAL;
 				goto error_out;
 			}
+			//pr_alert("governor switch3 - %d\n", policy->cpu);
 			/* might be a policy change, too, so fall through */
 		}
 		pr_debug("governor: change or update limits\n");
