@@ -128,6 +128,7 @@ struct cpufreq_policy {
 };
 extern struct cpufreq_policy trmlpolicy[10];
 extern unsigned int kt_freq_control[10];
+extern unsigned int main_cpufreq_control[10];
 
 #define CPUFREQ_ADJUST		(0)
 #define CPUFREQ_INCOMPATIBLE	(1)

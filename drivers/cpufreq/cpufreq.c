@@ -45,6 +45,7 @@ extern ssize_t store_auto_hotplug_enable_core_loads(struct cpufreq_policy *polic
 int GLOBALKT_MIN_FREQ_LIMIT = 300000;
 int GLOBALKT_MAX_FREQ_LIMIT = 2457600;
 
+unsigned int main_cpufreq_control[10];
 
 unsigned int vfreq_lock = 0;
 static bool vfreq_lock_tempOFF = false;
@@ -541,7 +542,9 @@ static void __cpuinit set_cpu_min_max_work_fn(struct work_struct *work)
 		int cpu, ret;
 		for (cpu = work_speed_core_start; cpu < CPUS_AVAILABLE; cpu++)
 		{
-			if (!cpu_online(cpu)) cpu_up(cpu);
+			main_cpufreq_control[cpu] = 1;
+			if (!cpu_online(cpu))
+				cpu_up(cpu);
 			//usleep(50);
 			if (cpu_online(cpu))
 			{
@@ -573,6 +576,7 @@ static void __cpuinit set_cpu_min_max_work_fn(struct work_struct *work)
 					//pr_alert("SET EXTRA CORES 2 - %d - %d - %d - %d - %d - %d - %d", cpu, policyorig->cpu, new_policy.min, new_policy.max, policyorig->min, policyorig->max, policyorig->user_policy.max);
 				}
 			}				
+			main_cpufreq_control[cpu] = 0;
 		}
 	}
 }
@@ -634,6 +638,7 @@ static ssize_t __ref store_scaling_min_freq(struct cpufreq_policy *policy, const
 		if (value <= GLOBALKT_MIN_FREQ_LIMIT)
 			value = GLOBALKT_MIN_FREQ_LIMIT;
 
+		main_cpufreq_control[policy->cpu] = 1;
 		if (!cpu_online(policy->cpu)) cpu_up(policy->cpu);
 
 		ret = cpufreq_get_policy(&new_policy, policy->cpu);
@@ -643,13 +648,14 @@ static ssize_t __ref store_scaling_min_freq(struct cpufreq_policy *policy, const
 		ret = __cpufreq_set_policy(policy, &new_policy);
 		policy->user_policy.min = policy->min;
 
+		main_cpufreq_control[policy->cpu] = 0;
 		//Set extra CPU cores to same speed
 		if (policy->cpu == 0)
 			set_cpu_min_max(value, 0, 1);
 
-	Lbluetooth_scaling_mhz_orig = value;
-	Lmusic_play_scaling_mhz_orig = value;
-	Lcharging_min_mhz_orig = value;
+		Lbluetooth_scaling_mhz_orig = value;
+		Lmusic_play_scaling_mhz_orig = value;
+		Lcharging_min_mhz_orig = value;
 	}
 	
 	return count;
@@ -672,6 +678,7 @@ static ssize_t __ref store_scaling_max_freq(struct cpufreq_policy *policy, const
 		if (value < GLOBALKT_MIN_FREQ_LIMIT)
 			value = GLOBALKT_MIN_FREQ_LIMIT;
 
+		main_cpufreq_control[policy->cpu] = 1;
 		if (!cpu_online(policy->cpu)) cpu_up(policy->cpu);
 
 		ret = cpufreq_get_policy(&new_policy, policy->cpu);
@@ -681,6 +688,7 @@ static ssize_t __ref store_scaling_max_freq(struct cpufreq_policy *policy, const
 		ret = __cpufreq_set_policy(policy, &new_policy);
 		policy->user_policy.max = policy->max;
 
+		main_cpufreq_control[policy->cpu] = 0;
 		//Set extra CPU cores to same speed
 		if (policy->cpu == 0)
 			set_cpu_min_max(0, value, 1);
