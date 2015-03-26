@@ -122,6 +122,7 @@ static enum power_supply_property sec_charger_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 #endif
 };
+int charge_current_override = 0;
 
 static void max77804k_charger_initialize(struct max77804k_charger_data *charger);
 static int max77804k_get_vbus_state(struct max77804k_charger_data *charger);
@@ -609,7 +610,12 @@ static void reduce_input_current(struct max77804k_charger_data *charger, int cur
 	u8 set_reg;
 	u8 set_value;
 	unsigned int min_input_current = 0;
-
+	
+	if (force_fast_charge)
+	{
+		pr_alert("FAST CHARGE IGNORE REDUCE CURRENT!!!!");
+		return;	
+	}
 	if ((!charger->is_charging) || mutex_is_locked(&charger->ops_lock) ||
 		(charger->cable_type == POWER_SUPPLY_TYPE_WIRELESS))
 		return;
@@ -979,9 +985,19 @@ static bool check_fastcharge(struct max77804k_charger_data *charger)
 	}
 	if (ret)
 	{
-		max77804k_set_input_current(charger, charge_current);
+		max77804k_set_charger_state(charger, charger->is_charging);
+		charger->charging_current_max = charge_current;
+		charger->charging_current = charge_current;
 		max77804k_set_charge_current(charger, charge_current);
+		max77804k_set_input_current(charger, charge_current);
+			max77804k_set_topoff_current(charger,
+				charge_current,
+				charge_current);
+		charge_current_override = charge_current;
 	}
+	else
+		charge_current_override = 0;
+	pr_alert("FAST CHARGE1!!!! - %d - %d - %d", charge_current, ret, force_fast_charge);
 	return ret;
 }
 
@@ -993,8 +1009,10 @@ static int sec_chg_set_property(struct power_supply *psy,
 		container_of(psy, struct max77804k_charger_data, psy_chg);
 	union power_supply_propval value;
 	int set_charging_current, set_charging_current_max;
-	const int usb_charging_current = charger->pdata->charging_current[
+	int usb_charging_current = charger->pdata->charging_current[
 		POWER_SUPPLY_TYPE_USB].fast_charging_current;
+	if (charge_current_override > 0)
+		usb_charging_current = charge_current_override;
 	u8 chg_cnfg_00;
 	int current_now = 0;
 	
@@ -1037,6 +1055,8 @@ static int sec_chg_set_property(struct power_supply *psy,
 			set_charging_current_max =
 				charger->pdata->charging_current[
 				POWER_SUPPLY_TYPE_USB].input_current_limit;
+			if (charge_current_override > 0)
+				set_charging_current_max = charge_current_override;
 		} else {
 			charger->is_charging = true;
 			charger->charging_current_max =
@@ -1533,7 +1553,7 @@ static irqreturn_t max77804k_bypass_irq(int irq, void *data)
 					MAX77804K_CHG_REG_CHG_CNFG_00,
 					chg_cnfg_00);
 	}
-	if (byp_dtls & 0x8) {
+	if ((byp_dtls & 0x8) && !force_fast_charge) {
 		reduce_input_current(chg_data, REDUCE_CURRENT_STEP);
 	}
 
@@ -1622,8 +1642,8 @@ static void max77804k_chgin_isr_work(struct work_struct *work)
 
 		if (charger->is_charging) {
 			/* reduce only at CC MODE */
-			if (((chgin_dtls == 0x0) || (chgin_dtls == 0x01)) &&
-					(chg_dtls == 0x01) && (stable_count > 2))
+			if (!force_fast_charge && (((chgin_dtls == 0x0) || (chgin_dtls == 0x01)) &&
+					(chg_dtls == 0x01) && (stable_count > 2)))
 				reduce_input_current(charger, REDUCE_CURRENT_STEP);
 		}
 		prev_chgin_dtls = chgin_dtls;
