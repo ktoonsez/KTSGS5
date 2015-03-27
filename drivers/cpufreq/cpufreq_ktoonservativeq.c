@@ -1864,16 +1864,22 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 				if (this_dbs_info->Lblock_cycles_offline > 0)
 					this_dbs_info->Lblock_cycles_offline--;
 			}
-			/* Check for frequency increase */
-			retInc = check_freq_increase(this_dbs_info, policy, max_load);
-			/* Check for frequency decrease */
-			retDec = check_freq_decrease(this_dbs_info, policy, max_load);
-			if (retInc || retDec)
-				__cpufreq_driver_target(policy, this_dbs_info->requested_freq, CPUFREQ_RELATION_H);
+			if (!((screen_is_on && (dbs_tuners_ins.sync_extra_cores_screen_on || (boostpulse_relayf && (dbs_tuners_ins.touch_boost_cpu_all_cores || dbs_tuners_ins.lockout_changes_when_boosting)))) || (!screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_off)))
+			{
+				/* Check for frequency increase */
+				retInc = check_freq_increase(this_dbs_info, policy, max_load);
+				/* Check for frequency decrease */
+				retDec = check_freq_decrease(this_dbs_info, policy, max_load);
+				if (retInc || retDec)
+				{
+					__cpufreq_driver_target(policy, this_dbs_info->requested_freq, CPUFREQ_RELATION_H);
+					return;
+				}
+			}
 		}
 
 		//Sync with CPU 0 when the sync flag is on
-		if ((screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_on) || (!screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_off))
+		if ((screen_is_on && (dbs_tuners_ins.sync_extra_cores_screen_on || (boostpulse_relayf && (dbs_tuners_ins.touch_boost_cpu_all_cores || dbs_tuners_ins.lockout_changes_when_boosting)))) || (!screen_is_on && dbs_tuners_ins.sync_extra_cores_screen_off))
 		{
 			freq_target = kt_freq_control[policy->cpu];
 			this_dbs_info->requested_freq = freq_target;
