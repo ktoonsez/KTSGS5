@@ -1995,8 +1995,8 @@ skip_it_all:
 			//pr_alert("BOOST ENDED: %d - %d - %d - %d", trmlpolicy[0].cur, trmlpolicy[1].cur, trmlpolicy[2].cur, trmlpolicy[3].cur);
 			if (fake_screen_on)
 			{
-				if (!screen_is_on)
-					cpufreq_gov_suspend();
+				//if (!screen_is_on)
+				//	cpufreq_gov_suspend();
 				fake_screen_on = false;
 			}
 			goto boostcomplete;
@@ -2180,7 +2180,7 @@ void ktoonservative_boostpulse(bool boost_for_button)
 					check_boost_cores_up(dbs_tuners_ins.boost_2nd_core_on_button_screen_on, dbs_tuners_ins.boost_3rd_core_on_button_screen_on, dbs_tuners_ins.boost_4th_core_on_button_screen_on);
 				else
 				{
-					cpufreq_gov_resume();
+					//cpufreq_gov_resume();
 					fake_screen_on = true;
 					if (dbs_tuners_ins.super_conservative_screen_off)
 					{
