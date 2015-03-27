@@ -43,9 +43,9 @@ void gkt_boost_cpu_call(bool change_screen_state, bool boost_for_button)
 	if (ktoonservative_is_active)
 	{
 		//pr_alert("KTGlobal WORK CALL - Ktoonservative mode\n");
-		if (change_screen_state)
-			ktoonservative_screen_is_on(true);
-		else
+		//if (change_screen_state)
+		//	ktoonservative_screen_is_on(true);
+		//else
 			ktoonservative_boostpulse(boost_for_button);
 	}
 	else
