@@ -719,7 +719,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		}
 	}
 
-	if (kt_freq_control[1] == 0 && pcpu->target_freq >= hispeed_freq &&
+	if (pcpu->target_freq >= hispeed_freq &&
 	    new_freq > pcpu->target_freq &&
 	    now - pcpu->hispeed_validate_time <
 	    freq_to_above_hispeed_delay(pcpu->target_freq)) {
@@ -753,7 +753,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		mod_min_sample_time = 0;
 		pcpu->minfreq_boost = 0;
 	}
-	if (kt_freq_control[1] == 0 && new_freq < pcpu->floor_freq) {
+	if (new_freq < pcpu->floor_freq) {
 		if (now - pcpu->floor_validate_time < mod_min_sample_time) {
 			trace_cpufreq_interactive_notyet(
 				data, cpu_load, pcpu->target_freq,
@@ -775,7 +775,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		pcpu->floor_validate_time = now;
 	}
 
-	if (pcpu->target_freq == new_freq && kt_freq_control[1] == 0) {
+	if (pcpu->target_freq == new_freq) {
 		trace_cpufreq_interactive_already(
 			data, cpu_load, pcpu->target_freq,
 			pcpu->policy->cur, new_freq);
@@ -915,13 +915,6 @@ static int cpufreq_interactive_speedchange_task(void *data)
 				up_read(&pcpu->enable_sem);
 				continue;
 			}
-			
-			//KT hook
-			if (kt_freq_control[cpu] > 0)
-			{
-				max_freq = kt_freq_control[cpu];
-				goto skipcpu;
-			}
 
 			for_each_cpu(j, pcpu->policy->cpus) {
 				struct cpufreq_interactive_cpuinfo *pjcpu =
@@ -931,7 +924,6 @@ static int cpufreq_interactive_speedchange_task(void *data)
 					max_freq = pjcpu->target_freq;
 			}
 
-skipcpu:
 			if (max_freq != pcpu->policy->cur)
 				__cpufreq_driver_target(pcpu->policy,
 							max_freq,
@@ -1243,7 +1235,7 @@ static ssize_t store_hispeed_freq(struct kobject *kobj,
 	return count;
 }
 
-static struct global_attr hispeed_freq_attr = __ATTR(hispeed_freq, 0664,
+static struct global_attr hispeed_freq_attr = __ATTR(hispeed_freq, 0644,
 		show_hispeed_freq, store_hispeed_freq);
 
 static ssize_t show_sampling_down_factor(struct kobject *kobj,
@@ -1281,7 +1273,7 @@ static ssize_t store_sampling_down_factor(struct kobject *kobj,
 }
 
 static struct global_attr sampling_down_factor_attr =
-				__ATTR(sampling_down_factor, 0664,
+				__ATTR(sampling_down_factor, 0644,
 		show_sampling_down_factor, store_sampling_down_factor);
 
 static ssize_t show_go_hispeed_load(struct kobject *kobj,
@@ -1318,7 +1310,7 @@ static ssize_t store_go_hispeed_load(struct kobject *kobj,
 	return count;
 }
 
-static struct global_attr go_hispeed_load_attr = __ATTR(go_hispeed_load, 0664,
+static struct global_attr go_hispeed_load_attr = __ATTR(go_hispeed_load, 0644,
 		show_go_hispeed_load, store_go_hispeed_load);
 
 static ssize_t show_min_sample_time(struct kobject *kobj,
@@ -1355,7 +1347,7 @@ static ssize_t store_min_sample_time(struct kobject *kobj,
 	return count;
 }
 
-static struct global_attr min_sample_time_attr = __ATTR(min_sample_time, 0664,
+static struct global_attr min_sample_time_attr = __ATTR(min_sample_time, 0644,
 		show_min_sample_time, store_min_sample_time);
 
 static ssize_t show_timer_rate(struct kobject *kobj,
@@ -1391,7 +1383,7 @@ static ssize_t store_timer_rate(struct kobject *kobj,
 	return count;
 }
 
-static struct global_attr timer_rate_attr = __ATTR(timer_rate, 0664,
+static struct global_attr timer_rate_attr = __ATTR(timer_rate, 0644,
 		show_timer_rate, store_timer_rate);
 
 static ssize_t show_timer_slack(
@@ -1508,7 +1500,7 @@ static ssize_t store_io_is_busy(struct kobject *kobj,
 	return count;
 }
 
-static struct global_attr io_is_busy_attr = __ATTR(io_is_busy, 0664,
+static struct global_attr io_is_busy_attr = __ATTR(io_is_busy, 0644,
 		show_io_is_busy, store_io_is_busy);
 
 static ssize_t show_sync_freq(struct kobject *kobj,
@@ -1530,7 +1522,7 @@ static ssize_t store_sync_freq(struct kobject *kobj,
 	return count;
 }
 
-static struct global_attr sync_freq_attr = __ATTR(sync_freq, 0664,
+static struct global_attr sync_freq_attr = __ATTR(sync_freq, 0644,
 		show_sync_freq, store_sync_freq);
 
 static ssize_t show_up_threshold_any_cpu_load(struct kobject *kobj,
@@ -1553,7 +1545,7 @@ static ssize_t store_up_threshold_any_cpu_load(struct kobject *kobj,
 }
 
 static struct global_attr up_threshold_any_cpu_load_attr =
-		__ATTR(up_threshold_any_cpu_load, 0664,
+		__ATTR(up_threshold_any_cpu_load, 0644,
 		show_up_threshold_any_cpu_load,
 				store_up_threshold_any_cpu_load);
 
@@ -1577,7 +1569,7 @@ static ssize_t store_up_threshold_any_cpu_freq(struct kobject *kobj,
 }
 
 static struct global_attr up_threshold_any_cpu_freq_attr =
-		__ATTR(up_threshold_any_cpu_freq, 0664,
+		__ATTR(up_threshold_any_cpu_freq, 0644,
 		show_up_threshold_any_cpu_freq,
 				store_up_threshold_any_cpu_freq);
 
@@ -1605,7 +1597,7 @@ static ssize_t store_##obj_name(struct kobject *kobj,			\
         return count;							\
 }									\
 									\
-static struct global_attr obj_attr = __ATTR(obj_name, 0664,		\
+static struct global_attr obj_attr = __ATTR(obj_name, 0644,		\
                 show_##obj_name, store_##obj_name);			\
 
 index(mode, mode_attr);
@@ -1634,7 +1626,7 @@ static ssize_t store_##obj_name(struct kobject *kobj,			\
         return count;							\
 }									\
 									\
-static struct global_attr obj_attr = __ATTR(obj_name, 0664,		\
+static struct global_attr obj_attr = __ATTR(obj_name, 0644,		\
                 show_##obj_name, store_##obj_name);			\
 
 load(multi_enter_load, multi_enter_load_attr);
@@ -1664,7 +1656,7 @@ static ssize_t store_##obj_name(struct kobject *kobj,			\
         return count;							\
 }									\
 									\
-static struct global_attr obj_attr = __ATTR(obj_name, 0664,		\
+static struct global_attr obj_attr = __ATTR(obj_name, 0644,		\
                 show_##obj_name, store_##obj_name);			\
 
 time(multi_enter_time, multi_enter_time_attr);
