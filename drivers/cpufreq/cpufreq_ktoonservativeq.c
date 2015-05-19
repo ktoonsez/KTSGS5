@@ -2208,7 +2208,7 @@ void ktoonservative_boostpulse(bool boost_for_button)
 			for (cpu = 0; cpu < CPUS_AVAILABLE; cpu++)
 			{
 				if (Lblock_cycles_offline_OVERRIDE[cpu] > 0 || Lblock_cycles_offline_OVERRIDE[cpu] == OVERRIDE_DISABLER)
-					Lblock_cycles_offline_OVERRIDE[cpu] = (dbs_tuners_ins.block_cycles_offline_screen_on * -4);
+					Lblock_cycles_offline_OVERRIDE[cpu] = (dbs_tuners_ins.block_cycles_offline_screen_on * -1);
 			}
 		}
 		for (cpu = 0; cpu < CPUS_AVAILABLE; cpu++)
